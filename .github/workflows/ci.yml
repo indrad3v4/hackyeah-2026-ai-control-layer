@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Parse both console JavaScript surfaces
+        run: python scripts/check_console.py
+
+      - name: Install node dependencies
+        run: python -m pip install -r node/requirements.txt
+
+      - name: Run node tests
+        run: python -m pytest -q node/tests
+
+      - name: Verify mirrored node
+        run: bash scripts/sync-node.sh --check

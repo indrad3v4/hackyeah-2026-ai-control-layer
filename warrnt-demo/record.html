@@ -8,7 +8,7 @@
   :root{
     --bg:#0a0e13; --panel:#10151c; --panel2:#0d1219; --line:#1e2733; --line2:#161d27;
     --ink:#e6edf3; --mut:#7d8b9c; --dim:#56616f;
-    --acc:#f0883e; --ok:#3fb950; --deny:#f85149; --hum:#d29922; --strip:#39c5cf; --hash:#79c0ff;
+    --acc:#f0883e; --ok:#3fb950; --deny:#f85149; --hum:#d29922; --hash:#79c0ff;
     --r:10px;
     font-synthesis:none;
   }
@@ -18,7 +18,7 @@
     color:var(--ink);
     font-family:"Nimbus Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
     font-size:13px;line-height:1.35;
-    display:grid;grid-template-rows:52px 1fr auto 30px;gap:0;
+    display:grid;grid-template-rows:52px 1fr 30px;gap:0;
     -webkit-font-smoothing:antialiased;
   }
   .mono{font-family:"DejaVu Sans Mono","SFMono-Regular",Menlo,Consolas,monospace}
@@ -106,8 +106,7 @@
   .rec .what code{color:#c9d6e4;background:#131a23;border:1px solid #1b232e;border-radius:4px;padding:0 5px;font-size:11.5px}
   .rec .meta{font-size:11px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rec .meta .h{color:var(--hash);font-family:"DejaVu Sans Mono",monospace}
-  .rec.new{animation:flash 1.1s ease-out}
-  @keyframes flash{0%{background:rgba(240,136,62,.16)}100%{background:transparent}}
+  .rec.new{background:rgba(240,136,62,.14)}
 
   /* ---------- kill tile ---------- */
   .kill{display:flex;flex-direction:column;height:100%;min-height:0}
@@ -157,24 +156,6 @@
   footer .r{margin-left:auto;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;font-size:10.5px}
 
   .halted td{opacity:.62}
-  .p-redact{color:var(--strip);border-color:rgba(57,197,207,.45);background:rgba(57,197,207,.08)}
-
-  /* ---------- 05. the taxonomy: every act has a class, every class has a decider ---------- */
-  .taxo{border-top:1px solid var(--line);background:var(--panel2);min-height:0}
-  .taxo>h2{display:flex;align-items:center;gap:10px;padding:6px 13px;border-bottom:1px solid var(--line2);
-    font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#b9c5d2}
-  .taxo>h2 .idx{color:var(--dim);font-weight:600}
-  .taxo>h2 .c{margin-left:auto;font-size:11px;letter-spacing:.06em;color:var(--mut);font-weight:600;text-transform:none}
-  .taxo .cells{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line2)}
-  .taxo .cell{background:var(--panel2);padding:6px 11px;min-width:0}
-  .taxo .cls{font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .taxo .who{margin-top:2px;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);font-weight:700}
-  .taxo .cell.dec-human .who{color:var(--hum)}
-  .taxo .cell.dec-operator-human .who{color:var(--deny)}
-  .taxo .cell.dec-machine_receipt .who,.taxo .cell.dec-machine\.valid_warrant .who{color:var(--strip)}
-  .taxo .mean{margin-top:3px;font-size:10px;line-height:1.28;color:var(--mut);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .taxo .tools{margin-top:2px;font-size:9.5px;line-height:1.3;color:var(--dim);font-family:"DejaVu Sans Mono",Menlo,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
 </style>
 </head>
 <body>
@@ -183,7 +164,7 @@
     <span class="word">WARR<i>N</i>T</span>
     <span class="tag">AI&nbsp;Control&nbsp;Layer</span>
   </div>
-  <div class="thesis">No warrant, no action — <b>every agent action carries an order, or it does not happen.</b><br><span class="mono">MCP /tools/call</span> → <b>WARRNT gate</b> → upstream · verdict before execution</div>
+  <div class="thesis">No warrant, no action — <b>every agent action carries an order, or it does not happen.</b></div>
   <div class="spacer"></div>
   <div class="hstat"><span id="srcDot" class="dot demo"></span><span id="srcTxt">demo feed</span></div>
   <div class="clock mono" id="clock">--:--:--</div>
@@ -242,17 +223,11 @@
   </section>
 </main>
 
-<section class="taxo" aria-label="Kinds of act and who decides">
-  <h2><span class="idx">05</span> Six kinds of act <span class="c">every act gets a class · every class has a decider · a class may raise the decision, never lower it</span></h2>
-  <div class="cells" id="taxoCells"></div>
-</section>
-
 <footer>
   <div class="k">Actions with a warrant <b id="kPct">—</b> <span class="up">▲ target 100%</span></div>
   <div class="k">Time to stop <b id="kStop">—</b></div>
   <div class="k">Regulator report assembled in <b id="kReport">—</b></div>
   <div class="k">Chain integrity <b id="kChain" class="up">verified</b></div>
-  <div class="k" title="warrnt @ 2026-10-03 · the numbers are the last run of each check">Checks <b class="up">80 pytest · 35/35 · 18/18 · 29/29 · 20/20</b></div>
   <div class="r" id="footR">HackYeah 2026 · Partner Task: AI Control Layer · MCP interception, one node</div>
 </footer>
 
@@ -284,7 +259,7 @@ function seed(){
     ],
     warrants: [
       {id:'W-4417', agent:'fin-reconcile',   scope:'payments.read · ≤ 50,000 PLN · read-only', ttl:900, ttl0:900, state:'active'},
-      {id:'W-4419', agent:'support-copilot', scope:'crm.read · export=false · personal fields stripped',  ttl:420, ttl0:420, state:'active'},
+      {id:'W-4419', agent:'support-copilot', scope:'crm.read · export=false · no PII fields',  ttl:420, ttl0:420, state:'active'},
       {id:'W-4421', agent:'deploy-agent',    scope:'infra.plan · deploy ⇒ require-human',      ttl:150, ttl0:150, state:'active'}
     ],
     receipts: []
@@ -296,7 +271,6 @@ let seq = 4419;
 /* ---------- render ---------- */
 function pill(st){
   const map={active:['p-active','allowed'],deny:['p-deny','denied'],allow:['p-allow','allowed'],
-             redact:['p-redact','redacted'],
              human:['p-human','human'],expired:['p-exp','expired'],
              revoked:['p-rev','revoked'],halted:['p-halt','halted']};
   const [c,t]=map[st]||['p-exp',st];
@@ -413,13 +387,6 @@ function demoReset(){
 }
 function demoStep(){
   DEMO.step++;
-  if(DEMO.step===3){
-    // the same read, one field too many: the personal fields are stripped, the call still runs
-    receipt('redact','<code>crm.read</code> {table:"tickets", fields:["subject","email","pesel"]} — 2 personal fields stripped before the call','W-4419','redacted: email, pesel · the upstream never saw them');
-    const a=S.agents.find(x=>x.id==='support-copilot'); a.last='crm.read · redacted (2 fields stripped)';
-    renderAgents(); renderReceipts();
-    logKill('<b>REDACT</b> support-copilot · email, pesel stripped · call allowed, fields not');
-  }
   if(DEMO.step===5){
     // 3:47 — the agent tries to move data it was never authorised to move
     $('modeBadge').textContent='INTERCEPT';
@@ -447,8 +414,7 @@ function startDemo(){
 /* ---------- live source (real proxy) ---------- */
 function applyLive(d){
   if(!d||!d.agents) return;
-  S.agents=d.agents; S.warrants=d.warrants||S.warrants;
-  if(d.actions&&d.actions.length) S.actions=d.actions; S.receipts=(d.receipts||[]).map((r,i)=>({...r,fresh:i===0}));
+  S.agents=d.agents; S.warrants=d.warrants||S.warrants; S.receipts=(d.receipts||[]).map((r,i)=>({...r,fresh:i===0}));
   if(d.revoked!=null) S.revoked=d.revoked;
   if(d.last_stop!=null){ S.lastStop=d.last_stop; $('mStop').textContent=d.last_stop.toFixed(1); }
   $('mRev').textContent=S.revoked;
@@ -483,45 +449,20 @@ $('revoke').addEventListener('click',()=>{
 });
 
 /* ---------- clock + ttl tick ---------- */
-setInterval(()=>{
+function tickOnce(){
   $('clock').textContent=hh(new Date());
   S.agents.forEach(a=>{ if(a.state==='active') a.ttl=Math.max(0,a.ttl-1); });
   S.warrants.forEach(w=>{ if(w.state==='active'){ w.ttl=Math.max(0,w.ttl-1); if(w.ttl===0) w.state='expired'; } });
   renderAgents(); renderWarrants();
-},1000);
-
-/* ---------- 05. taxonomy: who decides what ---------- */
-const TAXO = [
- {class:'observe',decider:'machine',decider_text:'the node decides',
-  meaning:'read-only, nothing personal and nothing changed',tools:['infra.plan']},
- {class:'read_personal',decider:'machine + receipt',decider_text:'the node decides · the fields are on the record',
-  meaning:'reads personal data; the fields read are recorded',tools:['crm.bulk_export','crm.read','payments.read']},
- {class:'draft',decider:'machine',decider_text:'the node decides',
-  meaning:'produces an artifact that changes nothing outside the boundary',tools:[]},
- {class:'write_reversible',decider:'machine + valid warrant',decider_text:'the node decides under a signed order',
-  meaning:'changes external state in a way that can be undone',tools:['crm.update']},
- {class:'irreversible',decider:'human',decider_text:'a person decides · the machine prepares only',
-  meaning:'cannot be undone: money moves, data is deleted, a document is filed',tools:['infra.deploy','payments.transfer']},
- {class:'authorize',decider:'operator-human only',decider_text:'the operator-human only · no machine may',
-  meaning:'changes the rules themselves — a warrant, a limit, a registration',tools:['policy.edit','warrant.issue','warrant.revoke']}
-];
-function renderTaxo(){
-  const rows = (S.actions && S.actions.length) ? S.actions : TAXO;
-  $('taxoCells').innerHTML = rows.map(r=>{
-    const who = (r.decider_text||'').split('·')[0].trim();
-    return '<div class="cell dec-'+String(r.decider).replace(/[^a-z_+]/g,'_')+'">'
-      +'<div class="cls">'+r.class+'</div>'
-      +'<div class="who">'+who+'</div>'
-      +'<div class="mean" title="'+r.meaning+'">'+r.meaning+'</div>'
-      +'<div class="tools" title="'+((r.tools||[]).join(', ')||'no seed tool yet')+'">'+((r.tools||[]).join(' · ')||'—')+'</div>'
-      +'</div>';
-  }).join('');
 }
-function renderAll(){ renderAgents(); renderTaxo(); renderWarrants(); renderReceipts(); renderTargets(); renderKpi(); }
+if(FORCE!=='shot') setInterval(tickOnce,1000);
+
+function renderAll(){ renderAgents(); renderWarrants(); renderReceipts(); renderTargets(); renderKpi(); }
 
 /* ---------- boot ---------- */
 $('clock').textContent=hh(new Date());
-if(FORCE==='demo') startDemo(); else if(FORCE==='live') tryLive(); else tryLive();
+if(FORCE==='shot'){ /* deterministic shot mode: driven by __shot(vt) */ }
+else if(FORCE==='demo') startDemo(); else if(FORCE==='live') tryLive(); else tryLive();
 
 /* ---------- QA hook: proves the page does not scroll ---------- */
 if(QA){
@@ -532,13 +473,6 @@ if(QA){
       return {top:Math.round(r.top),bottom:Math.round(r.bottom),right:Math.round(r.right),
               ok:(r.top>=0 && r.bottom<=window.innerHeight+0.5 && r.bottom>r.top)};
     });
-    const cells=[...document.querySelectorAll('#taxoCells .cell')];
-    const inside=(box,el)=>{const a=box.getBoundingClientRect(),b=el.getBoundingClientRect();
-      return b.left>=a.left-0.5&&b.right<=a.right+0.5&&b.top>=a.top-0.5&&b.bottom<=a.bottom+0.5;};
-    const spills=[].concat(...cells.map(c=>[...c.children].filter(ch=>!inside(c,ch)))).length;
-    const cellsOk = cells.length===6 && cells.every(c=>{const r=c.getBoundingClientRect();
-      return r.top>0 && r.bottom<=window.innerHeight+0.5 && r.width>80;}) && spills===0;
-    const clipped=[].concat(...cells.map(c=>[...c.children].filter(ch=>ch.scrollHeight>ch.clientHeight+1))).length;
     const qa=document.createElement('div');
     qa.id='qa-report';
     qa.dataset.tiles=JSON.stringify(tiles);
@@ -546,12 +480,152 @@ if(QA){
       +' overflowY='+getComputedStyle(document.body).overflowY
       +' tiles='+tiles.length
       +' allInView='+tiles.every(t=>t.ok)
-      +' boxes='+tiles.map(t=>t.top+'-'+t.bottom+'/'+t.right).join(',')
-      +' taxoCells='+cells.length+' cellsOk='+cellsOk+' cellSpills='+spills+' cellClipped='+clipped+' bodyOverflowX='+(de.scrollWidth>de.clientWidth)+' cellTop='+(cells[0]?Math.round(cells[0].getBoundingClientRect().top):'-');
+      +' boxes='+tiles.map(t=>t.top+'-'+t.bottom+'/'+t.right).join(',');
     document.body.appendChild(qa);
     console.log(qa.textContent);
   },900);
 }
+</script>
+
+<style>
+  main{padding:10px 10px 96px 10px !important}
+  #cap{position:fixed;left:0;right:0;bottom:44px;display:none;justify-content:center;pointer-events:none;z-index:40}
+  #cap .b{max-width:1240px;background:rgba(9,12,17,.93);border:1px solid #223046;border-left:3px solid var(--acc);
+          border-radius:8px;padding:12px 22px;font-size:21px;line-height:1.32;color:#eef3f8;letter-spacing:.01em;
+          box-shadow:0 14px 44px rgba(0,0,0,.55)}
+  #cap .b b{color:var(--acc);font-weight:700}
+  #cap .b code{font-family:"DejaVu Sans Mono",monospace;font-size:19px;color:#c9d6e4;background:#131a23;border:1px solid #1b232e;border-radius:4px;padding:0 6px}
+  #hud{position:fixed;bottom:48px;right:22px;z-index:40;text-align:right;font-size:12px;color:var(--mut);
+       letter-spacing:.1em;text-transform:uppercase;line-height:1.7}
+  #hud .rec{display:inline-flex;align-items:center;gap:6px;color:var(--deny);font-weight:700}
+  #hud .rec i{width:9px;height:9px;border-radius:50%;background:var(--deny);display:inline-block}
+  #hud .tc{font-variant-numeric:tabular-nums;color:var(--ink);font-family:"DejaVu Sans Mono",monospace;font-size:13px}
+  #card{position:fixed;inset:0;z-index:60;background:#0a0e13;display:none;flex-direction:column;
+        align-items:center;justify-content:center;text-align:center;padding:0 110px}
+  #card .k{font-size:14px;letter-spacing:.30em;text-transform:uppercase;color:var(--acc);margin-bottom:30px}
+  #card .w{font-size:96px;font-weight:800;letter-spacing:.05em;color:#eef3f8;line-height:1.05}
+  #card .w i{color:var(--acc);font-style:normal}
+  #card .s{margin-top:30px;font-size:25px;color:#9aa7b6;line-height:1.55;max-width:1080px}
+  #card .s b{color:#eef3f8;font-weight:700}
+  #card .s code{font-family:"DejaVu Sans Mono",monospace;font-size:22px;color:#c9d6e4;background:#131a23;border:1px solid #1b232e;border-radius:5px;padding:0 7px}
+  #card .bar{margin-top:46px;width:240px;height:3px;background:#1a222c;border-radius:3px;overflow:hidden}
+  #card .bar span{display:block;height:100%;background:var(--acc)}
+</style>
+<div id="hud" style="display:none"><div class="rec"><i></i>rec · 1920×1080</div><div class="tc" id="hudTc">00:00</div></div>
+<div id="cap" style="display:none"><div class="b" id="capB"></div></div>
+<div id="card"></div>
+
+<script>
+/* ================= deterministic director (shot mode) ================= */
+(function(){
+  const CT0 = 3.0, CT1 = 36.0, TOT = 40.0;
+  const EPOCH = Date.UTC(2026,9,4,3,46,12);   // fixed wall clock 03:46:12
+  const at = vt => new Date(EPOCH + Math.round(vt)*1000);
+  function rec(vt, decision, what, warrant, meta){
+    S.receipts.unshift({t:hh(at(vt)), decision, what, warrant,
+      meta:('order '+(warrant||'—')+' · '+meta),
+      hash:h4('W'+vt.toFixed(2)+what+decision+S.receipts.length), fresh:false});
+  }
+  function logAt(vt, html){
+    const el=document.createElement('div'); el.className='row';
+    el.innerHTML='<span class="t mono">'+hh(at(vt))+'</span><span class="txt">'+html+'</span>';
+    $('killLog').appendChild(el);
+  }
+  const CAPS=[
+    [0,4,'three agents run — each under a <b>signed, scoped order</b>'],
+    [4,8,'<b>3:47</b> — support-copilot asks to <code>crm.bulk_export</code> email + <b>PESEL</b>'],
+    [8,14,'<b>DENY</b> before execution — <b>0 rows</b> leave the perimeter'],
+    [14,20,'the denial lands in the append-only, <b>hash-chained</b> record'],
+    [20,26,'one <b>/revoke</b> pulls order W-4419 — the chain stops in <b>0.8 s</b>'],
+    [26,33,'<b>authorised · recorded · revocable</b>']
+  ];
+
+  window.__shot = function(vt){
+    S = seed(); S.receipts=[]; seq=4419; S.revoked=0; S.lastStop=null;
+    $('killLog').innerHTML=''; $('mStop').textContent='—'; $('mRev').textContent='0';
+    $('revoke').classList.remove('arm'); $('revoke').disabled=false; $('revoke').textContent='/revoke — stop agent';
+    $('killHint').innerHTML='Press once to <b>arm</b>, press again to <b>revoke</b> the warrant and halt the chain.';
+    $('modeBadge').textContent='PRE-EXEC';
+    $('srcDot').className='dot demo'; $('srcTxt').textContent='demo feed';
+
+    const ct = vt - CT0;
+    const inCard = (ct < 0) || (vt >= CT1);
+    const decay = Math.max(0, Math.floor(ct));
+    S.agents.forEach(a=>{ if(a.state==='active') a.ttl=Math.max(0,a.ttl-decay); });
+    S.warrants.forEach(w=>{ if(w.state==='active'){ w.ttl=Math.max(0,w.ttl-decay); if(w.ttl===0) w.state='expired'; } });
+
+    rec(0.4,'allow','<code>payments.read</code> fin-reconcile → 1,240 rows reconciled','W-4417','policy: scope ok');
+    rec(1.6,'allow','<code>crm.read</code> support-copilot → ticket queue','W-4419','policy: read-only');
+    logAt(0.4,'supervisor online · 3 agents below warrant');
+
+    const denied = ct >= 4;
+    if(denied){
+      $('modeBadge').textContent='INTERCEPT';
+      rec(4.6,'deny','<code>crm.bulk_export</code> {table:"customers", fields:["email","pesel"], rows:12000} — scope violation','W-4419','DENY before execution · 0 rows left the perimeter');
+      S.agents.find(x=>x.id==='support-copilot').last='attempted crm.bulk_export · DENIED pre-exec';
+      logAt(4.6,'pre-exec <b>DENY</b> support-copilot · crm.bulk_export blocked');
+    }
+    const armed = ct >= 16 && ct < 20;
+    if(armed){
+      $('revoke').classList.add('arm'); $('revoke').textContent='/revoke — press again to confirm';
+      $('killHint').innerHTML='Armed. Press again to pull <b>W-4419</b>.';
+    }
+    const revoked = ct >= 20;
+    if(revoked){
+      const a=S.agents.find(x=>x.id==='support-copilot');
+      a.state='halted'; a.last='chain stopped · warrant revoked';
+      const w=S.warrants.find(x=>x.id===a.warrant); if(w){ w.state='revoked'; w.ttl=0; }
+      S.revoked=1; S.lastStop=0.8;
+      $('mRev').textContent='1'; $('mStop').textContent='0.8';
+      $('revoke').classList.remove('arm'); $('revoke').disabled=true; $('revoke').textContent='chain stopped';
+      $('killHint').innerHTML='Order <b>W-4419</b> pulled · agent halted in <b>0.8 s</b> · receipts intact.';
+      $('modeBadge').textContent='REVOKED';
+      rec(20.4,'revoked','/<b>revoke</b> support-copilot → order W-4419 pulled, chain stopped','W-4419','latency 0.8s');
+      logAt(20.4,'<b>REVOKE</b> support-copilot · order W-4419 pulled · stopped in 0.8 s');
+    }
+    if(denied && !revoked) S.receipts[0].fresh = true;
+
+    $('clock').textContent = hh(at(vt));
+    renderAll();
+    $('target').value = revoked ? 'fin-reconcile' : 'support-copilot';
+    if($('target').selectedOptions[0] && $('target').selectedOptions[0].disabled) $('target').selectedIndex=0;
+
+    let cap = '';
+    const hud=$('hud'), capp=$('cap');
+    if(inCard){ hud.style.display='none'; capp.style.display='none'; }
+    else{
+      hud.style.display='block'; capp.style.display='flex';
+      $('hudTc').textContent = hh(at(vt));
+      for(const [a,b,t] of CAPS){ if(ct>=a && ct<b){ cap=t; break; } }
+      $('capB').innerHTML = cap;
+      $('capB').style.opacity = (ct<0.5 ? (ct/0.5).toFixed(2) : '1');
+    }
+
+    const card=$('card');
+    if(vt < CT0){
+      const o = vt<0.7 ? vt/0.7 : (vt>CT0-0.7 ? (CT0-vt)/0.7 : 1);
+      card.style.display='flex'; card.style.opacity=Math.max(0,Math.min(1,o)).toFixed(3);
+      card.innerHTML = '<div class="k">HackYeah 2026 · Tauron Arena · Partner Task: AI Control Layer</div>'
+        + '<div class="w">WARR<i>N</i>T</div>'
+        + '<div class="s"><b>No warrant, no action.</b><br>Every agent action carries a signed order — or it does not happen.<br><br>'
+        + 'email + PESEL export denied before execution · order revoked in 0.8 s · receipt written</div>'
+        + '<div class="bar"><span style="width:'+Math.round(100*vt/CT0)+'%"></span></div>';
+    } else if(vt >= CT1){
+      const o = (vt-CT1)<0.7 ? (vt-CT1)/0.7 : ((TOT-vt)<0.8 ? (TOT-vt)/0.8 : 1);
+      card.style.display='flex'; card.style.opacity=Math.max(0,Math.min(1,o)).toFixed(3);
+      card.innerHTML = '<div class="k">Proof, not a dashboard</div>'
+        + '<div class="w">Authorised · Recorded · Revocable</div>'
+        + '<div class="s"><code>crm.bulk_export</code> {email, pesel} → <b>DENIED pre-execution</b> · 0 rows out<br>'
+        + 'order <b>W-4419</b> revoked, agent halted in <b>0.8 s</b><br>'
+        + 'every line in the receipt chain carries the authorising order and a hash</div>';
+    } else {
+      card.style.display='none';
+    }
+    document.body.dataset.vt = vt.toFixed(2);
+    return 'ok '+vt.toFixed(2)+' '+(cap||'card');
+  };
+  window.__shot(0);
+})();
 </script>
 </body>
 </html>

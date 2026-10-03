@@ -21,6 +21,19 @@ HackYeah 2026 · Partner task **AI Control Layer** (Goldman Sachs).
 
 ---
 
+## Watch the demo (40 s)
+
+▶ **[`warrnt-demo-40s.mp4`](warrnt-demo-40s.mp4)** — the 3:47 scenario end to end, 1920×1080,
+no audio. An agent asks for 12 000 rows of customer PII; the layer **denies the call before it
+runs**, zero rows leave the perimeter; the denial lands in the hash-chained receipt log; one
+`/revoke` halts the agent in **0.8 s**. Frames are rendered deterministically, not screen-captured
+— the rebuild kit is in [`warrnt-demo/`](warrnt-demo/). Slides:
+[`warrnt-presentation.pdf`](warrnt-presentation.pdf).
+
+Live console: open [`index.html`](index.html) (no dependencies, `file://` works — see [Run it](#run-it)).
+
+---
+
 ## The problem
 
 Enterprises are shipping agents faster than they can govern them. An agent runs under
@@ -195,7 +208,7 @@ Honest split between what is running and what is designed.
   [#1](https://github.com/indrad3v4/warrnt/pull/1). The load-bearing test: same agent, same
   signed warrant, same parameters — change only the actor's class and the answer flips
   `allow` → `deny`, with nothing run upstream.
-- **Console** — `warrnt-screen/index.html`, one dense screen, four tiles
+- **Console** — `index.html`, one dense screen, four tiles
   (agents · warrants · kill switch · proof), **zero dependencies, no page scroll**.
   Verified in headless Chromium at 1920×1080, 1440×900, 1366×768, 2560×1440: four tiles
   present, all in view, `scrollHeight == innerHeight`, `overflow-y: hidden`.
