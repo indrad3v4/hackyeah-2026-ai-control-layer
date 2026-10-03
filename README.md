@@ -5,7 +5,7 @@
 **Read the two names as one sentence.** *TENET* is the name of the **idea** — set on 2026-10-03,
 with the evidence and the record of what came before it in
 [`docs/concept-form-and-name.md`](docs/concept-form-and-name.md). The node that implements it
-ships here under the repository name **WARRNT**, because the demo, the video and the submission
+ships here as the product **TENET**; the kernel it drives is the Python package **`warrnt`**, because the demo, the video and the submission
 were built under it and a rename at this point would be a paper change rather than a code change.
 *TENET* is Latin, "it holds": the order holds the action, and the word reads the same forwards and
 backwards — which is what the record must do, because a rewrite has to show. It is the palindrome
@@ -85,7 +85,7 @@ and the signature of whoever authorised it.
 
 ```
         ┌────────────┐   tool-call (params)   ┌──────────────────────────┐
-        │   agent    │ ─────────────────────▶ │  WARRNT proxy (MCP)       │
+        │   agent    │ ─────────────────────▶ │  TENET kernel (MCP)       │
         │ (scoped    │                        │  intercept BEFORE exec    │
         │  identity) │ ◀──── allow / deny ─── │                           │
         └────────────┘                        └───────────┬──────────────┘
@@ -288,5 +288,5 @@ recorded in [`docs/concept-form-and-name.md`](docs/concept-form-and-name.md).
 
 ---
 
-*WARRNT is a working demo of the AI control layer: authority attached to the action,
+*TENET is a working demo of the AI control layer: authority attached to the action,
 proof attached to the authority.*

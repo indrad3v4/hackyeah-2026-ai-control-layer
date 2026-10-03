@@ -23,7 +23,7 @@ async def _grounded_snapshot() -> list[Evidence]:
     try:
         state = await _state()
     except Exception as exc:
-        return [Evidence(source="control-plane", claim="live WARRNT state unavailable", value=str(exc))]
+        return [Evidence(source="control-plane", claim="live kernel state unavailable", value=str(exc))]
     evidence: list[Evidence] = []
     for key in ("agents", "warrants", "receipts", "actions"):
         value = state.get(key)
@@ -52,8 +52,8 @@ def _agent(name: str, instructions: str, tool: Any):
 def build_agents():
     return (
         _agent("Governance Agent", "Explain canonical contracts and terminology. Never invent authority.", governance_inspect),
-        _agent("Kernel Agent", "Explain actor, action class, warrant, policy, decision, execution and receipt from evidence. WARRNT is authoritative.", kernel_inspect),
-        _agent("Control-Plane Agent", "Explain current actions, activity, intervention, revoke and proof. Operator commands still pass WARRNT.", control_plane_inspect),
+        _agent("Kernel Agent", "Explain actor, action class, warrant, policy, decision, execution and receipt from evidence. The TENET kernel is authoritative.", kernel_inspect),
+        _agent("Control-Plane Agent", "Explain current actions, activity, intervention, revoke and proof. Operator commands still pass the kernel.", control_plane_inspect),
     )
 
 async def answer(user_text: str) -> ControlAnswer:
@@ -61,10 +61,10 @@ async def answer(user_text: str) -> ControlAnswer:
     governance, kernel, control = build_agents()
     evidence = await _grounded_snapshot()
     if not Runner or not all((governance, kernel, control)) or not os.getenv("OPENAI_API_KEY"):
-        return ControlAnswer(answer="Live agent runtime is not configured; this answer is limited to observed WARRNT control-plane evidence.", evidence=evidence, run_id=run_id)
+        return ControlAnswer(answer="Live agent runtime is not configured; this answer is limited to observed kernel evidence.", evidence=evidence, run_id=run_id)
     orchestrator = Agent(
         name="Hermes Control Orchestrator",
-        instructions="Answer only from specialist evidence. Never claim authorization or execution. WARRNT is the authority.",
+        instructions="Answer only from specialist evidence. Never claim authorization or execution. The TENET kernel is the authority.",
         tools=[
             governance.as_tool(tool_name="governance_agent", tool_description="Inspect governance contracts."),
             kernel.as_tool(tool_name="kernel_agent", tool_description="Inspect decisions, warrants and execution evidence."),

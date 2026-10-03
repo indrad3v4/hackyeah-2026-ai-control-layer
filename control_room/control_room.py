@@ -4,7 +4,7 @@ from .agents import answer
 
 class ControlRoomState(rx.State):
     prompt: str = ""
-    response: str = "Ask Hermes Control what is happening. Answers are grounded in WARRNT evidence."
+    response: str = "Ask Hermes Control what is happening. Answers are grounded in kernel evidence."
     evidence: list[str] = []
     specialists: list[str] = []
     run_id: str = ""
@@ -26,8 +26,8 @@ class ControlRoomState(rx.State):
 def index():
     return rx.box(
         rx.hstack(
-            rx.vstack(rx.text("WARRNT", size="6", weight="bold"), rx.text("CONTROL ROOM v2", color="#7d8b9c", size="2"), align_items="start", spacing="0"),
-            rx.spacer(), rx.badge("WARRNT authority", color_scheme="green"), width="100%",
+            rx.vstack(rx.text("TENET", size="6", weight="bold"), rx.text("CONTROL ROOM v2", color="#7d8b9c", size="2"), align_items="start", spacing="0"),
+            rx.spacer(), rx.badge("TENET kernel authority", color_scheme="green"), width="100%",
         ),
         rx.grid(
             rx.box(rx.text("CURRENT ACTION", size="2", weight="bold"), rx.text("Action → Why → Who → Authority → Policy → Decision → Execution → Proof"), background="#10151c", padding="18px", border="1px solid #1e2733", border_radius="12px"),
@@ -36,7 +36,7 @@ def index():
         ),
         rx.box(
             rx.text("Hermes Control", size="4", weight="bold"),
-            rx.text("Ask about the system. The answer is grounded in observed WARRNT evidence.", color="#9db0c6"),
+            rx.text("Ask about the system. The answer is grounded in observed kernel evidence.", color="#9db0c6"),
             rx.input(value=ControlRoomState.prompt, on_change=ControlRoomState.set_prompt, placeholder="Why was support-copilot blocked?"),
             rx.button("Ask", on_click=ControlRoomState.ask, color_scheme="orange"),
             rx.text(ControlRoomState.response, color="white"),
@@ -48,4 +48,4 @@ def index():
     )
 
 app = rx.App(theme=rx.theme(appearance="dark"))
-app.add_page(index, title="WARRNT Control Room v2")
+app.add_page(index, title="TENET Control Room")
