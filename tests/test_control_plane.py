@@ -487,3 +487,79 @@ def test_ci_ships_runnable_control_plane_and_d6_gate():
     assert "check_enforcement_local_only.py" in ci
     assert (REPO_ROOT / "scripts/check_enforcement_local_only.py").exists()
 
+
+# ------------------------- D10/D12: the live-proof assertions are honest, not a lottery
+def _proof_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "tenet_live_proof", REPO_ROOT / "scripts" / "tenet_live_proof.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_leak_check_does_not_fire_on_risk_office():
+    """The bare fragment "sk-" is in the ordinary word "risk-office" - never a leak signal.
+
+    This is the exact false positive the operator's run hit: a grounded answer always names the
+    warrant issuer ``risk-office``, so ``"sk-" in text`` can never be trusted. The fix tests the
+    key VALUE and a key-SHAPED token instead.
+    """
+    mod = _proof_module()
+    answer = {"answer": "A-0003 was denied; warrant issued by `risk-office`.",
+              "evidence": [{"action_id": "A-0003"}]}
+    text = answer["answer"]
+    # The old predicate would flag this grounded answer; the new one must not.
+    assert "sk-" in text, "sanity: the word risk-office contains sk-"
+    assert not mod.KEY_SHAPE.search(text), "risk-office must not look like a key"
+    serialised = __import__("json").dumps(answer)
+    assert not mod.KEY_SHAPE.search(serialised)
+
+
+def test_leak_check_still_fires_on_a_key_shaped_token():
+    """A real key-shaped token is still caught - the fix is stricter, not weaker."""
+    mod = _proof_module()
+    fake = "sk-" + "a" * 24
+    assert mod.KEY_SHAPE.search(f"the model echoed {fake} into the answer")
+    assert mod.KEY_SHAPE.search(__import__("json").dumps({"answer": fake}))
+
+
+def test_groundedness_accepts_any_real_id_not_one_specific_id():
+    """Grounding is structural: any id the kernel reports counts, wherever it is cited.
+
+    The old check demanded ONE specific id appear verbatim in free prose - a lottery decided by
+    phrasing. The new check intersects the cited ids with the ids that really exist.
+    """
+    mod = _proof_module()
+    real = {"A-0001", "A-0002", "A-0003", "A-0004"}
+    answer = {"answer": "Two actions never reached an upstream: A-0002 and A-0003.",
+              "evidence": [{"action_id": "A-0005"}]}
+    cited = mod._cited_action_ids(answer, answer["answer"])
+    assert cited & real, "a real id in prose grounds the answer"
+
+    # Evidence-only grounding also counts (a real action_id carried on the evidence list).
+    answer2 = {"answer": "See the record.", "evidence": [{"action_id": "A-0003"}]}
+    cited2 = mod._cited_action_ids(answer2, answer2["answer"])
+    assert cited2 & real
+
+    # An id that does not exist in the record is not grounding.
+    answer3 = {"answer": "Nothing grounded here.", "evidence": [{"action_id": "A-9999"}]}
+    cited3 = mod._cited_action_ids(answer3, answer3["answer"])
+    assert not (cited3 & real)
+
+
+def test_groundedness_detail_names_cited_and_existing_ids():
+    """The check's detail must show both the ids cited and the ids that exist (operator asks)."""
+    src = (REPO_ROOT / "scripts" / "tenet_live_proof.py").read_text(encoding="utf-8")
+    assert '"cited"' in src and '"exist"' in src and '"intersection"' in src
+    # And it must build the real set from the kernel's own ledger, not from a constant.
+    assert "/api/actions" in src
+
+
+def test_proof_exits_nonzero_on_any_failed_check():
+    """D12: the proof cannot report ok while a check is red."""
+    src = (REPO_ROOT / "scripts" / "tenet_live_proof.py").read_text(encoding="utf-8")
+    assert 'return 0 if not failed else 1' in src
+    assert "_print_table()" in src
+
