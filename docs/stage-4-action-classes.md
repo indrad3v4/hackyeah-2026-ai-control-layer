@@ -77,7 +77,8 @@ git clone https://github.com/indrad3v4/warrnt && cd warrnt
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 make test                              # 75 passed
 .venv/bin/python -m pytest tests/test_actions.py -q   # 15 passed
-make console-check                     # 35 checks, non-zero on failure
+make console-check                             # 35 checks, non-zero on failure
+.venv/bin/python scripts/upstream_check.py     # 18/18 in front of the real MCP server
 ```
 
 - `warrnt/actions.py` — the taxonomy: classes, the decider ladder, the escalation rules.
