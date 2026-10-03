@@ -533,12 +533,11 @@ if(QA){
               ok:(r.top>=0 && r.bottom<=window.innerHeight+0.5 && r.bottom>r.top)};
     });
     const cells=[...document.querySelectorAll('#taxoCells .cell')];
-    const cellsOk = cells.length===6 && cells.every(c=>{const r=c.getBoundingClientRect();
-      return r.top>0 && r.bottom<=window.innerHeight+0.5 && r.width>80;}) && spills===0;
-    const cells=[...document.querySelectorAll('#taxoCells .cell')];
     const inside=(box,el)=>{const a=box.getBoundingClientRect(),b=el.getBoundingClientRect();
       return b.left>=a.left-0.5&&b.right<=a.right+0.5&&b.top>=a.top-0.5&&b.bottom<=a.bottom+0.5;};
     const spills=[].concat(...cells.map(c=>[...c.children].filter(ch=>!inside(c,ch)))).length;
+    const cellsOk = cells.length===6 && cells.every(c=>{const r=c.getBoundingClientRect();
+      return r.top>0 && r.bottom<=window.innerHeight+0.5 && r.width>80;}) && spills===0;
     const clipped=[].concat(...cells.map(c=>[...c.children].filter(ch=>ch.scrollHeight>ch.clientHeight+1))).length;
     const qa=document.createElement('div');
     qa.id='qa-report';
