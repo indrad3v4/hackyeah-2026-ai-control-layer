@@ -1,345 +1,211 @@
-# TENET — the AI control layer
+# TENET — AI Control Layer
 
 > **No warrant, no action.**
 
-**Read the two names as one sentence.** *TENET* is the name of the **idea** — set on 2026-10-03,
-with the evidence and the record of what came before it in
-[`docs/concept-form-and-name.md`](docs/concept-form-and-name.md). The node that implements it
-ships here as the product **TENET**; the kernel it drives is the Python package **`warrnt`**, because the demo, the video and the submission
-were built under it and a rename at this point would be a paper change rather than a code change.
-*TENET* is Latin, "it holds": the order holds the action, and the word reads the same forwards and
-backwards — which is what the record must do, because a rewrite has to show. It is the palindrome
-at the centre of the **Sator Square**, the oldest word square known (Pompeii, before AD 79).
-Carried before it and kept on the record: **ADNOT** (*adnotare*, "to note down") was the Stage-3
-name, dropped by the founder's decision on 2026-10-03 although it was the cleanest name on the
-board; TESTIS (dictionary meaning), SURETY / WARDEN / VERDICT / ATTEST (live class 9/42 marks),
-VOWEN / SIGLUM (live companies) were rejected earlier; **ADNOT and PRAES stay as the clearable
-spares**. Honest caveat, measured today: **TENET is not a clearable product mark** (USPTO
-99151322 live, TENET TECHNOLOGIES, Tenet Apps FZCO, the 2020 film), `tenet.ai` and npm / PyPI are
-taken. `tenet.dev` and `tenet.io` resolve to nothing and are **not registered**.
+TENET is an enforcement layer for AI agents: an agent may propose an action, but it cannot execute that action unless the control plane and enforcement kernel authorize it first.
 
-Every action an AI agent takes carries a signed, scoped warrant — or it does not run.
-No warrant, no action. This is the one thing that turns "we deployed agents" into
-"we can stop one and prove why".
+Built for **HackYeah 2026 · AI Control Layer / Goldman Sachs challenge**.
 
-HackYeah 2026 · Partner task **AI Control Layer** (Goldman Sachs).
+**Live Control Room:** https://hackyeah-2026-ai-control-layer-production.up.railway.app/
 
 ---
 
-## Watch the demo (40 s)
+## The pitch
 
-▶ **[`warrnt-demo-40s.mp4`](warrnt-demo-40s.mp4)** — the 3:47 scenario end to end, 1920×1080,
-no audio. An agent asks for 12 000 rows of customer PII; the layer **denies the call before it
-runs**, zero rows leave the perimeter; the denial lands in the hash-chained receipt log; one
-`/revoke` halts the agent in **0.8 s**. Frames are rendered deterministically, not screen-captured
-— the rebuild kit is in [`warrnt-demo/`](warrnt-demo/). Slides:
-[`warrnt-presentation.pdf`](warrnt-presentation.pdf).
+AI agents are moving from chat into systems that can read data, write records, call APIs and move information across trust boundaries.
 
-Live console: open [`index.html`](index.html) (no dependencies, `file://` works — see [Run it](#run-it)).
+The security question is not only **what did the agent do?** It is: **what was it trying to do, who authorized it, what policy was applied, did data actually leave, and where is the proof?**
 
----
+TENET puts that decision **before the tool call**.
 
-## The problem
+```text
+USER / SYSTEM → AI AGENT → TENET CONTROL PLANE → ENFORCEMENT KERNEL → UPSTREAM
+                         identity → entitlement → warrant → policy → decision
+                                                            ↓
+                                             receipt + evidence
+```
 
-Enterprises are shipping agents faster than they can govern them. An agent runs under
-production credentials, moves data, calls tools — and when something goes wrong at 3:47
-in the morning, the team finds out at 9:15 from a log they cannot trust and cannot stop.
+**The model proposes. The kernel decides. The upstream executes. The receipt proves what happened.**
 
-The gap is not visibility. Everyone has visibility. The unanswered question is:
+## What the security operator gets
 
-**Who authorised this agent action — and where is the proof?**
+### What is happening?
+- Who is acting?
+- What does the agent want?
+- Which resource/tool is involved?
+- Which warrant and policy apply?
+- What did TENET decide?
 
-A monitor tells you what already happened. It does not grant authority, and it cannot
-revoke it. You can watch an agent work and still be unable to fire it.
+### Did anything leave?
+- **not contacted** — the request was stopped before the upstream;
+- **contacted** — the record contains evidence of an upstream response;
+- **not proven** — TENET refuses to invent a crossing it cannot prove.
 
-The hidden fear is not the breach. It is the silence after: sitting in front of a
-regulator, not knowing what your own agent did three minutes ago. Not knowing is
-worse than knowing.
+### Why?
 
-## The solution
+`agent proposal → identity/entitlement → warrant → policy → kernel decision → upstream → receipt`
 
-Attach authority to the action itself. Before an agent calls a tool, a proxy in front
-of it decides — and that decision is an artifact, not a log line.
+### What can I stop?
 
-Five load-bearing bricks:
+A protected **Stop agent** action revokes authority through the same enforcement path. The UI does not create a second security mechanism.
 
-0. **Actor register — `this agent cannot`.** Before any warrant is read, the layer knows
-   *who is asking*: four classes of actor (`operator-human`, `autonomous-system`, `chatbot`,
-   `mcp-supplier`), each with tools it may never call and data it has no entitlement to.
-   The limit is on the actor, not on the rights of the user on whose behalf it acts — so a
-   valid warrant for the same tool does not widen it. This is the question that separates a
-   control layer from a permission system.
-1. **Identity, not a key.** Every agent gets a scoped, ephemeral identity. No shared
-   API keys, no "one credential for the whole fleet".
-2. **Pre-execution enforcement.** `allow` / `deny` / `require-human` is decided on the
-   *parameters of the call* before the call executes — not queued for review after.
-3. **Kill switch.** Monitoring is not containing. `/revoke` pulls the agent's warrant
-   and stops the chain mid-flight.
-4. **Receipt.** Every action lands in an append-only, hash-chained record: who, what,
-   why, who authorised, when. This is the measurement layer — the proof.
+## Security model
 
-The warrant is not a metaphor. It is the artifact: a signed order with a scope, a TTL,
-and the signature of whoever authorised it.
+| Layer | Question |
+|---|---|
+| Identity | Who is making the request? |
+| Entitlement | Does this actor have the right to the requested data/resource? |
+| Warrant | Is this agent authorized for this action and scope? |
+| Policy | Are these exact parameters allowed? |
+| Decision | allow / deny / redact / human / revoked |
+| Execution | Was the upstream actually contacted? |
+| Receipt | What evidence was recorded? |
+
+### Agent restriction is independent of user rights
+
+A user may have access to a resource while an agent acting on that user's behalf is still forbidden from using it.
+
+### Authority is not entitlement
+
+A valid warrant does not automatically create data entitlement. A missing data entitlement can deny an otherwise warrant-compatible request before the upstream is contacted.
+
+### Delegation is explicit
+
+Agent records carry principal, on-behalf-of identity, entitlements and scoped authority.
+
+## Why the model is not the security boundary
+
+TENET can use DeepSeek for reasoning and orchestration. DeepSeek is **not** authoritative.
+
+`run_id → model_trace_id → action/proposal → kernel decision → upstream call → receipt`
+
+**Authority lives in the kernel decision.**
+
+The Control Room exposes real provider resource evidence: requested model, served model, provider trace ID, calls, input/output/total tokens, latency and response status.
+
+No API credential is returned to the browser.
+
+## Canonical demo
+
+An agent requests a customer-data export that is outside its warrant/policy scope.
+
+```text
+AGENT
+  │  export customer records
+  ▼
+TENET
+  ├─ identity
+  ├─ entitlement
+  ├─ warrant
+  └─ policy
+  ▼
+DENY
+  ├─ upstream contacted: NO
+  └─ receipt: YES
+```
+
+The important property is:
+
+> **The forbidden call never reached the data source.**
+
+The denial is itself recorded, giving the security team evidence of the attempted action and the fact that execution did not happen.
 
 ## Architecture
 
-```
-        ┌────────────┐   tool-call (params)   ┌──────────────────────────┐
-        │   agent    │ ─────────────────────▶ │  TENET kernel (MCP)       │
-        │ (scoped    │                        │  intercept BEFORE exec    │
-        │  identity) │ ◀──── allow / deny ─── │                           │
-        └────────────┘                        └───────────┬──────────────┘
-                                                          │
-              ┌──────────────────┬────────────────────────┼──────────────────┐
-              ▼                  ▼                         ▼                  ▼
-      ┌──────────────┐   ┌──────────────┐        ┌──────────────┐   ┌──────────────┐
-      │ Warrant      │   │ Policy       │        │ Append-only  │   │ /revoke      │
-      │ issuer       │   │ engine       │        │ receipt log  │   │ kill switch  │
-      │ scope·TTL·   │   │ per-param    │        │ hash-chained │   │ pull warrant │
-      │ signature    │   │ allow/deny/  │        │ who·what·why │   │ stop chain   │
-      │              │   │ redact·human │        │ ·authoriser  │   │              │
-      └──────────────┘   └──────────────┘        └──────┬───────┘   └──────────────┘
-                                                         │
-                                                  ┌──────▼───────┐
-                                                  │ Console      │  one screen,
-                                                  │ GET /api/state│  four tiles
-                                                  └──────────────┘
+**MCP is the transport/protocol boundary. TENET's enforcement kernel is the authority boundary.**
+
+The agent/runtime can reason, plan and request an action. It cannot bypass the kernel and call the upstream directly.
+
+## Repository
+
+```text
+control_plane/       HTTP/API seam and kernel-backed projections
+control_room/        DeepSeek orchestration and provider evidence
+node/                pinned internal implementation mirror
+index.html            pitch / operator Control Room
+tests/                contract and security tests
+docs/                 architecture and implementation contracts
 ```
 
-### The shape, against the microkernel canon
+The internal Python namespace remains `warrnt` where compatibility with the canonical dependency and mirror requires it. **The product surface is TENET.**
 
-The node is drawn and built as a **microkernel**: a small core that coordinates, everything that
-decides living outside it as a control plugin. The canon this is checked against is the
-[microkernel architecture pattern](https://www.geeksforgeeks.org/system-design/microkernel-architecture-pattern-system-design/)
-(minimal kernel · services as separate modules · a defined interface · inter-process
-communication · service management · drivers outside the kernel). Component by component, with
-the file that carries it:
+## API surface
 
-| Canon component | What carries it here | State |
-|---|---|---|
-| Minimal kernel | `warrnt/proxy.py` — 238 of the node's 1 931 lines (12 %); it coordinates and holds no control table | built |
-| Services as separate modules | 17 modules outside the kernel, three of them the control gates themselves (`warrnt/plugins/act_class.py`, `actor_scope.py`, `order_policy.py`), plus `policy.py`, `actions.py`, `actors.py`, `registry.py`, `anchor.py`, `upstream.py` | built |
-| A defined interface | a gate = name · order · `check(ctx) → (decision, reason, detail) \| None`; outward, the seam is HTTP + JSON-RPC (MCP) | built |
-| Inter-process communication | the agent talks MCP over HTTP; the upstream is behind the `upstream.py` adapter, so the transport is not the policy | built |
-| **Service management** | `warrnt/gates.py` — `register(..., replace=True)` swaps a gate and `unregister(name)` pulls one **while the node runs**; discovery is `pkgutil` over `warrnt/plugins/` | built |
-| Drivers outside the kernel | `build_upstream()` — the kernel never names a vendor | built |
+`GET /api/security-events?limit=20` — live security-decision feed.
 
-**The kernel names no control.** `proxy.py` contains zero decision call sites — no `classify(`,
-no `apply_class(`, no `engine.evaluate(`, no `actors.check(`. Gates are files under
-`warrnt/plugins/` (`act_class` → `actor_scope` → `order_policy`, by `order`); adding one is adding
-a file. `tests/test_gates.py` proves it, including that a gate dropped into the package at test
-time stops the pipeline without a line of the kernel changing, and that the pipeline fails
-**loudly** (a `RuntimeError`) rather than silently allowing when no gate decides.
+`GET /api/security-events/{run_id}` — causal evidence graph.
 
-**What is drawn but not built**, so the diagrams are not read as more than they are: discovery
-through `importlib.metadata.entry_points` (we use `pkgutil` over the package), gate order and
-enable/disable read from the catalog, and `watch()` hot reload.
+`GET /api/model-usage` — read-only DeepSeek resource evidence.
 
-**The price of the shape**, named rather than hidden: the split costs an indirection at every
-decision and makes a failure harder to trace — which is why the kernel is the only place that
-answers, and why "no gate decided" is an error instead of a default.
+`GET /api/overview` · `/api/state` · `/api/activity` · `/api/actions` · `/api/agents` · `/api/warrants`.
 
-The proxy sits between the agent and any MCP server. It sees the tool name and the full
-argument set, evaluates the active warrant's scope against them, and only then forwards —
-or rejects. A rejection is written to the receipt chain *before execution*, so the proof
-exists whether the action happened or not.
+`POST /api/actions/{action_id}/approve` · `/deny`.
 
-**`GET /api/state` contract** (what the console polls — the seam between core and screen):
+`POST /api/agents/{agent_id}/revoke`.
 
-```json
-{
-  "revoked": 1,
-  "last_stop": 0.8,
-  "agents":   [ { "id": "...", "role": "...", "state": "active|halted",
-                  "warrant": "W-4419", "ttl": 420, "ttl0": 420, "last": "..." } ],
-  "warrants": [ { "id": "W-4419", "agent": "...", "scope": "...",
-                  "ttl": 420, "ttl0": 420, "state": "active|revoked|expired" } ],
-  "actions":  [ { "class": "observe", "decider": "machine",
-                  "decider_text": "the node decides", "meaning": "...",
-                  "tools": ["infra.plan"] } ],
-  "receipts": [ { "t": "14:02:43", "decision": "allow|deny|redact|human|revoked",
-                  "what": "<code>crm.read</code> ...",
-                  "meta": "order W-4419 · policy: read-only",
-                  "hash": "d46ef77e" } ]
-}
-```
+`POST /mcp` — intercepted `tools/call` path.
 
-The `actions` field is an explicit D13 contract extension. It is the machine-readable Stage 4 taxonomy consumed by the console's taxonomy strip; its six class values are `observe | read_personal | draft | write_reversible | irreversible | authorize`.
+## Evidence discipline
 
-Two of the five decisions **execute**, and the `tools/call` result says so:
+- LLM output is not authority.
+- A receipt is not authorization; the kernel decision is authority.
+- Process success is not automatically upstream contact.
+- Unknown stays unknown.
+- An action ID is never relabelled as an upstream call ID.
+- A denial is an event and is recorded.
 
-* `allow` — the payload goes through untouched.
-* `redact` — the call runs, and the personal fields named by the rule are stripped from the
-  payload *before* the upstream is called. The result carries `redacted` (the fields removed)
-  and `upstream_params` (what the upstream was actually allowed to see), so the screen can show
-  the difference between what was asked for and what left the node. This is the vocabulary's
-  fifth value doing real work: `inspect_pii` refuses the act, `redact` lets the act happen
-  without the data.
-* The other three (`deny`, `human`, `revoked`) are refusals and leave the perimeter untouched —
-  `executed: false`, and the executor counter does not move. An order whose TTL elapsed is one
-  of these: a `deny` whose detail carries `warrant_state: expired`, because `expired` is a
-  *warrant state*, not a decision.
+> **The UI cannot manufacture a cleaner story than the evidence supports.**
 
-## The demo vector (the 3:47 moment)
+## Implemented
 
-One scenario, deterministic, run end to end:
+- pre-execution MCP interception;
+- signed/scoped warrants with TTL;
+- actor-specific restrictions and entitlement checks;
+- explicit on-behalf-of delegation;
+- parameter-aware policy decisions;
+- allow / deny / redact / human / revoked vocabulary;
+- contextual revoke;
+- append-only/hash-chained receipt evidence;
+- upstream access-log evidence;
+- explicit DeepSeek provider integration;
+- provider trace/resource journal;
+- security-event projection and causal evidence graph;
+- operator Control Room with live model-resource display.
 
-1. Three agents run under three signed warrants.
-2. At **3:47**, `support-copilot` asks to export customer email and PESEL:
-   `crm.bulk_export {table:"customers", fields:["email","pesel"], rows:12000}`.
-3. Its warrant says *read-only, no PII fields* → the call is **DENIED before execution**.
-   Zero rows leave the perimeter.
-4. The denial is written to the hash-chained receipt log, with the authorising order.
-5. One `/revoke` pulls warrant **W-4419**; the agent halts in **0.8 s**.
+## Deliberately not claimed
 
-**Authorised. Recorded. Revocable.**
+A diagram is not presented as a deployed feature. If evidence is unavailable, TENET shows unknown or incomplete. A future enterprise connector is not presented as installed until it exists and is exercised.
 
-## ACT-2 — identity, entitlement, refusal (2026-10-03)
+## Demo sentence
 
-Three questions the screen could not answer, now answered — each with a test that fails if the
-answer is removed.
+> **Watch the agent ask for data. TENET stops it before the request reaches the data source — then shows you the evidence.**
 
-- **Who acts, and for whom.** A warrant is a delegation, so it carries `principal` and
-  `on_behalf_of` inside the signed payload, and the node serves them on `GET /api/agents`. One
-  builder (`MCPProxy._new_agent`) makes both a seeded and a live-warrant agent, so an order issued
-  later cannot have a different shape than one issued at seed time.
-- **Authority to act is not the right to data.** The entitlement register lives with the operator
-  (`control_plane/kernel.py`): a warrant may allow `equity.read_snapshot` and the register may still
-  withhold `market_data.equity.read`. The gate runs **before the order is priced**, refuses with
-  `gate: "entitlement"` and the named right, and the refusal is recorded — an action, a receipt, a
-  chain entry — exactly like any other decision.
-- **A refusal is an event.** Separation of duties — the requester may not decide their own hold —
-  is filed in the hash-chained registry *before* the caller is told `409`, and the held action is
-  left `pending`.
-- **How far a call got is a number, not a claim.** `Action.boundary_attempts` counts the exits at
-  the two places a call actually leaves the perimeter: a deny and a hold carry `0`, an allow carries
-  `1`. The upstream's own access log is read by one function (`warrnt.api.upstream_log_path`) and
-  digested by one other (`warrnt.api._sha256_of`), so "it never contacted anything" is checked
-  against the far side rather than asserted.
-- **The mirror is pinned to the fixes.** `node/` is `warrnt@274d13a`; the canonical repository's own
-  suite is **160 passed**, this repository's is **229 passed**.
-
-## What works today
-
-Honest split between what is running and what is designed.
-
-**Working and verified (2026-10-02):**
-
-- **The node itself** — [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt): the MCP
-- **The node's source, inside this package** — [`node/`](node/), a mirror pinned to
-  `warrnt@274d13a`, so the code and its 160 tests can be read without leaving the repository.
-  The canonical repository is still [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt)
-  (`node/MIRROR.md` says so, and `scripts/sync-node.sh --check` proves the mirror still matches).
-  proxy, per-parameter policy, signed warrants with TTL, the hash-chained registry with
-  `GET /verify`, `/revoke`, and the console served from the node. `pytest -q` → **229 passed**;
-  a clean-machine run (`scripts/f2_clean_run.sh`) starts from an empty temp dir, clone, fresh
-  venv, deps from PyPI.
-- **The actor register** — `GET /actors`, `warrnt/actors.py`, ten tests, PR
-  [#1](https://github.com/indrad3v4/warrnt/pull/1). The load-bearing test: same agent, same
-  signed warrant, same parameters — change only the actor's class and the answer flips
-  `allow` → `deny`, with nothing run upstream.
-- **Console** — `index.html`, one dense screen, four tiles
-  (agents · warrants · kill switch · proof), **zero dependencies, no page scroll**.
-  Verified in headless Chromium at 1920×1080, 1440×900, 1366×768, 2560×1440: four tiles
-  present, all in view, `scrollHeight == innerHeight`, `overflow-y: hidden`.
-  Screenshots in `warrnt-screen/shot-*.png`.
-- **Two data paths, one screen.** The console polls `GET /api/state` every 1.5 s.
-  On a 200 it renders the **live feed**; on failure it falls back to the built-in
-  **demo feed** and replays the 3:47 scenario. The screen is real; the feed is swappable.
-- **Demo video** — `warrnt-demo-40s.mp4`, 1920×1080, 25 fps, 40.0 s, H.264 (~1.9 MB).
-  Recorded deterministically: page state is a pure function of virtual time, so frames
-  do not drift and the take is reproducible, not screen-captured by hand.
-- **`/api/state` contract** — documented above and frozen; it is the interface the
-  proxy must satisfy. The freeze was lifted once, to add `redact` to the receipt
-  vocabulary: the task requires redaction as a control action, and a receipt the
-  chain cannot record is not a receipt. Any further change goes through D13.
-
-**Designed here, built in the node repo (the core):**
-
-- The MCP proxy, per-parameter policy, warrant issuing with signature + TTL, the append-only
-  receipt store, `/revoke` and the actor register all exist and are tested — in
-  [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt), not in this package.
-- What is *not* wired here: this console's live feed talks to a running node only when you
-  serve it with one (`?source=live`); offline it replays the scripted 3:47 state machine.
-  The screen renders exactly the JSON the node emits, so the seam is one HTTP call wide.
-
-We would rather show you a small thing that truly runs than a big thing that only
-looks finished.
-
-## Run it
+## Run locally
 
 ```bash
-# the screen — offline, file:// works (demo feed)
-chromium warrnt-screen/index.html
-
-# or serve it so a live /api/state can be polled
-cd warrnt-screen && python3 -m http.server 8099
-#  ->  http://127.0.0.1:8099/index.html
-
-# query flags: ?source=live|demo (default: auto)   ?qa=1 (self-measures viewport fit)
-
-# reproof the demo video (deterministic)
-cd warrnt-demo && python render_demo.py 10 40
-ffmpeg -y -framerate 10 -start_number 0 -i frames/f_%04d.jpg \
-  -vf "fps=25,fade=t=in:st=0:d=0.4,fade=t=out:st=39.4:d=0.6,format=yuv420p" \
-  -c:v libx264 -preset slow -crf 18 -movflags +faststart -t 40.0 \
-  /root/.hermes/media/video/warrnt-demo-40s.mp4
+python -m http.server 8099
+# open http://127.0.0.1:8099/index.html
 ```
 
-## Concept lock
+Tests: `python -m pytest tests/ -q`
 
-The form and the name are decided, and the decisions — including what was rejected — are
-recorded in [`docs/concept-form-and-name.md`](docs/concept-form-and-name.md).
+DeepSeek is configured in the deployment environment with `DEEPSEEK_API_KEY`. Never commit or print the secret.
 
-- **Form** — *the witness at the boundary*: an in-line judge that answers, for every step,
-  whether **this** agent may perform **this** action, on behalf of **this** user, right now.
-- **Name** — **TENET** (Latin *tenet*, "it holds"): the order holds the action, and the record
-  reads the same both ways. The name of the idea, not a product mark — the register is crowded
-  (see the check table above); `tenet.dev` / `tenet.io` free, `tenet.ai` taken.
-- Fifteen candidate forms were scored against five tests taken from the brief; every
-  rejected form is on the record with the test it fails.
+## Principles
 
-## What's next
+1. **No warrant, no action.**
+2. **No entitlement, no data.**
+3. **The agent cannot grant itself authority.**
+4. **The model is not the authority.**
+5. **The upstream is never contacted before the decision.**
+6. **A denial is an event.**
+7. **Proof is evidence, not narration.**
+8. **Unknown stays unknown.**
+9. **The product surface speaks TENET; internal compatibility names stay internal.**
+10. **Every security claim should be testable.**
 
-- **Settle the idea's address** — `tenet.dev` / `tenet.io` resolve to nothing and are free; the
-  mark under that name is crowded, so if a product or a domain must be defensible, clear one of
-  the spares (ADNOT, PRAES) instead. The idea has a name and still no address.
-- **Break-glass with a term** — the last unbuilt artifact of the Stage 4 table: an emergency
-  override that names who used it, for how long, and audits every use.
-- **RFC 3161 external timestamp** for the anchor — deliberately not added inside the 17-hour
-  window, because it needs an outside service and could break the demo.
-- Identity issuance per agent/task is real in the node (ephemeral identity per call, warrant scope
-  tied to it); what is not built is a multi-tenant issuer, and it stays that way on purpose.
+## Links
 
----
-
-*TENET is a working demo of the AI control layer: authority attached to the action,
-proof attached to the authority.*
-
-## Triggering the canonical live scenario (operator)
-
-The Control Room's first screen is a story, not a dashboard, and that story has to be real:
-
-```bash
-curl -sS -X POST -H "x-warrnt-admin: $WARRNT_ADMIN_TOKEN" \
-  https://<host>/api/demo/run
-```
-
-`POST /api/demo/run` runs the one canonical scenario server-side - agent `fx-trader` asks for the
-EUR/USD reference rate through `fx.read_rate` - and returns the whole correlation: `run_id`,
-`action_id`, `decision`, `receipt` and the crossing the kernel recorded (`endpoint`,
-`http_status`, `response_sha256`, `value`). The agent token is read from the kernel's own registry
-inside the serving process, so **no credential ever reaches the browser** and the page cannot
-become a second authority. Without an operator token the route answers 401; with no live upstream
-configured it answers 503 and refuses to invent a rate.
-
-`upstream_contacted` is true only when the upstream answered with an HTTP status - a permitted
-call whose transport failed is reported as exactly that, not as a crossing.
-
-## What the container runs
-
-`bash scripts/serve_tenet.sh` starts both roles as one process tree: the real tool server
-(`python -m upstream.frankfurter_server`, loopback) and the control plane (`uvicorn
-control_plane.app:app` on `$PORT`, one worker). The control plane is pointed at the tool server by
-URL (`WARRNT_UPSTREAM`) and never imports it, so the kernel still decides before a byte leaves.
-If the tool server fails to bind, the control plane comes up DEGRADED and `/api/demo/run` refuses.
+- Live Control Room: https://hackyeah-2026-ai-control-layer-production.up.railway.app/
+- Project repository: https://github.com/indrad3v4/hackyeah-2026-ai-control-layer
+- Canonical enforcement dependency: https://github.com/indrad3v4/warrnt
