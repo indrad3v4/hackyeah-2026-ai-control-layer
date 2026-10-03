@@ -84,6 +84,11 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             try:
                 app.state.kernel.proxy.issue_all(reset_registry=False)
                 app.state.kernel.proxy._expire_holds_of_halted_agents()
+                # T1: register the warrants for the REAL Frankfurter upstream
+                # (``fx.read_rate``) when this process was pointed at one. The kernel signs
+                # them; the control plane only supplies the spec, and with no upstream
+                # configured the call is a documented no-op.
+                app.state.kernel.issue_live_warrants()
             except Exception:  # noqa: BLE001 - never block startup on a seed quirk
                 pass
         # Hand the assistance surface the SAME kernel this process serves, so its read tools and

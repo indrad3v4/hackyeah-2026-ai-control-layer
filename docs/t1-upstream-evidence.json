@@ -1,0 +1,382 @@
+{
+  "ok": true,
+  "proved_at": "2026-10-03T19:21:54Z",
+  "upstream": {
+    "url": "https://api.frankfurter.dev/v1/latest",
+    "service": "upstream.frankfurter_server",
+    "log": "/tmp/tenet-t1-proof-calls.jsonl"
+  },
+  "call_ids": {
+    "allowed": "call-t1-allow-001",
+    "denied": "call-t1-deny-001",
+    "held": "call-t1-human-001"
+  },
+  "upstream_log": [
+    {
+      "args": {
+        "base": "EUR",
+        "call_id": "call-t1-allow-001",
+        "symbols": "USD"
+      },
+      "call_id": "call-t1-allow-001",
+      "crossing": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "latency_ms": 20.516,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225
+      },
+      "error": "",
+      "outcome": "ok",
+      "pid": 41222,
+      "rate_fetched": true,
+      "tool": "fx.read_rate",
+      "ts": 1791055313.898951
+    }
+  ],
+  "checks": [
+    {
+      "check": "control plane is up and healthy",
+      "ok": true,
+      "detail": {
+        "status": "LIVE",
+        "mode": "live",
+        "reason": "kernel present · provider key present",
+        "provider": "deepseek",
+        "model": "deepseek-chat",
+        "provider_key": "PRESENT",
+        "model_provider": "deepseek",
+        "commit": "c7450bee07cd",
+        "uptime": 1,
+        "kernel": "available"
+      }
+    },
+    {
+      "check": "the live-upstream warrants are registered",
+      "ok": true,
+      "detail": [
+        "deploy-agent",
+        "fin-reconcile",
+        "fx-auditor",
+        "fx-trader",
+        "report-bot",
+        "support-copilot"
+      ]
+    },
+    {
+      "check": "ALLOW: fx.rate executed",
+      "ok": true,
+      "detail": "read-only · live reference rate · in scope · class observe"
+    },
+    {
+      "check": "ALLOW: the real Frankfurter rate came back",
+      "ok": true,
+      "detail": {
+        "rates": {
+          "USD": 1.1225
+        },
+        "date": "2026-10-02",
+        "source": "https://api.frankfurter.dev/v1/latest"
+      }
+    },
+    {
+      "check": "ALLOW: the action is on the record",
+      "ok": true,
+      "detail": "A-0001"
+    },
+    {
+      "check": "DENY: support-copilot is refused before execution",
+      "ok": true,
+      "detail": "tool 'fx.read_rate' is not covered by warrant scope · class observe"
+    },
+    {
+      "check": "HUMAN: fx-auditor is held, not executed",
+      "ok": true,
+      "detail": "this order prices a live read with a person's decision · class observe"
+    },
+    {
+      "check": "T3: the boundary exposes its own egress counter",
+      "ok": true,
+      "detail": {
+        "sent": 1,
+        "completed": 1,
+        "failed": 0,
+        "pid": 41222,
+        "log": "/tmp/tenet-t1-proof-calls.jsonl",
+        "rate_cached": true
+      }
+    },
+    {
+      "check": "T3: sent_counter is unchanged across a denial (nothing left the box)",
+      "ok": true,
+      "detail": {
+        "before": 1,
+        "after": 1
+      }
+    },
+    {
+      "check": "T3: the allowed call is the one that moved sent_counter",
+      "ok": true,
+      "detail": {
+        "sent": 1,
+        "completed": 1
+      }
+    },
+    {
+      "check": "T3: the denied call is absent from the upstream's own access log",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001"
+      ]
+    },
+    {
+      "check": "upstream log records the allowed call_id",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001"
+      ]
+    },
+    {
+      "check": "upstream log proves the denied call never arrived",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001"
+      ]
+    },
+    {
+      "check": "upstream log proves the held call never arrived",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001"
+      ]
+    },
+    {
+      "check": "the upstream fetched a real rate (not a fixture)",
+      "ok": true,
+      "detail": [
+        {
+          "call_id": "call-t1-allow-001",
+          "rate_fetched": true
+        }
+      ]
+    },
+    {
+      "check": "the layer marks only the real call as upstream_contacted",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "check": "the layer marks the denied call as NOT upstream_contacted",
+      "ok": true,
+      "detail": false
+    },
+    {
+      "check": "T2: the action record carries endpoint",
+      "ok": true,
+      "detail": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 20.516
+      }
+    },
+    {
+      "check": "T2: the action record carries http_status",
+      "ok": true,
+      "detail": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 20.516
+      }
+    },
+    {
+      "check": "T2: the action record carries response_sha256",
+      "ok": true,
+      "detail": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 20.516
+      }
+    },
+    {
+      "check": "T2: the action record carries value",
+      "ok": true,
+      "detail": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 20.516
+      }
+    },
+    {
+      "check": "T2: the action record carries latency_ms",
+      "ok": true,
+      "detail": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 20.516
+      }
+    },
+    {
+      "check": "T2: the recorded endpoint is the real Frankfurter URL",
+      "ok": true,
+      "detail": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD"
+    },
+    {
+      "check": "T2: the recorded status is a real 200",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "check": "T2: the digest agrees with the upstream's own (re-hash agreement)",
+      "ok": true,
+      "detail": {
+        "layer": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "upstream": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297"
+      }
+    },
+    {
+      "check": "T4: the redacted call still executed (redact ranks with allow)",
+      "ok": true,
+      "detail": {
+        "decision": "redact",
+        "reason": "read-only · attach a desk note to the audit trail · PII stripped · personal fields stripped before execution: iban · class draft",
+        "executed": true,
+        "action_id": "A-0005",
+        "receipt": "46a59c48",
+        "redacted": [
+          "iban"
+        ],
+        "upstream_params": {
+          "call_id": "call-t4-redact-001",
+          "desk": "rates",
+          "fields": [
+            "desk"
+          ]
+        },
+        "tool": "fx.audit_note",
+        "rows": 1,
+        "ok": true,
+        "upstream": true,
+        "call_id": "call-t4-redact-001",
+        "desk": "rates",
+        "received_fields": [
+          "desk"
+        ]
+      }
+    },
+    {
+      "check": "T4: the upstream received the call with the personal field already removed",
+      "ok": true,
+      "detail": {
+        "upstream_received_fields": [
+          "desk"
+        ]
+      }
+    },
+    {
+      "check": "T4: only the personal field was dropped; the non-personal one survived",
+      "ok": true,
+      "detail": {
+        "upstream_received_fields": [
+          "desk"
+        ]
+      }
+    },
+    {
+      "check": "T5: a live read was held for a person",
+      "ok": true,
+      "detail": "A-0003"
+    },
+    {
+      "check": "T5: the hold is pending and has not contacted the upstream",
+      "ok": true,
+      "detail": {
+        "state": "pending",
+        "upstream_contacted": false
+      }
+    },
+    {
+      "check": "T5: approving the hold executes it",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "state": "approved",
+        "executed": true
+      }
+    },
+    {
+      "check": "T5: the approved read carries its crossing on the record",
+      "ok": true,
+      "detail": {
+        "rows": 1,
+        "outcome": "ok",
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 22.116,
+        "boundary": "outbound"
+      }
+    },
+    {
+      "check": "T5: the approved read reached the upstream, exactly once",
+      "ok": true,
+      "detail": [
+        [
+          "call-t1-allow-001",
+          "ok"
+        ],
+        [
+          "call-t4-redact-001",
+          "ok"
+        ],
+        [
+          "call-t1-human-001",
+          "ok"
+        ]
+      ]
+    },
+    {
+      "check": "T6: revoking the trader halts it",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "body": {
+          "agent": "fx-trader",
+          "state": "halted",
+          "by": "operator",
+          "warrant": "W-9001",
+          "revoked_at": 1791055314.0764105
+        }
+      }
+    },
+    {
+      "check": "T6: a revoked actor is REFUSED before execution",
+      "ok": true,
+      "detail": {
+        "code": -32003,
+        "decision": "revoked",
+        "message": "agent halted · warrant W-9001 pulled"
+      }
+    },
+    {
+      "check": "T6: the revoked call never reached the boundary",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001",
+        "call-t1-human-001",
+        "call-t4-redact-001"
+      ]
+    }
+  ],
+  "failed": []
+}

@@ -310,15 +310,183 @@ class Kernel:
     def intercept(self, agent_id: str, token: str, tool: str,
                   params: dict[str, Any] | None,
                   run_id: str = "") -> tuple[Any, str, dict[str, Any], dict, bool]:
-        """Ask the kernel for a decision. The only caller of the gate."""
-        return self.proxy.intercept(agent_id, token, tool, params, run_id=run_id)
+        """Ask the kernel for a decision. The only caller of the gate.
+
+        The decision itself is untouched: this passes the call through and, when the kernel
+        executed it, copies the crossing facts the kernel returned onto the kernel's own
+        Action record (see :meth:`_record_crossing`). It never alters a verdict and never
+        contacts anything by itself.
+        """
+        decision, reason, detail, receipt, executed = self.proxy.intercept(
+            agent_id, token, tool, params, run_id=run_id)
+        self._record_crossing(tool, detail, executed)
+        return decision, reason, detail, receipt, executed
 
     def resolve_hold(self, action_id: str, approve: bool, by: str) -> dict[str, Any]:
         """A named person releases or refuses a held action; the kernel runs the call."""
-        return self.proxy.resolve_hold(action_id, approve, by)
+        out = self.proxy.resolve_hold(action_id, approve, by)
+        if isinstance(out, dict) and out.get("executed"):
+            tool = str((out.get("action") or {}).get("tool") or "")
+            self._record_crossing(tool, {**out, "action_id": action_id}, True)
+        return out
+
+    def _record_crossing(self, tool: str, detail: dict[str, Any], executed: bool) -> None:
+        """Copy the crossing facts the kernel returned onto the kernel's own Action record.
+
+        The truth here is the *upstream's* reply, which the mirror's proxy already carried
+        back on ``detail['result']`` after it executed the call. This method only files that
+        reply under the action the kernel created - it decides nothing, drops nothing, and
+        invents nothing: a field the upstream did not send is simply absent, and the receipt
+        is left exactly as the kernel wrote it. Guarded so a missing/short payload can never
+        raise on the enforcement path (the decision has already been made and recorded by
+        the time we get here).
+        """
+        if not executed or tool not in LIVE_BOUNDARY:
+            return
+        action_id = str((detail or {}).get("action_id")
+                        or ((detail or {}).get("action") or {}).get("id") or "")
+        result = (detail or {}).get("result")
+        if not action_id or not isinstance(result, dict):
+            return
+        try:
+            action = self.proxy.actions.get(action_id)
+            if action is None:
+                return
+            crossing = {
+                "endpoint": result.get("endpoint") or result.get("source"),
+                "http_status": result.get("http_status"),
+                "response_sha256": result.get("response_sha256"),
+                "value": result.get("value"),
+                "latency_ms": result.get("latency_ms"),
+                "boundary": LIVE_BOUNDARY.get(tool, ""),
+            }
+            action.execution_result = {**action.execution_result,
+                                       **{k: v for k, v in crossing.items() if v is not None}}
+            self.proxy.actions.save(action)
+        except Exception:  # noqa: BLE001 - recording must never break a decided call
+            pass
 
     def revoke(self, agent_id: str):
         return self.proxy.revoke(agent_id)
+
+    # ------------------------------------------------------------ live upstream warrants (T1)
+    def issue_live_warrants(self) -> list[str]:
+        """Register the live-upstream warrants the real Frankfurter tool runs under (T1).
+
+        The kernel still does all the work: this only hands it a :class:`WarrantSpec` exactly
+        as ``SEED_SPECS`` does, and the kernel's own issuer signs it and mints the agent token.
+        No control-plane code signs, allows or decides anything - it supplies a spec, the
+        authority turns it into a signed, TTL-bounded order. Idempotent: a warrant already
+        present is left untouched, so the call is safe on every boot.
+
+        Returns the ids actually issued on this call (empty on a re-issue, and empty when no
+        real upstream is configured - see :func:`live_upstream_configured`).
+        """
+        from warrnt.models import Rule, WarrantSpec  # type: ignore import-not-found
+
+        if not live_upstream_configured():
+            return []
+
+        issued: list[str] = []
+        for spec in _live_warrants():
+            if spec.id in self.proxy.warrants:
+                continue
+            warrant = self.proxy.issuer.issue(spec)
+            self.proxy.warrants[warrant.id] = warrant
+            self.proxy.agents[warrant.agent] = _agent_state(self.proxy, warrant)
+            issued.append(warrant.id)
+        return issued
+
+
+def _agent_state(proxy: Any, warrant: Any) -> Any:
+    """Build the agent identity the kernel keeps for a freshly issued warrant."""
+    from warrnt.models import AgentState  # type: ignore import-not-found
+
+    return AgentState(id=warrant.agent, role=warrant.role, warrant=warrant.id,
+                      token=proxy.issuer.token_for(warrant.agent, warrant.id))
+
+
+# ---------------------------------------------------------------- live upstream warrants (T1)
+# The real Frankfurter upstream is reached through the tool ``fx.read_rate``. Warrants are
+# registered so the whole decision vocabulary is exercised against a REAL external service:
+#  * ``fx-trader`` reads the live reference rate (allow, in scope);
+#  * ``fx-auditor`` prices a live read with a person's decision (human hold);
+#  * ``support-copilot`` has an mcp-supplier warrant that does not cover ``fx.read_rate``
+#    (deny) - an agent CAN be stopped from reaching the real upstream even though the tool
+#    exists on the far side.
+# The specs are declared here, in the control plane, but the kernel's own issuer signs them
+# and mints the tokens: this module never decides.
+def _live_warrants() -> list[Any]:
+    from warrnt.models import Rule, WarrantSpec  # type: ignore import-not-found
+
+    return [
+        WarrantSpec(
+            id="W-9001", agent="fx-trader", role="Treasury",
+            scope="fx.read_rate · live ECB reference rates · read-only", ttl=3600.0,
+            rules=[
+                Rule(tool="fx.read_rate", effect="allow",
+                     reason="read-only · live reference rate · in scope"),
+                Rule(tool="fx.audit_note", effect="allow",
+                     reason="read-only · attach a desk note to the audit trail · PII stripped",
+                     redact=["fields"]),
+                Rule(tool="fx.last", effect="allow", reason="read-only · last fetched rate"),
+            ],
+        ),
+        WarrantSpec(
+            id="W-9003", agent="fx-auditor", role="Compliance",
+            scope="fx.read_rate ⇒ require-human · a live rate read is a person's decision",
+            ttl=1800.0,
+            rules=[
+                Rule(tool="fx.read_rate", effect="human",
+                     reason="this order prices a live read with a person's decision"),
+            ],
+        ),
+    ]
+
+
+# The egress boundary the live tools sit on, and whether the tool may cross it. This is a
+# *description* of the upstream, not a permission: the kernel's class ladder and the signed
+# warrant remain the only things that decide. It is recorded on the receipt so a reader sees
+# "outbound" without the frozen mirror taxonomy having to grow a new member.
+LIVE_BOUNDARY: dict[str, str] = {
+    "fx.read_rate": "outbound",   # performs one real HTTPS GET to the ECB reference rates
+    "fx.audit_note": "internal",  # travels to the upstream but never leaves the box
+    "fx.last": "internal",        # served from the upstream's own cache, no egress
+}
+
+LIVE_WARRANTS: list[Any] = []
+
+# The action class of each live-upstream tool (T1). The kernel's taxonomy is the ONLY
+# taxonomy (AGENTS.md / F8 R5); this does not add one - it files the new tool into the
+# kernel's existing ladder. A live reference-rate read is an ``observe``: read-only, and no
+# personal data leaves, so the frozen ladder already has the right rung for it. Filing it
+# here keeps the mirror byte-identical while the classification still lives in one place:
+# the kernel's ``CLASS_OF_TOOL`` table, extended at build time.
+LIVE_TOOL_CLASSES: dict[str, str] = {
+    "fx.read_rate": "observe",
+    "fx.audit_note": "draft",
+    "fx.last": "observe",
+}
+
+
+def live_upstream_configured() -> bool:
+    """True when this process was pointed at a real MCP upstream (``WARRNT_UPSTREAM``).
+
+    The live warrants are issued only then. Without an upstream the node fronts its
+    in-process sandbox and ``fx.read_rate`` has nothing real behind it - warranting a
+    remote order for a service that is not there would be a claim, not a control (D12).
+    It also keeps the enforced agent set an exact function of the deployment, so the
+    seed-only process still shows the four seeded agents and nothing more.
+    """
+    return bool(os.environ.get("WARRNT_UPSTREAM", "").strip())
+
+
+def _register_live_tool_classes() -> None:
+    """File the live-upstream tools into the kernel's existing taxonomy (idempotent)."""
+    from warrnt import actions as kernel_actions  # type: ignore import-not-found
+
+    for tool, cls_name in LIVE_TOOL_CLASSES.items():
+        kernel_actions.CLASS_OF_TOOL[tool] = kernel_actions.ActionClass(cls_name)
 
 
 def build_kernel(*, state_dir: "str | os.PathLike | None" = None) -> Kernel:
@@ -328,6 +496,7 @@ def build_kernel(*, state_dir: "str | os.PathLike | None" = None) -> Kernel:
     it explicitly keeps the control plane's store next to the directory the kernel uses.
     """
     mods = load_kernel()
+    _register_live_tool_classes()
     Settings = mods["Settings"]
     build_proxy = mods["build_proxy"]
     settings = Settings.load(state_dir) if state_dir else Settings.load()
