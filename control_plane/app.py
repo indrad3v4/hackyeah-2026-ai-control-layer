@@ -378,6 +378,44 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         })
 
     # ------------------------------------------- ACT-4: the security-decision projection
+    @app.get("/api/model-usage")
+    def model_usage() -> JSONResponse:
+        """Read-only provider resource usage for the Control Room.
+
+        This is evidence from the persisted DeepSeek event journal, not a second execution
+        path. It reports which model actually answered, call count, tokens and latency; it
+        never exposes credentials, prompts or response bodies.
+        """
+        try:
+            from control_room import provider as provider_module
+            events = provider_module.read_events()
+        except Exception:  # noqa: BLE001
+            events = []
+        completed = [e for e in events if e.get("event") == "deepseek.request.completed"]
+        started = [e for e in events if e.get("event") == "deepseek.request.started"]
+        failed = [e for e in events if e.get("event") == "deepseek.request.failed"]
+        latest = completed[-1] if completed else (failed[-1] if failed else None)
+        input_tokens = sum(int(e.get("input_tokens") or 0) for e in completed)
+        output_tokens = sum(int(e.get("output_tokens") or 0) for e in completed)
+        total_tokens = sum(int(e.get("total_tokens") or 0) for e in completed)
+        latency = [int(e.get("latency_ms") or 0) for e in completed]
+        return JSONResponse({
+            "provider": "deepseek",
+            "model_requested": provider_module.MODEL,
+            "model_served": (latest or {}).get("model_served"),
+            "calls_started": len(started),
+            "calls_completed": len(completed),
+            "calls_failed": len(failed),
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
+            "max_latency_ms": max(latency) if latency else None,
+            "latest_trace_id": (latest or {}).get("request_id"),
+            "latest_status": (latest or {}).get("status"),
+            "evidence": "persisted DeepSeek provider events",
+            "mode": config.mode(),
+        })
+
     @app.get("/api/security-events")
     def security_events(limit: int = 60) -> JSONResponse:
         """The security-decision feed the Control Room's first screen renders (ACT-4 slice A).
