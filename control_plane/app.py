@@ -26,7 +26,7 @@ from fastapi import Body, FastAPI, Header, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from . import config
-from .kernel import Kernel, KernelUnavailable, build_kernel
+from .kernel import Kernel, KernelUnavailable, build_kernel, live_upstream_configured
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -141,6 +141,9 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             "commit": app.state.identity.commit,
             "uptime": app.state.identity.uptime_s(),
             "kernel": "available" if k is not None else "unavailable",
+            # The live upstream the kernel may reach. ``absent`` is honest: with none configured
+            # no call can cross, and the canonical scenario says so instead of inventing a rate.
+            "live_upstream": "configured" if live_upstream_configured() else "absent",
         }
     # ------------------------------------------------------------------- kernel reads
     @app.get("/api/overview")
@@ -311,6 +314,67 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         if not agent_id:
             return JSONResponse({"error": "agent is required", "field": "agent"}, status_code=422)
         return _revoke(app, agent_id, x_warrnt_admin, str(body.get("by") or "").strip())
+
+    # ------------------------------------------- the canonical live scenario (operator only)
+    @app.post("/api/demo/run")
+    async def demo_run(request: Request,
+                       x_warrnt_admin: str = Header(default="")) -> JSONResponse:
+        """Run the one canonical scenario server-side and return its evidence.
+
+        Why this route exists: the Control Room's first screen must show a REAL crossing, and
+        the operator must be able to trigger it **without a credential ever reaching the
+        browser**. The agent token is read from the kernel's own registry inside this process
+        and used here, so the page can never become a second authority and can never leak a
+        token. The decision is still the kernel's - this route only asks it to intercept the
+        call, exactly as ``/mcp`` does. No upstream configured -> 503, never a faked crossing.
+        """
+        denied = _require_admin(app, x_warrnt_admin)
+        if denied:
+            return denied
+        k, unavailable = _kernel_or_503(app)
+        if unavailable:
+            return unavailable
+        assert k is not None  # _kernel_or_503 guarantees a kernel past its 503 branch
+        if not live_upstream_configured():
+            return JSONResponse(
+                {"error": "no live upstream configured", "decision": "deny",
+                 "note": "point WARRNT_UPSTREAM at the real tool server - TENET never fakes a crossing"},
+                status_code=503)
+        try:
+            payload = await request.json()
+        except Exception:  # noqa: BLE001 - an empty body IS the canonical scenario
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+        agent_id = str(payload.get("agent") or "fx-trader")
+        args = {"base": str(payload.get("base") or "EUR"),
+                "symbols": str(payload.get("symbols") or "USD")}
+        tokens = {str(a.get("id")): str(a.get("token") or "") for a in k.agents(dev=True)}
+        agent_token = tokens.get(agent_id, "")
+        if not agent_token:
+            return JSONResponse({"error": "no live warrant for this agent", "agent": agent_id,
+                                 "decision": "deny"}, status_code=409)
+        run_id = "demo-" + secrets.token_hex(4)
+        decision, reason, detail, _receipt, executed = k.intercept(
+            agent_id, agent_token, "fx.read_rate", args, run_id=run_id)
+        word = decision.value if hasattr(decision, "value") else str(decision)
+        action_id = str((detail or {}).get("action_id")
+                        or ((detail or {}).get("action") or {}).get("id") or "")
+        record = k.action(action_id) if action_id else None
+        record = record if isinstance(record, dict) else {}
+        return JSONResponse({
+            "scenario": "fx.read_rate",
+            "agent": agent_id,
+            "run_id": run_id,
+            "action_id": action_id,
+            "decision": word,
+            "reason": reason,
+            "executed": executed,
+            "upstream_contacted": bool(executed and word in ("allow", "redact")),
+            "execution_result": record.get("execution_result") or {},
+            "receipt": record.get("receipt") or (detail or {}).get("receipt"),
+            "tool": "fx.read_rate",
+        })
 
     # ------------------------------------------------------------------- interception
     @app.post("/mcp")
