@@ -23,7 +23,7 @@ comment can cite them.
   model call. The semantic layer (a local model) is invoked only on what the deterministic
   layer passed, so a cheap filter is never paid for with a model call.
 - **D5 — Enforcement happens before execution, never after.** The decision
-  (allow / deny / redact / require-human) is produced before the intercepted call runs.
+  (allow / deny / redact / human / revoked — the full receipt vocabulary) is produced before the intercepted call runs.
   A denial is itself a recordable event.
 - **D6 — Everything runs on local models.** No paid API is available or permitted on the
   critical path; the semantic layer targets a locally served model (Ollama). A cloud model
