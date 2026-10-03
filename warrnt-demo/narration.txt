@@ -1,0 +1,18 @@
+WARRNT — 40-second demo, voiceover script (≈ 105 words, ~150 wpm)
+
+[0:00] WARRNT. The AI control layer. No warrant, no action.
+
+[0:03] Three agents are running right now — each one under a signed, scoped order.
+
+[0:07] At 3:47, support-copilot asks to bulk-export customer email and PESEL.
+
+[0:11] The warrant says read-only, no PII fields — so the action is denied before execution.
+       Zero rows leave the perimeter.
+
+[0:17] The denial is written to the append-only, hash-chained record, with the authorising order.
+
+[0:23] One revoke pulls order W-4419. The agent halts in zero point eight seconds.
+
+[0:29] Authorised. Recorded. Revocable.
+
+[0:36] Proof, not a dashboard.
