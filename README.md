@@ -32,8 +32,14 @@ worse than knowing.
 Attach authority to the action itself. Before an agent calls a tool, a proxy in front
 of it decides — and that decision is an artifact, not a log line.
 
-Four load-bearing bricks:
+Five load-bearing bricks:
 
+0. **Actor register — `this agent cannot`.** Before any warrant is read, the layer knows
+   *who is asking*: four classes of actor (`operator-human`, `autonomous-system`, `chatbot`,
+   `mcp-supplier`), each with tools it may never call and data it has no entitlement to.
+   The limit is on the actor, not on the rights of the user on whose behalf it acts — so a
+   valid warrant for the same tool does not widen it. This is the question that separates a
+   control layer from a permission system.
 1. **Identity, not a key.** Every agent gets a scoped, ephemeral identity. No shared
    API keys, no "one credential for the whole fleet".
 2. **Pre-execution enforcement.** `allow` / `deny` / `require-human` is decided on the
@@ -113,6 +119,15 @@ Honest split between what is running and what is designed.
 
 **Working and verified (2026-10-02):**
 
+- **The node itself** — [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt): the MCP
+  proxy, per-parameter policy, signed warrants with TTL, the hash-chained registry with
+  `GET /verify`, `/revoke`, and the console served from the node. `pytest -q` → **60 passed**;
+  a clean-machine run (`scripts/f2_clean_run.sh`) starts from an empty temp dir, clone, fresh
+  venv, deps from PyPI.
+- **The actor register** — `GET /actors`, `warrnt/actors.py`, ten tests, PR
+  [#1](https://github.com/indrad3v4/warrnt/pull/1). The load-bearing test: same agent, same
+  signed warrant, same parameters — change only the actor's class and the answer flips
+  `allow` → `deny`, with nothing run upstream.
 - **Console** — `warrnt-screen/index.html`, one dense screen, four tiles
   (agents · warrants · kill switch · proof), **zero dependencies, no page scroll**.
   Verified in headless Chromium at 1920×1080, 1440×900, 1366×768, 2560×1440: four tiles
@@ -127,13 +142,14 @@ Honest split between what is running and what is designed.
 - **`/api/state` contract** — documented above and frozen; it is the interface the
   proxy must satisfy.
 
-**Designed, not yet wired (the core, next):**
+**Designed here, built in the node repo (the core):**
 
-- The MCP proxy itself — interception before execution, per-parameter policy, warrant
-  issuing with signature + TTL, the append-only receipt store, `/revoke`.
-- Until it exists, the console's 3:47 scenario runs on the **demo feed** (a scripted
-  state machine), not on real intercepted traffic. The screen already renders exactly
-  the JSON the proxy will emit, so wiring is a matter of serving that contract.
+- The MCP proxy, per-parameter policy, warrant issuing with signature + TTL, the append-only
+  receipt store, `/revoke` and the actor register all exist and are tested — in
+  [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt), not in this package.
+- What is *not* wired here: this console's live feed talks to a running node only when you
+  serve it with one (`?source=live`); offline it replays the scripted 3:47 state machine.
+  The screen renders exactly the JSON the node emits, so the seam is one HTTP call wide.
 
 We would rather show you a small thing that truly runs than a big thing that only
 looks finished.
