@@ -62,7 +62,7 @@ and the signature of whoever authorised it.
       │ issuer       │   │ engine       │        │ receipt log  │   │ kill switch  │
       │ scope·TTL·   │   │ per-param    │        │ hash-chained │   │ pull warrant │
       │ signature    │   │ allow/deny/  │        │ who·what·why │   │ stop chain   │
-      │              │   │ require-human│        │ ·authoriser  │   │              │
+      │              │   │ redact·human │        │ ·authoriser  │   │              │
       └──────────────┘   └──────────────┘        └──────┬───────┘   └──────────────┘
                                                          │
                                                   ┌──────▼───────┐
@@ -86,7 +86,7 @@ exists whether the action happened or not.
                   "warrant": "W-4419", "ttl": 420, "ttl0": 420, "last": "..." } ],
   "warrants": [ { "id": "W-4419", "agent": "...", "scope": "...",
                   "ttl": 420, "ttl0": 420, "state": "active|revoked|expired" } ],
-  "receipts": [ { "t": "14:02:43", "decision": "allow|deny|human|revoked",
+  "receipts": [ { "t": "14:02:43", "decision": "allow|deny|redact|human|revoked",
                   "what": "<code>crm.read</code> ...",
                   "meta": "order W-4419 · policy: read-only",
                   "hash": "d46ef77e" } ]
@@ -125,7 +125,9 @@ Honest split between what is running and what is designed.
   Recorded deterministically: page state is a pure function of virtual time, so frames
   do not drift and the take is reproducible, not screen-captured by hand.
 - **`/api/state` contract** — documented above and frozen; it is the interface the
-  proxy must satisfy.
+  proxy must satisfy. The freeze was lifted once, to add `redact` to the receipt
+  vocabulary: the task requires redaction as a control action, and a receipt the
+  chain cannot record is not a receipt. Any further change goes through D13.
 
 **Designed, not yet wired (the core, next):**
 
