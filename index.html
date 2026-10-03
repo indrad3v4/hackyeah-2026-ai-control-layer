@@ -533,6 +533,7 @@ if(QA){
               ok:(r.top>=0 && r.bottom<=window.innerHeight+0.5 && r.bottom>r.top)};
     });
     const cells=[...document.querySelectorAll('#taxoCells .cell')];
+    const cells=[...document.querySelectorAll('#taxoCells .cell')];
     const inside=(box,el)=>{const a=box.getBoundingClientRect(),b=el.getBoundingClientRect();
       return b.left>=a.left-0.5&&b.right<=a.right+0.5&&b.top>=a.top-0.5&&b.bottom<=a.bottom+0.5;};
     const spills=[].concat(...cells.map(c=>[...c.children].filter(ch=>!inside(c,ch)))).length;
