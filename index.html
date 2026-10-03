@@ -23,6 +23,33 @@
   }
   .mono{font-family:"DejaVu Sans Mono","SFMono-Regular",Menlo,Consolas,monospace}
 
+  /* ---------- mentor hierarchy: performance first, emergency control second ---------- */
+  .resourceBody{padding:14px;display:flex;flex-direction:column;gap:12px;min-height:0}
+  .resourceHero{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .resourceModel{font-size:22px;font-weight:800;letter-spacing:-.02em}
+  .resourceProvider{font-size:11px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase}
+  .resourceGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  .resourceMetric{background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:9px 10px;min-width:0}
+  .resourceMetric .n{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .resourceMetric .l{margin-top:3px;font-size:9.5px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+  .resourceTrace{font-size:10.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .resourceTrace .mono{color:var(--hash)}
+  #resourceTile{grid-column:span 2}
+  #killTile .killmid{min-height:72px;padding:8px 13px;gap:6px}
+  #killTile #revoke{width:min(78%,260px);font-size:13px;padding:10px 8px;border-radius:8px;box-shadow:none}
+  #killTile .hint{font-size:10.5px}
+  #killTile .killlog{max-height:68px}
+  #killTile .metric .n{font-size:17px}
+  #killTile .metric{min-width:76px;padding:6px 9px}
+  @media (max-width:1399px){
+    #resourceTile{grid-column:span 2}
+    .resourceGrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  }
+  @media (max-width:780px){
+    #resourceTile{grid-column:auto}
+    .resourceGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+
   /* ---------- top bar ---------- */
   header{
     display:flex;align-items:center;gap:18px;padding:0 18px;
@@ -227,9 +254,24 @@
 </header>
 
 <main>
-  <!-- 1. AGENTS -->
+  <!-- 01. PERFORMANCE: mentor feedback says this is the first thing the eye should see. -->
+  <section class="tile" id="resourceTile">
+    <h2><span class="idx">01</span> Model &amp; resources <span class="c"><b id="resourceStatus">waiting</b></span></h2>
+    <div class="resourceBody">
+      <div class="resourceHero"><div class="resourceModel" id="resourceModel">No live model call</div><div class="resourceProvider" id="resourceProvider">resource usage appears after a real provider call</div></div>
+      <div class="resourceGrid">
+        <div class="resourceMetric"><div class="n" id="resourceCalls">—</div><div class="l">model calls</div></div>
+        <div class="resourceMetric"><div class="n" id="resourceTokens">—</div><div class="l">total tokens</div></div>
+        <div class="resourceMetric"><div class="n" id="resourceInOut">—</div><div class="l">input / output</div></div>
+        <div class="resourceMetric"><div class="n" id="resourceLatency">—</div><div class="l">max latency</div></div>
+      </div>
+      <div class="resourceTrace" id="resourceTrace">No provider evidence yet. Model reasoning is evidence, never authority.</div>
+    </div>
+  </section>
+
+  <!-- 02. AGENTS -->
   <section class="tile">
-    <h2><span class="idx">01</span> Agents <span class="c"><b id="agCount">3</b> running · <b id="agHalt">0</b> halted</span></h2>
+    <h2><span class="idx">02</span> Agents <span class="c"><b id="agCount">3</b> running · <b id="agHalt">0</b> halted</span></h2>
     <div class="scroll">
       <table>
         <thead><tr><th>Agent</th><th>State</th><th>Warrant</th><th>Last action</th><th>TTL</th></tr></thead>
@@ -238,9 +280,9 @@
     </div>
   </section>
 
-  <!-- 2. WARRANTS -->
+  <!-- 03. WARRANTS -->
   <section class="tile">
-    <h2><span class="idx">02</span> Warrants <span class="c">scoped · signed · expiring · <b id="wCount">0</b> live</span></h2>
+    <h2><span class="idx">03</span> Warrants <span class="c">scoped · signed · expiring · <b id="wCount">0</b> live</span></h2>
     <div class="scroll">
       <table>
         <thead><tr><th>Order</th><th>Agent</th><th>Scope on parameters</th><th>State</th><th>TTL</th></tr></thead>
@@ -249,9 +291,15 @@
     </div>
   </section>
 
-  <!-- 3. KILL SWITCH -->
+  <!-- 04. PROOF -->
   <section class="tile">
-    <h2><span class="idx">03</span> Kill switch <span class="c">revoke the order · stop mid-execution</span></h2>
+    <h2><span class="idx">04</span> Proof — receipts <span class="c">append-only · hash-chained · <b id="rCount">0</b> records</span></h2>
+    <div class="scroll"><div class="feed" id="recFeed"></div></div>
+  </section>
+
+  <!-- 05. EMERGENCY CONTROL: intentionally smaller and lower in the visual hierarchy. -->
+  <section class="tile" id="killTile">
+    <h2><span class="idx">05</span> Emergency control <span class="c">revoke only when needed</span></h2>
     <div class="kill">
       <div class="top">
         <div class="target">
@@ -265,28 +313,22 @@
       </div>
       <div class="killmid">
         <button id="revoke" aria-label="Revoke warrant" aria-describedby="killHint">/revoke — stop agent</button>
-        <div class="hint" id="killHint">Press once to <b>arm</b>, press again to <b>revoke</b> the warrant and halt the chain.</div>
+        <div class="hint" id="killHint">Emergency action. It requires confirmation and an operator token.</div>
       </div>
       <div class="killlog" id="killLog"></div>
     </div>
   </section>
-
-  <!-- 4. RECEIPTS -->
-  <section class="tile">
-    <h2><span class="idx">04</span> Proof — receipts <span class="c">append-only · hash-chained · <b id="rCount">0</b> records</span></h2>
-    <div class="scroll"><div class="feed" id="recFeed"></div></div>
-  </section>
 </main>
 
 <section class="taxo" aria-label="Kinds of act and who decides">
-  <h2><span class="idx">05</span> Six kinds of act <span class="c">every act gets a class · every class has a decider · a class may raise the decision, never lower it</span></h2>
+  <h2><span class="idx">06</span> Six kinds of act <span class="c">every act gets a class · every class has a decider · a class may raise the decision, never lower it</span></h2>
   <div class="cells" id="taxoCells"></div>
 </section>
 
 <footer>
   <div class="k">Actions with a warrant <b id="kPct">—</b> <span class="up">▲ target 100%</span></div>
   <div class="k">Time to stop <b id="kStop">—</b></div>
-  <div class="k">Regulator report assembled in <b id="kReport">—</b></div>
+  <div class="k">Model tokens <b id="kTokens">—</b></div>
   <div class="k">Chain integrity <b id="kChain" class="up">verified</b></div>
   <div class="k" title="warrnt @ 2026-10-03 · the numbers are the last run of each check">Checks <b class="up">229 pytest · 35/35 · 18/18 · 29/29 · 20/20</b></div>
   <div class="r" id="footR">HackYeah 2026 · Partner Task: AI Control Layer · MCP interception, one node</div>
@@ -323,7 +365,8 @@ function seed(){
       {id:'W-4419', agent:'support-copilot', scope:'crm.read · export=false · personal fields stripped',  ttl:420, ttl0:420, state:'active'},
       {id:'W-4421', agent:'deploy-agent',    scope:'infra.plan · deploy ⇒ require-human',      ttl:150, ttl0:150, state:'active'}
     ],
-    receipts: []
+    receipts: [],
+    modelUsage: {}
   };
 }
 let S = seed();
@@ -352,6 +395,25 @@ function ttlCell(ttl,ttl0){
 /* An attribute needs its own escaping: a quote inside a warrant id would otherwise end the
    attribute early and produce markup the browser silently reshapes. */
 const attr = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+
+function renderResources(){
+  const u=S.modelUsage||{};
+  const served=u.model_served || u.model_requested;
+  const calls=u.calls_completed;
+  const total=u.total_tokens;
+  $('resourceStatus').textContent = u.evidence ? (u.mode==='demo' ? 'demo' : 'live evidence') : 'waiting';
+  $('resourceModel').textContent = served || 'No live model call';
+  $('resourceProvider').textContent = served ? ((u.provider||'deepseek')+' · actual provider response') : 'resource usage appears after a real provider call';
+  $('resourceCalls').textContent = calls!=null ? String(calls) : '—';
+  $('resourceTokens').textContent = total ? Number(total).toLocaleString() : '—';
+  $('resourceInOut').textContent = (u.input_tokens!=null || u.output_tokens!=null)
+    ? Number(u.input_tokens||0).toLocaleString()+' / '+Number(u.output_tokens||0).toLocaleString() : '—';
+  $('resourceLatency').textContent = u.max_latency_ms!=null ? Number(u.max_latency_ms).toLocaleString()+' ms' : '—';
+  $('resourceTrace').innerHTML = u.latest_trace_id
+    ? 'Latest provider trace: <span class="mono">'+attr(u.latest_trace_id)+'</span> · status '+attr(u.latest_status==null?'—':u.latest_status)+' · DeepSeek only; no credential shown.'
+    : (u.evidence ? 'Provider journal present, but no completed response with a provider trace id yet.' : 'No provider evidence yet. Model reasoning is evidence, never authority.');
+  $('kTokens').textContent = total ? Number(total).toLocaleString() : '—';
+}
 
 function renderAgents(){
   $('agBody').innerHTML = S.agents.map(a=>{
@@ -403,7 +465,6 @@ function renderKpi(){
   const withW = S.receipts.filter(r=>r.decision!=='—').length;
   $('kPct').textContent = total? Math.round(100*withW/Math.max(1,total))+'%' : '—';
   $('kStop').textContent = S.lastStop==null? '—' : S.lastStop.toFixed(1)+' s';
-  $('kReport').textContent = total? (total*0.04).toFixed(1)+' s' : '—';
   $('kChain').textContent = 'verified';
 }
 
@@ -444,7 +505,7 @@ function revoke(agentId, latency){
 /* ---------- demo scenario (the 3:47 moment) ---------- */
 const DEMO = { step:0, timer:null };
 function demoReset(){
-  S = seed(); S.receipts=[];
+  S = seed(); S.receipts=[]; S.modelUsage={mode:'demo'};
   $('mStop').textContent='—'; $('mRev').textContent='0';
   $('killLog').innerHTML='';
   receipt('allow','<code>payments.read</code> fin-reconcile → 1,240 rows reconciled','W-4417','policy: scope ok');
@@ -497,6 +558,12 @@ function applyLive(d){
   renderAll();
 }
 let LIVE=false;
+async function fetchModelUsage(){
+  try{
+    const r=await fetch('/api/model-usage',{cache:'no-store'});
+    if(r.ok) { S.modelUsage=await r.json(); renderResources(); }
+  }catch(e){}
+}
 async function tryLive(){
   try{
     const r=await fetch('/api/state',{cache:'no-store'});
@@ -507,6 +574,8 @@ async function tryLive(){
     clearInterval(DEMO.timer); DEMO.timer=null;
     setInterval(async()=>{try{const r2=await fetch('/api/state',{cache:'no-store'});if(r2.ok)applyLive(await r2.json());}catch(e){}},1500);
     applyLive(d);
+    await fetchModelUsage();
+    setInterval(fetchModelUsage,1500);
   }catch(e){ startDemo(); }
 }
 
@@ -650,7 +719,7 @@ function renderTaxo(){
       +'</div>';
   }).join('');
 }
-function renderAll(){ renderAgents(); renderTaxo(); renderWarrants(); renderReceipts(); renderTargets(); renderKpi(); }
+function renderAll(){ renderResources(); renderAgents(); renderTaxo(); renderWarrants(); renderReceipts(); renderTargets(); renderKpi(); }
 
 /* ---------- boot ---------- */
 $('clock').textContent=hh(new Date());
