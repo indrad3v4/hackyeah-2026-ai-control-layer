@@ -246,5 +246,3 @@ $("revoke").addEventListener("click",async()=>{if(!selected)return;const e=event
 $("proof").addEventListener("click",async()=>{if(!selected)return;const e=events.find(x=>x.event_id===selected);if(!e?.run_id)return;try{const p=await get("/api/security-events/"+encodeURIComponent(e.run_id));$("controlResult").textContent="Proof status: "+(p.status||"unknown")+" · "+((p.missing||[]).join(", ")||"causal chain complete");}catch(err){$("controlResult").textContent="Proof unavailable: "+err.message;}});
 window.__TENET_QA__={ok:true,revokeOverTarget:false,layout:"live-operator-control-room",pollMs:1000,realOrchestrator:true};refresh();loadAgents();setInterval(refresh,1000);
 </script>
-</body>
-</html>
