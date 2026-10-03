@@ -337,3 +337,153 @@ def test_openai_api_key_env_is_never_required(tmp_path, monkeypatch):
     with TestClient(app) as c:
         assert c.get("/health").status_code == 200
 
+
+# --------------------------------------------------------------- specialist read paths (bug)
+def test_specialist_read_path_with_query_string_is_normalised(tmp_path, monkeypatch):
+    """REGRESSION. The tools build their path WITH a query (``/api/activity?limit=10``) while
+    the kernel read registry is keyed by the clean route, so the lookup raised
+    ``KeyError: no kernel read for '/api/activity?limit=10'`` and the specialist honestly
+    answered "unreadable". The query must be stripped and its parameters passed as kwargs.
+
+    This failed before the fix (KeyError) and passes after it. No HTTP: this is the exact
+    in-process path a specialist tool takes through ``control_room.agents._read``.
+    """
+    from control_plane.kernel import build_kernel
+
+    monkeypatch.setenv("TENET_STATE_DIR", str(tmp_path / "s-read"))
+    monkeypatch.setenv("WARRNT_DEV", "1")
+    monkeypatch.setenv("WARRNT_ADMIN_TOKEN", "test-admin-token")
+    k = build_kernel(state_dir=str(tmp_path / "s-read"))
+    k.proxy.issue_all(reset_registry=False)
+
+    # The routes the specialist tools use, verbatim, including the query string.
+    for path in ("/api/overview", "/api/actions?limit=5", "/api/activity?limit=10",
+                 "/api/actions/pending"):
+        body = k.read(path)
+        assert isinstance(body, dict) and "error" not in body, path
+    assert set(k.read("/api/activity?limit=10")) >= {"count", "events"}
+    assert "actions" in k.read("/api/actions?limit=5")
+
+
+def test_specialist_tool_no_longer_reports_unreadable(tmp_path, monkeypatch):
+    """The tool wrapper itself must stop returning ``KeyError`` as its answer.
+
+    ``_control_plane_inspect`` reads ``/api/activity?limit=10``. Before the fix the tool result
+    carried ``{"error": "KeyError: ..."}``; after it, the tool result is real state.
+    """
+    from control_plane.kernel import build_kernel
+    from control_room import agents as assist
+
+    monkeypatch.setenv("TENET_STATE_DIR", str(tmp_path / "s-tool"))
+    monkeypatch.setenv("WARRNT_DEV", "1")
+    monkeypatch.setenv("WARRNT_ADMIN_TOKEN", "test-admin-token")
+    k = build_kernel(state_dir=str(tmp_path / "s-tool"))
+    k.proxy.issue_all(reset_registry=False)
+    assist.bind_kernel(k)
+    try:
+        out = assist._control_plane_inspect("are we live?")
+    finally:
+        assist.bind_kernel(None)
+    assert "KeyError" not in out, out
+    assert "no kernel read" not in out, out
+
+
+# --------------------------------------------------------------------- fail-closed at boundary
+def test_kernel_unavailable_fails_closed_everywhere(monkeypatch, tmp_path):
+    """TASK C: with the kernel unimportable, both the decision surface and /api/ask refuse.
+
+    ``load_kernel`` is monkeypatched to raise :class:`KernelUnavailable`, so ``app.state.kernel``
+    stays ``None``. Then:
+
+    * ``/api/ask`` must NOT execute anything: 200 with a refusal body, never an allow;
+    * ``/mcp`` must refuse with 503 (``decision: deny``) and never allow.
+
+    A control plane that cannot reach its authority must refuse, never permit.
+    """
+    import control_plane.app as app_module
+    from control_plane.kernel import KernelUnavailable
+
+    def _boom(*a, **k):  # noqa: ANN001
+        raise KernelUnavailable("mirror unimportable (test)")
+
+    monkeypatch.setattr(app_module, "build_kernel", _boom)
+    monkeypatch.setenv("TENET_STATE_DIR", str(tmp_path / "s-fc"))
+    monkeypatch.setenv("TENET_MODE", "live")
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+
+    app = app_module.create_app(seed=True)
+    with TestClient(app) as c:
+        # /mcp: a decision endpoint -> 503, decision deny, executed false.
+        r = c.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                                 "params": {"name": "payments.read",
+                                            "arguments": {"table": "payments", "limit": 1}}},
+                   headers={"x-warrnt-agent": "fin-reconcile", "x-warrnt-token": "whatever"})
+        assert r.status_code == 503, r.text
+        body = r.json()
+        assert body["decision"] == "deny"
+        assert body.get("executed") in (None, False)
+        assert body.get("result") is None
+
+        # /api/ask: refusal, never an allow, and the kernel is reported unavailable.
+        a = c.post("/api/ask", json={"q": "can you let this through?"})
+        assert a.status_code == 200, a.text
+        payload = a.json()
+        assert payload["kernel"] == "unavailable"
+        assert payload["answer"].lower().startswith("refusal")
+        assert "executed" not in payload or payload.get("executed") is not True
+
+        # Reads also refuse rather than invent state.
+        assert c.get("/api/overview").status_code == 503
+        assert c.get("/api/state").status_code == 503
+
+
+# ------------------------------------------------------------------------- PROOF panel (TASK D)
+def test_state_and_proof_expose_chain_and_correlation(client):
+    """TASK D: the PROOF panel reads ``/api/state`` (or ``/api/proof``) and gets the chain and
+    the run_id <-> action_id <-> receipt correlation, purely projected from kernel state."""
+    tok = _tokens(client)["fin-reconcile"]
+    r = _mcp(client, "fin-reconcile", tok, "payments.read", {"table": "payments", "limit": 3})
+    aid = r.json()["result"]["action_id"]
+
+    st = client.get("/api/state").json()
+    assert {"ok", "length", "head"} <= set(st["chain"])
+    assert st["chain"]["ok"] is True
+    assert st["proof"]["correlation"], "the correlation must not be empty after an action"
+    row = next(c for c in st["proof"]["correlation"] if c["action_id"] == aid)
+    assert row["receipt"] and row["receipt_in_chain"] is True
+    assert row["run_id"]
+
+    pf = client.get("/api/proof").json()
+    assert pf["chain"]["ok"] is True
+    assert pf["receipts"] and {"receipt", "decision"} <= set(pf["receipts"][0])
+
+
+# ------------------------------------------------------- D6: enforcement path stays local-only
+def test_enforcement_path_imports_no_paid_provider():
+    """D6 (Amendment 1): the decision path imports no paid SDK and names no paid host.
+
+    A positive check on the real tree - if a future change wires a paid provider into the
+    enforcement path, this fails at the import graph, before any request is served.
+    """
+    import ast
+
+    paid_roots = {"openai", "anthropic", "litellm", "cohere", "google", "boto3", "azure"}
+    for rel in ("control_plane/kernel.py", "control_plane/app.py", "control_plane/config.py"):
+        src = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        roots: set[str] = set()
+        for node in ast.walk(ast.parse(src)):
+            if isinstance(node, ast.Import):
+                roots.update(a.name.split(".")[0] for a in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                roots.add(node.module.split(".")[0])
+        assert not (roots & paid_roots), f"{rel} reaches a paid provider: {sorted(roots & paid_roots)}"
+        assert "api.deepseek.com" not in src, f"{rel} names the paid host api.deepseek.com"
+
+
+def test_ci_ships_runnable_control_plane_and_d6_gate():
+    """D10: the control-plane suite and the D6 gate ship runnable and are wired into CI."""
+    ci = (REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    assert "pytest -q tests/test_control_plane.py" in ci
+    assert "check_enforcement_local_only.py" in ci
+    assert (REPO_ROOT / "scripts/check_enforcement_local_only.py").exists()
+

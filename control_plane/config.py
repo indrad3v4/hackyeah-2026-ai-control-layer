@@ -15,10 +15,12 @@ LIVE = "LIVE"
 DEGRADED = "DEGRADED"
 DEMO = "DEMO"
 
-# The provider is named here so /health can report it without ever reading the key value.
+# The provider is *named* here so /health can report it without ever reading the key value.
+# The base URL is deliberately NOT here: the enforcement path must not reach a paid host at
+# all (AGENTS.md D6). The one place a paid endpoint is named is control_room/provider.py,
+# on the assistance surface, which holds no authority over any decision.
 PROVIDER = "deepseek"
 MODEL = os.environ.get("TENET_MODEL", "deepseek-chat")
-PROVIDER_BASE_URL = "https://api.deepseek.com"
 KEY_ENV = "DEEPSEEK_API_KEY"
 
 
