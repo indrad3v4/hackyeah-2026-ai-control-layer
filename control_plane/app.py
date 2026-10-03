@@ -526,19 +526,36 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
 
     # ---------------------------------------------------------- ACT-5: the live security trace
     @app.get("/api/live-trace")
-    def live_trace() -> JSONResponse:
-        """The Control Room's centre: the LAST real action composed with its authority evidence.
+    def live_trace(action_id: Optional[str] = None) -> JSONResponse:
+        """The Control Room's centre: one real action composed with its authority evidence.
 
         Read-only and credential-free - the page polls it, and it exposes no token. ``trace`` is
         ``null`` when the kernel holds no action at all: the honest empty state, never a
         fabricated event. Every field is authority-neutral (``authority_source: "tenet-kernel"``,
         ``llm_authority: false``) and every field whose evidence is missing is ``null`` and named
         in ``trace.incomplete``. Unavailable kernel -> 503, the same refusal body as every read.
+
+        ``action_id`` is an OPTIONAL, read-only query parameter (ACT-6 AC1). It is a read, not a
+        contract change: it reuses the kernel's one composer, so the body shape is identical to
+        the parameterless call. Omitted, the LAST real action is returned, exactly as before.
+        An ``action_id`` the ledger does not hold is answered with the route's existing refusal
+        body (the same shape ``GET /api/actions/{action_id}`` uses), never a fabricated trace.
         """
         k, unavailable = _kernel_or_503(app)
         if unavailable:
             return unavailable
         assert k is not None
+        if action_id:
+            composed = k.live_trace(action_id)
+            if composed is None:
+                return JSONResponse({"error": f"unknown action {action_id}",
+                                     "hint": "GET /api/actions lists the ledger"}, status_code=404)
+            return JSONResponse({
+                "trace": composed,
+                "authority_source": "tenet-kernel",
+                "llm_authority": False,
+                "mode": config.mode(),
+            })
         return JSONResponse({
             "trace": k.live_trace(),
             "authority_source": "tenet-kernel",

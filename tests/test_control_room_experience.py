@@ -27,6 +27,7 @@ import re
 import shutil
 import subprocess
 import threading
+import urllib.parse
 from pathlib import Path
 from pathlib import Path as _Path
 
@@ -118,15 +119,20 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
 
 class _Served:
-    """A real HTTP server on a free port, torn down afterwards (no external tooling)."""
+    """A real HTTP server on a free port, torn down afterwards (no external tooling).
 
-    def __init__(self, payloads):
+    ``handler`` defaults to :class:`_Handler`; a caller that needs to vary its answer per query
+    (ACT-6 AC4: ``/api/live-trace?action_id=…``) passes its own subclass.
+    """
+
+    def __init__(self, payloads, handler=_Handler):
         self._payloads = payloads
+        self._handler = handler
         self._server = None
         self._thread = None
 
     def __enter__(self) -> str:
-        self._server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+        self._server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), self._handler)
         self._server.payloads = self._payloads  # type: ignore[attr-defined]
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()
@@ -256,4 +262,173 @@ def test_ac3d_rate_limited_state_reads_as_waiting_with_real_retry_after():
         f"the rate-limited state does not read as waiting: {page!r}"
     assert PAGE.count('"Rate limited · retrying in "') == 1 or \
         "Rate limited · retrying in " in PAGE, "the page no longer carries the exact wording"
+
+
+# --------------------------------------------------------- ACT-6 AC3/AC4: the card follows selection
+# Two actions on the record, same resource, two agents, two verdicts (the screen's whole point).
+# The parameterless call returns the LATEST (the ALLOW); the query call returns THAT action. The
+# test drives the page's real ``selectEvent`` in a real chromium and asserts the headline card
+# repaints from the selected record - so it FAILS if the card keeps rendering the latest trace.
+_ALLOW_ACTION_ID = "A-0001"
+_DENY_ACTION_ID = "A-0002"
+
+_ALLOW_TRACE = {
+    "agent": "fx-trader",
+    "action": {"tool": "fx.read_rate", "class": "read_market_data", "intent": "read the EUR/USD rate",
+               "args": {"base": "EUR", "symbols": "USD"}},
+    "decision": "allow",
+    "reason": "entitled to market_data.fx.read",
+    "decided_by": "tenet-kernel",
+    "checks": {"identity": {"ok": True, "detail": "desk-operator"},
+               "entitlement": {"ok": True, "right": "market_data.fx.read"},
+               "warrant": {"id": "W-9001", "state": "active", "sig_ok": True, "ttl_remaining": 3488},
+               "policy": {"ok": True, "detail": "order ok"}},
+    "upstream": {"contacted": True, "http_status": 200,
+                 "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+                 "value": {"EUR": 1.0, "USD": 1.1225}, "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef3",
+                 "latency_ms": 34.856},
+    "receipt_id": "a7203811",
+    "action_id": _ALLOW_ACTION_ID,
+    "principal": "desk-operator",
+    "on_behalf_of": "treasury",
+    "timestamp": 1759420000,
+    "origin": "operator self-check",
+    "incomplete": [],
+}
+
+_DENY_TRACE = {
+    "agent": "support-copilot",
+    "action": {"tool": "fx.read_rate", "class": "read_market_data", "intent": "read the EUR/USD rate",
+               "args": {"base": "EUR", "symbols": "USD"}},
+    "decision": "deny",
+    "reason": "no entitlement to market_data.fx.read",
+    "decided_by": "tenet-kernel",
+    "checks": {"identity": {"ok": True, "detail": "support-ops"},
+               "entitlement": {"ok": False, "right": "market_data.fx.read"},
+               "warrant": {"id": "W-9002", "state": "active", "sig_ok": True, "ttl_remaining": 120},
+               "policy": {"ok": False, "detail": "no entitlement"}},
+    "upstream": {"contacted": False, "http_status": None, "endpoint": None, "value": None,
+                 "response_sha256": None, "latency_ms": None},
+    "receipt_id": "f617d705",
+    "action_id": _DENY_ACTION_ID,
+    "principal": "support-ops",
+    "on_behalf_of": "service-desk",
+    "timestamp": 1759420001,
+    "origin": "agent call",
+    "incomplete": [],
+}
+
+
+def _feed_event(trace):
+    """The ``/api/security-events`` row for a trace - ``event_id`` is the ``action_id`` the page
+    hands to ``selectEvent`` and therefore to ``/api/live-trace?action_id=…``."""
+    return {"event_id": trace["action_id"], "run_id": trace["action_id"], "agent": trace["agent"],
+            "actor": trace["agent"], "intent": trace["action"]["intent"], "resource": trace["action"]["tool"],
+            "tool": trace["action"]["tool"], "action_class": trace["action"]["class"],
+            "warrant": trace["checks"]["warrant"]["id"], "warrant_state": trace["checks"]["warrant"]["state"],
+            "policy": trace["checks"]["policy"]["detail"], "decision": trace["decision"],
+            "state": "decided", "reason": trace["reason"],
+            "upstream_contacted": trace["upstream"]["contacted"],
+            "upstream_call_id": None,
+            "execution_result": trace["upstream"] if trace["upstream"]["contacted"] else None,
+            "receipt_id": trace["receipt_id"], "model_trace_id": None, "model_requested": None,
+            "model_served": None, "boundary_attempts": 0, "authority_source": "tenet-kernel",
+            "llm_authority": False, "timestamp": trace["timestamp"]}
+
+
+def _selection_payloads(*, select_event_id):
+    """Canned API bodies for two events, plus a driver that clicks one row after the page loads.
+
+    ``/api/live-trace`` (no parameter) returns the LATEST (the ALLOW). ``?action_id=`` returns THAT
+    action's trace. The driver is served only to the test browser - the repo's ``index.html`` is
+    untouched by it.
+    """
+    events = [_feed_event(_ALLOW_TRACE), _feed_event(_DENY_TRACE)]  # newest first: ALLOW, DENY
+    by_id = {_ALLOW_ACTION_ID: _ALLOW_TRACE, _DENY_ACTION_ID: _DENY_TRACE}
+
+    def live_trace(req):
+        action_id = (getattr(req, "query", {}) or {}).get("action_id")
+        if action_id:
+            return {"__status__": 200, "trace": by_id.get(action_id), "authority_source": "tenet-kernel",
+                    "llm_authority": False, "mode": "live"}
+        return {"trace": _ALLOW_TRACE, "authority_source": "tenet-kernel", "llm_authority": False,
+                "mode": "live"}
+
+    driver = (f"<script>window.addEventListener('load',function(){{"
+              f"setTimeout(function(){{selectEvent({select_event_id!r})}},1500)}});</script>")
+    payloads = {
+        "/api/live-trace": live_trace,
+        "/api/overview": (lambda _r: {"mode": "live", "upstream_configured": True}),
+        "/api/model-usage": (lambda _r: {"calls_completed": 2, "total_tokens": 42, "input_tokens": 20,
+                                          "output_tokens": 22, "max_latency_ms": 12, "mode": "live",
+                                          "model_served": "deepseek-chat"}),
+        "/api/security-events": (lambda _r: {"count": len(events), "events": events, "mode": "live"}),
+        "__driver__": driver,
+    }
+    return payloads
+
+
+class _QueryHandler(_Handler):
+    """The test handler: it keeps the query string so ``?action_id=`` reaches the payload fn, and
+    it appends the selection driver to the served page."""
+
+    def _route(self):
+        parsed = urllib.parse.urlparse(self.path)
+        self.query = dict(urllib.parse.parse_qsl(parsed.query))  # type: ignore[attr-defined]
+        payloads = self.server.payloads  # type: ignore[attr-defined]
+        if parsed.path in ("/", "/index.html"):
+            body = (PAGE + payloads["__driver__"]).encode("utf-8")
+            self.send_response(200)
+            self.send_header("content-type", "text/html; charset=utf-8")
+        elif parsed.path in payloads:
+            data = dict(payloads[parsed.path](self))
+            status = int(data.pop("__status__", 200))
+            body = json.dumps(data).encode("utf-8")
+            self.send_response(status)
+            self.send_header("content-type", "application/json")
+        else:
+            body = b"{}"
+            self.send_response(404)
+            self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    do_GET = _route
+
+
+def test_ac6_card_follows_the_selected_record_not_the_latest():
+    """AC3/AC4: selecting a record repaints the headline card from THAT record.
+
+    The latest action is the ALLOW; the DENY is earlier. The driver selects the DENY row. If the
+    card keeps rendering the latest trace (the defect), the card still shows the ALLOW and this
+    test fails - which is exactly how the red proof is taken.
+    """
+    payloads = _selection_payloads(select_event_id=_DENY_ACTION_ID)
+    with _Served(payloads, handler=_QueryHandler) as url:
+        dom = _rendered_dom(url)
+
+    title = _text(dom, "actionTitle")
+    card = _text(dom, "traceCard")
+    assert card, "the action card rendered nothing"
+    # The selected DENY is on the card: its agent, its verdict, its boundary result, its receipt.
+    assert "support-copilot" in title, f"the headline card did not follow the selected record: {title!r}"
+    assert "fx-trader" not in title, f"the card still shows the latest (ALLOW) action: {title!r}"
+    assert "DENY" in card, f"the selected DENY verdict is not on the card: {card!r}"
+    assert "NOT CONTACTED" in card, f"the selected boundary result is not on the card: {card!r}"
+    assert "f617d705" in card, f"the selected receipt is not on the card: {card!r}"
+    # And the ALLOW's receipt must NOT be shown as the selected record's receipt.
+    assert "a7203811" not in card, f"the card shows the latest action's receipt, not the selection: {card!r}"
+
+
+def test_ac6_card_defaults_to_the_latest_action_on_load():
+    """AC3: with no selection the default is still the latest action (the ALLOW here)."""
+    payloads = _selection_payloads(select_event_id=_ALLOW_ACTION_ID)
+    payloads["__driver__"] = ""  # nothing is clicked, so the card must show the latest trace
+    with _Served(payloads, handler=_QueryHandler) as url:
+        dom = _rendered_dom(url)
+    title = _text(dom, "actionTitle")
+    card = _text(dom, "traceCard")
+    assert "fx-trader" in title, f"the default card is not the latest action: {title!r}"
+    assert "a7203811" in card, f"the latest action's receipt is missing from the default card: {card!r}"
 

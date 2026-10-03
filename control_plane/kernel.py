@@ -609,8 +609,8 @@ class Kernel:
             return {}
         return out
 
-    def live_trace(self) -> Optional[dict[str, Any]]:
-        """The LAST real action, composed with its authority evidence (ACT-5 AC1/AC1b).
+    def live_trace(self, action_id: Optional[str] = None) -> Optional[dict[str, Any]]:
+        """The live ``trace`` object: one action, composed with its authority evidence (ACT-5 AC1).
 
         This is a read-only join over records the kernel already holds: the action ledger
         (what was asked and what it decided), the agent register (identity + delegation), the
@@ -619,9 +619,21 @@ class Kernel:
         evidence is missing is ``null`` **and named in ``incomplete``** - no field is rounded
         up to look like a permission (``authority_source`` is always ``tenet-kernel``).
 
+        ``action_id`` is optional and read-only (ACT-6 AC1/AC2): omitted, the LAST real action
+        is composed, exactly as before. When given, THAT action is composed through the same
+        :meth:`_trace_from` composer - there is one composer, not two. An ``action_id`` the
+        ledger does not hold yields ``None`` (the caller answers 404), never a fabricated trace.
+
         ``None`` when the kernel holds no action at all: an empty kernel yields ``trace: null``
         and nothing else is invented.
         """
+        if action_id:
+            row = self.action(str(action_id))
+            if row is None:
+                return None
+            # ``action()`` returns the ledger row plus the agent-level identity fields; the
+            # composer reads only the ledger keys, so the same body serves both cases.
+            return self._trace_from(row)
         actions = self.actions(200)
         if not actions:
             return None
