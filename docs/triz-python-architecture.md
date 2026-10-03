@@ -1,78 +1,114 @@
-> Provenance: this is the architecture half of the action-class work, produced with TRIZ as the
-> lens (Kukalev, *ТРИЗ*, 2014 — the ingested source; the numbered principles come from the public
-> 40-principles list at triz.natm.ru, **not** from the book — the author removed that list from his
-> edition). It is a design record, not runtime: nothing here is imported by the node.
-> It answers one question the jury will ask — *why this architecture type and not another* — with
-> the measured contradictions that pick the type, not with taste.
+# Why this architecture — the microkernel, checked against its canon
+
+> **Provenance and scope.** The architecture record for the action-class work, produced with TRIZ
+> as the lens. It is a **design record, not runtime**: nothing here is imported by the node. It
+> answers the one question a jury asks — *why this architecture type and not another* — with the
+> contradictions the design had to resolve, not with taste.
 >
-> Ties to the frozen decisions: the «one catalog, no hardcoding» rule is D3; the table-driven
-> classes are its consequence; the pure-function core is what makes D10 (tests as a deliverable)
-> and D5 (decide before execution) cheap.
+> Ties to the frozen decisions: D3 (one catalog, no hardcoding), D5 (decide before execution),
+> D10 (the test suite is a deliverable).
+>
+> Every number below was **measured** against the mirrored node (`node/`, synchronised from
+> `indrad3v4/warrnt`) at the commit the mirror names. Re-measure with
+> [Verify it yourself](#verify-it-yourself); do not trust the digits.
 
-## Праверка па каноне (GeeksforGeeks, «Microkernel Architecture Pattern», 23.07.2025)
+## The canon check
 
-Крыніца: <https://www.geeksforgeeks.org/system-design/microkernel-architecture-pattern-system-design/>.
-Канон называе шэсць складнікаў: мікраядро · карыстальніцкія сэрвісы · сістэмныя выклікі ды IPC ·
-драйверы па-за ядром · **кіраванне сэрвісамі (загрузка/выгрузка/каардынацыя)** · прыкладны пласт.
+Source: [Microkernel Architecture Pattern, GeeksforGeeks, 23.07.2025](https://www.geeksforgeeks.org/system-design/microkernel-architecture-pattern-system-design/).
+The pattern keeps a **minimal core** that only coordinates, with every additional capability as a
+module outside it, reached through a well-defined interface, so features are *added without
+modifying the core*. Six components it names, and what we have:
 
-| Складнік па каноне | Што ў нас | Вердыкт |
+| Canon component | What we have | Verdict |
 |---|---|---|
-| Ядро мінімальнае, толькі каардынацыя | `proxy.py` 247 радкоў, 14 % вузла; табліц і правілаў унутры няма — яны ў `seed.py`/`policy.py`/`actions.py` | **трымаецца** |
-| Сэрвісы — асобныя модулі па-за ядром | 12 модуляў: `policy`, `actions`, `actors`, `seed`, `registry`, `anchor`, `upstream`, `warrants`, `canonical`, `api`, `cli`, `demo` | **трымаецца** |
-| Дакладна вызначаная мяжа паміж ядром і модулямі | вонкавая мяжа — HTTP + JSON-RPC (MCP); унутраная — кантракт `Gate` (імя · парадак · `check(ctx) -> (рашэнне, прычына, дэталь) | None`), апублікаваны як тып у `gates.py` | **трымаецца** |
-| IPC / сістэмныя выклікі | транспарт — HTTP/JSON-RPC; `upstream.py` — адаптар да MCP, ядро не ведае, хто па той бок | **трымаецца (як port/adapter)** |
-| Кіраванне сэрвісамі: загрузіць/выгрузіць/падмяніць без змены ядра | `gates.load()` — дыскаверы `pkgutil` па `warrnt/plugins/`; кожны модуль рэгіструе сябе сам; `register(..., replace=True)` — замена, `unregister(name)` — выгрузка; ядро толькі пытае рэестр | **трымаецца** |
-| Драйверы па-за ядром | upstream-выканаўца будуецца фабрыкай `build_upstream()`, ядро пра яго не ведае | **трымаецца** |
+| Minimal core, coordination only | `proxy.py` (~250 lines, ~11% of the package): recognise → ask the registry → execute → receipt. No rules inside it — they live in `seed.py` / `policy.py` / `actions.py` | holds |
+| Services as separate modules outside the core | 17 modules: `policy`, `actions`, `actors`, `seed`, `registry`, `anchor`, `upstream`, `warrants`, `canonical`, `api`, `cli`, `demo`, `models`, `gates`, `breakglass`, `config`, plus `plugins/` | holds |
+| A well-defined core/module boundary | Outer: HTTP + JSON-RPC (MCP). Inner: the `Gate` contract — name · order · `check(ctx) -> (decision, reason, detail) | None` — published as a type in `gates.py` | holds |
+| IPC / system calls | Transport is HTTP + JSON-RPC; `upstream.py` is the adapter to MCP, and the core does not know what is on the other side | holds (as port/adapter) |
+| Service management: load / unload / replace **without touching the core** | `gates.load()` discovers `warrnt/plugins/` with `pkgutil`; each module registers itself; `register(..., replace=True)` swaps and `unregister(name)` removes at runtime; the core only asks the registry | holds |
+| Drivers outside the core | The upstream executor is built by the `build_upstream()` factory; the core knows nothing about it | holds |
 
-**Вердыкт (абноўлены):** прэтэнзія зачыненая цалкам — у рэпазітары з'явіўся сапраўдны рэестр. Ядро `proxy.py` не змяшчае ніводнага выкліку рашэння (`classify(`, `apply_class(`, `engine.evaluate(`, `actors.check(` — 0 супадзенняў у зыходніку; гэта ўласна праверка, а не абяцанка), гейты прыехалі ў `warrnt/plugins/`, дыскаверы ідзе праз `pkgutil`, а «дадаць гейт» = «дадаць файл».
+**Verdict.** The claim closes — and it is checked, not promised. `proxy.py` contains **zero**
+decision calls (`classify(`, `apply_class(`, `engine.evaluate(`, `actors.check(`): the grep in
+[Verify it yourself](#verify-it-yourself) returns 0. The four gates live in four separate files
+under `warrnt/plugins/`, discovery is `pkgutil`, and **"add a gate" is "add a file"**. The order is
+declared rather than implied:
 
-Што гэта каштавала і чым даказана:
-1. `gates.py` — рэестр (імя · парадак · `check`), `load()`/`register`/`unregister`/`ordered`; канвеер ламаецца гучна (`RuntimeError`), калі ніводзін гейт не вырашыў — ціхі дэфолт забаронены.
-2. `tests/test_gates.py` (6 тэстаў) — парадак гейтаў; «у ядры няма выклікаў рашэння»; **гейт, кінуты ў пакет з тэста, падхопліваецца і спыняе канвеер, а ядро не змененае**; замена і выгрузка ў рантайме; дубль імя адмаўляецца без `replace=True`.
-3. Паводзіны не змяніліся: 86 тэстаў, `console-check` 35/35, `upstream` 18/18, `security` 29/29, `verify_live` 20/20 — усе зялёныя пасля рэфактарынгу.
+```
+act_class (10) → actor_scope (20) → break_glass (25) → order_policy (30)
+```
 
-Кошт, які канон называе для гэтага тыпу (і які мы павінны прызнаць): накладныя на сувязь, складанасць камунікацыі, цяжэй адладжваць і тэставаць міжмодульныя швы, складанасць інтэграцыі новых модуляў. Наш контр-аргумент — 80 тэстаў ідуць без сервера і 35/35 праверкі кансолі, бо мяжа тонкая: адзін фасад `MCPProxy` + адаптары.
+**What it cost, and what proves it:**
 
-## TRIZ → тыпы Python-архітэктуры для нашага выпадку
+1. **`gates.py`** — the registry (name · order · `check`), with `load()` / `register()` /
+   `unregister()` / `ordered()`. A pipeline that runs off the end **raises `RuntimeError`**: a
+   silent default is forbidden, because a control layer that does nothing without saying so is
+   worse than one that stops.
+2. **`tests/test_gates.py`** (6 tests) — gate order; "the core contains no decision calls"; **a
+   gate dropped into the package is picked up and stops the pipeline with the core unchanged**;
+   replace and unregister at runtime; a duplicate name refused without `replace=True`.
+3. **`tests/test_breakglass.py`** (19 tests) — the emergency path proves the boundary: the
+   `break_glass` gate only *looks up* a live grant and puts it in `ctx.extra`; the decision stays
+   with `order_policy`. A grant can never make anything happen by itself.
+4. **Behaviour did not change under the refactor** — the suite green, `console-check` 35/35,
+   `upstream` 18/18, `security` 29/29, `verify_live` 20/20.
 
-**Адказ першым радком:** TRIZ не выбірае стыль на смак — ён бярэ тыя тыпы, што здымаюць **вымеранае** супярэчнасць вузла. Для нашага выпадку гэта пяць названых тыпаў (microkernel+plugin, proxy з ланцугом інтэрцэптараў, hexagonal ports-adapters, data-driven каталог, event sourcing) плюс state machine рашэнняў, а ідэалам (ІКР) служыць **чыстае ядро-функцыя без I/O**.
+**The cost the canon names, which we accept:** communication overhead, harder debugging and testing
+of the cross-module seams, and integration cost for each new module. Our counter-argument is that
+the boundary is thin — one facade (`MCPProxy`) plus adapters — so the suite still runs **without a
+server**.
 
-| Тып Python-архітэктуры | Прынцып (спіс 40) | Дзе ў нас | Замер |
-|---|---|---|---|
-| **Microkernel + plugin registry** | 1 дробление · 2 вынесение | `proxy.py` — ядро: пазнаць → спытаць рэестр → выканаць → квітанцыя; **рэестр `gates.py`** + гейты па асобных файлах `plugins/act_class.py`, `plugins/actor_scope.py`, `plugins/order_policy.py`, якія самі сябе рэгіструюць; ядро не называе ніводнага гейта, бо збірае іх `pkgutil`-дыскаверы; `register(..., replace=True)` і `unregister()` — замена і выгрузка ў рантайме | 86 тэстаў без сервера, з іх 6 пра рэестр (у т.л. «гейт, кінуты файлам, падхопліваецца і спыняе канвеер») |
-| **Proxy / Facade + interceptor chain** | 24 посредник | `proxy.py: MCPProxy` — адзін аб'ект, што вырашае; `api.py` (273 р.) — тонкі перакладчык | усе 20 праверкі `verify_live` |
-| **Hexagonal (ports & adapters)** | 2 вынесение · 28 структураванае поле | fastapi/pydantic толькі ў `api.py`/`actors.py`; ядро — stdlib; `upstream.py` — адаптар да MCP | 86 тэстаў бягуць без сервера |
-| **Data-driven / table-driven каталог** | 2 вынесение · 10 предварительное действие | `seed.py` (43 р.), `DECIDER`/`CLASS_OF_TOOL` у `actions.py` | рашэнне чытаецца з табліцы, а не з if-else |
-| **Event sourcing: append-only log + hash chain** | 23 обратная связь · 25 самообслуживание | `registry.py` (77 р.), `anchor.py` (80 р.); `/verify` — самаабслугоўванне | 48 квітанцый, ланцуг пералічваецца з genesis |
-| **State machine / decision ladder** | 28 (неструктурнае → структураванае) · 16 | `models.Decision` (allow/deny/human/revoked/expired) + лесвіца класаў | клас **паднімае** адказ, ніколі не апускае |
-| **Чыстая функцыя як ІКР** | 2 вынесение | `PolicyEngine.evaluate(warrant, tool, params) → Decision`, без сеткі і дыска | усе тэсты — долі секунды |
+## Why these types — the contradictions that pick them
 
-### Якія супярэчнасці гэта выбірае (гэта і ёсць адказ «чаму менавіта такія»)
+- **Policy inside a framework** (a DI container, pydantic models as the domain) is convenient,
+  **but** the core can no longer be tested without a running server and the proof starts depending
+  on someone else's middleware → **move the decision out**; one thin line stays in the call path.
+- **One element must be both inside and outside.** A gate **must** sit *inside* the call path to
+  stop execution before it happens, **and** *outside* every framework to be provable → a **pure
+  decision function** plus a thin adapter in the path.
+- **One process is cheap and auditable, but does not scale to N teams**; microservices scale, but
+  the hash chain breaks between processes and "one truth" disappears → one decision core, each
+  upstream behind its own adapter.
 
-- **ТП-1:** *калі* пакласці палітыку ў фрэймворк (DI, pydantic-мадэлі як дамен), *то* зручна, **НО** ядро нельга праверыць без запушчанага сервера, а доказ залежыць ад чужога middleware → **№2 вынесение**: рашэнне — вонкі; у шляху выкліку застаецца адна лінія.
-- **ФП:** адзін і той жа элемент (гейт) **павінен** быць унутры шляху выкліку, каб спыніць выкананне, **І** па-за ўсякім фрэймворкам, каб яго можна было даказаць → **№1 дробление + №2**: чыстая функцыя рашэння + тонкі адаптар (PEP) у шляху.
-- **ТП-2:** адна працэсная адзінка танна і аўдытуецца, **НО** не масштабуецца на N камандаў; microservices масштабуюцца, **НО** ланцуг хэшаў рвецца паміж працэсамі і «адна праўда» знікае → **№24 посредник**: кожны upstream за сваім адаптарам, адно ядро рашэння.
+## What this rules out — cost without function
 
-### Што TRIZ забараняе ў нашым выпадку (кошт без функцыі)
+An ORM or database under the receipts (mutable tables make the record rewriteable), a DI container,
+a shared "security manager" singleton, splitting the gates across deployments, deep policy
+inheritance instead of a table, and async everywhere.
 
-ORM/СУБД пад квітанцыі (сталы робяць запіс зменным), DI-кантэйнер, агульны сінглтон «security manager», мікрасэрвіснае дзяленне гейтаў па дэплоі, глыбокая спадчыннасць палітык замест табліцы, async-усюды. Прычына адна, з кнігі.
+## Verify it yourself
 
-### Цытаты
+```bash
+cd node
+# 1. the core decides nothing (expect: 0)
+grep -cE "classify\(|apply_class\(|engine\.evaluate\(|actors\.check\(" warrnt/proxy.py
 
-> «…идеальная система — это такая, которая выполняет много функций, при минимальных затратах — см. формулу 1.1.»
-> — Кукалеў, 2014, гл. 7, §7.1.1 «Идеальная — значит…»
+# 2. the registry, the gates and their order
+grep -n "register(Gate(" warrnt/plugins/*.py
+python3 -c "from warrnt import gates; gates.load(); print([(g.name, g.order) for g in gates.ordered()])"
 
-> «Формулируя ИКР, мы сразу ориентируем себя на поиск идеальной системы, в которой бы не было конфликта.»
-> — там жа, гл. 1 (базавыя мадэлі)
+# 3. the suite and the live checks
+python3 -m pytest -q --collect-only | tail -1
+make console-check && make upstream-check
+```
 
-> «Физическое противоречие (ФП) — предъявление требований к наличию противоположных (взаимоисключающих) свойств одного элемента для выполнения им разных функций»; операцыйная форма: «объект (наших улучшений) должен обладать свойством А, чтобы … НО объект должен обладать свойством неА, чтобы …»
-> — там жа, гл. 1, §1.6
+## Dependencies
 
-> «Оперативная зона (ОЗ) — пространство, в пределах которого осуществляется взаимодействие»
-> — там жа, гл. 1, §1.3.5. У нас ОЗ = шлях выкліку `tool_call`.
+- **External** — the canon article linked above (a live URL; it blocks bare `curl`, so open it in a
+  browser). Kukalev, *ТРИЗ*, 2014 supplies the method, not the vocabulary: **the numbered
+  40-principles list is not in that book** — the author removed it from his edition — so no
+  principle number is cited here. Nothing in this document rests on a source we cannot point at.
+- **Internal** — the mirrored node (`node/`) and its tests under `node/tests/`. The counts quoted
+  are that node's, measured at the mirrored commit.
+- **Runtime** — **none.** Nothing imports this file; it is documentation. Its only real dependency
+  is that its claims stay true, which is why the verification block exists and why
+  `scripts/doc_qa.py` in the submission repo checks this document's vocabulary and counts
+  automatically.
 
-**Пазнака мяжы:** спіс 40 прыёмаў — **не з кнігі** (аўтар зняў яго са свайго выдання); назвы №1 дробление, №2 вынесение, №10 предварительное действие, №16, №23 обратная связь, №24 посредник, №25 самообслуживание, №28 узятыя з нашага даведніка па публічным спісе triz.natm.ru і звераныя па назвах.
+## The design decision this record produced
 
-### Практычны вынік для наступнага кроку
-
-Рашэнне, якое стаіць на чарзе (break-glass), па гэтай жа логіцы не павінна быць сцягам у `PolicyEngine` — сцяг звязвае выключэнне з табліцай правілаў (№2 парушаецца). Правільны тып — **кароткачасовы дазвол-аб'ект (№24 посредник)**: асобная сутнасць з TTL, падпісаная і квітаваная, праз якую праходзіць менавіта гэты выклік, і якая сама сябе закрывае.
+Break-glass, the emergency route, **must not be a flag inside `PolicyEngine`** — a flag couples the
+exception to the rule table it is meant to bypass. The right type is a **short-lived permit
+object**: a separate entity with a TTL, signed and receipted, that *this* call passes through and
+that closes itself. That is what shipped — `warrnt/breakglass.py` with the `break_glass` gate and
+`tests/test_breakglass.py`. The record's reasoning and the code agree.
