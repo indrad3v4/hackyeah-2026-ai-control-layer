@@ -189,7 +189,7 @@ body.innerHTML=
   actRow("Who it acts for",dashHtml(t.principal,"principal not recorded")+(t.on_behalf_of?` · on behalf of ${esc(t.on_behalf_of)}`:" · on behalf of not recorded"))+
   actRow("Where the data would go",`${dash(up.endpoint)?esc(up.endpoint):"upstream not contacted — no destination in this record"} <span class="mono">· upstream reached: ${esc(yn(bc))}</span>`)+
   actRow("What TENET decided",`<span class="decisionBadge ${dcls}">${esc((t.decision??"recorded").toString().toUpperCase())}</span> <span class="mono">· ${esc(t.reason??"reason not recorded")}</span>`)+
-  actRow("Did it happen",`<div class="boundary ${bcls}">${esc(bhead)}<span class="bdSub">${esc(bsub)}</span></div>`);
+  actRow("Did it happen",`<div class="boundary ${bcls}">${esc(bhead)}<span class="bdSub">${bsub}</span></div>`);
 out.className="outcome "+(bc===true?"crossed":bc===false?"notcrossed":"");
 out.innerHTML=(bc===true?`<b>Yes — it happened.</b> The far side answered, so this action really crossed the boundary.`
   :bc===false?`<b>No — nothing happened.</b> TENET denied the call before execution, so the far side was never reached and no data moved.`

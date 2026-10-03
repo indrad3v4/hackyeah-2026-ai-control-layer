@@ -432,3 +432,34 @@ def test_ac6_card_defaults_to_the_latest_action_on_load():
     assert "fx-trader" in title, f"the default card is not the latest action: {title!r}"
     assert "a7203811" in card, f"the latest action's receipt is missing from the default card: {card!r}"
 
+
+def test_ac6e_card_prints_the_upstream_url_once_escaped_never_double_escaped():
+    """ACT-6e: the card prints the upstream URL with a plain ``&`` in every row - never ``&amp;``.
+
+    The endpoint the kernel recorded carries a plain ``&`` (``...?base=EUR&symbols=USD``). The
+    "Where the data would go" row escapes it once for HTML insertion, so the browser decodes it
+    back to ``&``. The "Did it happen" outcome row built its sub-line as already-escaped HTML and
+    then escaped that whole string a SECOND time, so the entity survived to ``textContent`` as the
+    literal four characters ``&amp;`` - the card disagreed with the URL the kernel actually called.
+    This renders the card from a real chromium and asserts on the visible text: the URL must read
+    ``base=EUR&symbols=USD`` and the card text must carry no literal ``&amp;``.
+    """
+    endpoint = "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD"
+    trace = json.loads(json.dumps(_ALLOW_TRACE))  # a canned allow whose endpoint has the plain &
+    trace["upstream"] = {**trace["upstream"], "endpoint": endpoint, "contacted": True}
+    payloads = _api_payloads(trace=trace)
+    with _Served(payloads) as url:
+        dom = _rendered_dom(url)
+
+    card = _text(dom, "traceCard")
+    assert card, "the action card rendered nothing"
+    # (a) the URL is printed with a plain & exactly as the kernel recorded it.
+    assert "base=EUR&symbols=USD" in card, \
+        f"the card did not print the upstream URL with a plain '&': {card!r}"
+    # (b) the card text carries no literal entity: it was escaped and then assigned as text.
+    assert "&amp;" not in card, \
+        f"the card leaked a double-escaped entity into its text: {card!r}"
+    # The URL appears in more than one row (destination and outcome); both must agree, unescaped.
+    assert card.count("base=EUR&symbols=USD") >= 2, \
+        f"the URL is not printed identically in every row that shows it: {card!r}"
+
