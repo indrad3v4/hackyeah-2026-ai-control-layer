@@ -97,7 +97,7 @@ This makes the question auditable: **which agent acted, for whom, and under whic
 
 ### What happens when an action is denied?
 
-The upstream is not contacted through the permitted execution path, and the denial is recorded as an event.
+The denied action cannot invoke the upstream through TENET's enforced execution path, and the denial is recorded as an event. TENET makes this guarantee at its enforcement boundary; it does not claim control over connections that bypass TENET.
 
 That means the security team can distinguish:
 
@@ -325,7 +325,7 @@ DeepSeek is configured in the deployment environment with `DEEPSEEK_API_KEY`. Ne
 2. **No entitlement, no data.**
 3. **The agent cannot grant itself authority.**
 4. **The model is not the authority.**
-5. **The upstream is never contacted before the decision.**
+5. **TENET never permits upstream contact before the kernel decision.**
 6. **A denial is an event.**
 7. **Proof is evidence, not narration.**
 8. **Unknown stays unknown.**
