@@ -19,9 +19,16 @@ PAGES = [ROOT / "index.html", ROOT / "node" / "warrnt" / "console.html"]
 
 
 def main() -> int:
-    html = PAGE.read_text(encoding="utf-8")
-    blocks = [b for b in re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)
-              if b.strip()]
+    pages = [(p, p.read_text(encoding="utf-8")) for p in PAGES if p.exists()]
+    if len(pages) != len(PAGES):
+        missing = [str(p.relative_to(ROOT)) for p in PAGES if not p.exists()]
+        print("check_console: missing console surface(s): " + ", ".join(missing))
+        return 1
+    blocks = []
+    for page, html in pages:
+        page_blocks = [b for b in re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)
+                       if b.strip()]
+        blocks.extend((page, b) for b in page_blocks)
     node = shutil.which("node")
     if not node:
         print("check_console: node not found - SKIP (cannot parse JavaScript)")
@@ -41,6 +48,7 @@ def main() -> int:
         Path(path).unlink(missing_ok=True)
     print(f"check_console: {len(blocks) - failed}/{len(blocks)} inline blocks parse across {len(pages)} surfaces")
     return 1 if failed else 0
+
 
 
 if __name__ == "__main__":
