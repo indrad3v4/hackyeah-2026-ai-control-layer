@@ -92,12 +92,17 @@ exists whether the action happened or not.
                   "warrant": "W-4419", "ttl": 420, "ttl0": 420, "last": "..." } ],
   "warrants": [ { "id": "W-4419", "agent": "...", "scope": "...",
                   "ttl": 420, "ttl0": 420, "state": "active|revoked|expired" } ],
+  "actions":  [ { "class": "observe", "decider": "machine",
+                  "decider_text": "the node decides", "meaning": "...",
+                  "tools": ["infra.plan"] } ],
   "receipts": [ { "t": "14:02:43", "decision": "allow|deny|redact|human|revoked",
                   "what": "<code>crm.read</code> ...",
                   "meta": "order W-4419 · policy: read-only",
                   "hash": "d46ef77e" } ]
 }
 ```
+
+The `actions` field is an explicit D13 contract extension. It is the machine-readable Stage 4 taxonomy consumed by the console's taxonomy strip; its six class values are `observe | read_personal | draft | write_reversible | irreversible | authorize`.
 
 Two of the five decisions **execute**, and the `tools/call` result says so:
 
