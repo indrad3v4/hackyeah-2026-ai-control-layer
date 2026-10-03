@@ -1,0 +1,85 @@
+@startuml
+title WARRNT — microkernel control layer (component view)
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 18
+skinparam ranksep 40
+
+package "Consumers" {
+  [Agent / MCP client] as AGENT
+  [App / LLM client] as APP
+  [Security console] as CONSOLE
+  [Audit / SIEM export] as AUDIT
+}
+
+package "Adapters — swappable, no control logic" {
+  [MCP edge adapter] as AD_MCP
+  [OpenAI-compatible HTTP adapter] as AD_HTTP
+  [In-process SDK middleware] as AD_SDK
+}
+
+package "KERNEL — small, frozen, control-free" {
+  [Pipeline executor\nfail-closed, per-step timeout] as EXEC
+  [Plugin registry\nload · order · enable · hot reload] as REG
+  [Decision algebra\nforbid > permit · class raises] as ALG
+  [Receipt writer\nhash chain + signed anchor] as RCP
+}
+
+package "Control plugins — one per control family" {
+  [actor_registry] as P1
+  [warrant_verify] as P2
+  [action_taxonomy] as P3
+  [destructive_forbid] as P4
+  [egress_volume] as P5
+  [budget_governor] as P6
+  [pattern_inspector] as P7
+  [signature_feed] as P8
+  [semantic_judge] as P9
+  [redactor] as P10
+}
+
+database "Single control catalog\npolicy.yaml · thresholds · budgets" as CAT
+database "Receipt store\nreceipts.jsonl + anchor.log" as STORE
+[Upstream MCP server / local model] as UP
+
+AGENT --> AD_MCP
+APP --> AD_HTTP
+AGENT --> AD_SDK
+AD_MCP --> EXEC
+AD_HTTP --> EXEC
+AD_SDK --> EXEC
+
+EXEC --> REG : resolve chain
+REG --> CAT : read + watch
+EXEC --> P1
+EXEC --> P2
+EXEC --> P3
+EXEC --> P4
+EXEC --> P5
+EXEC --> P6
+EXEC --> P7
+EXEC --> P8
+EXEC --> P9
+EXEC --> P10
+EXEC --> ALG : verdicts
+ALG --> RCP : decision
+RCP --> STORE
+EXEC --> UP : only on allow
+P8 <.. CAT : external feed path
+STORE --> CONSOLE : GET /state
+STORE --> AUDIT : export
+
+note bottom of P4
+  flat deny · non-delegable
+  no human path in the request
+end note
+note bottom of P5
+  egress class · volume-aware
+end note
+note right of REG
+  adding a control family
+  does not touch the kernel
+end note
+@enduml

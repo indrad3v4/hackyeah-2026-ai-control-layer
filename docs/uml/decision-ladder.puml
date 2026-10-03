@@ -1,0 +1,46 @@
+@startuml
+title Decision ladder — a class may raise, never lower
+skinparam shadowing false
+
+[*] --> Evaluating
+
+state Evaluating {
+  [*] --> Preflight
+  Preflight : identity · actor class · warrant signature · TTL
+  Preflight --> Classify : ok
+  Preflight --> Deny : invalid / unregistered / expired
+
+  Classify : action class from tool + parameters
+  Classify --> Constrain : classified
+  Classify --> Deny : unclassified (fail-closed)
+
+  Constrain : non-delegable forbids · budget
+  Constrain --> Inspect : clean
+  Constrain --> Deny : flat forbid / budget exceeded
+
+  Inspect : deterministic patterns · signatures
+  Inspect --> Judge : clean
+  Inspect --> Redact : sensitive but tolerable
+  Inspect --> Deny : injection / secret / known exploit
+
+  Judge : local model · semantic intent
+  Judge --> Allow : safe
+  Judge --> Redact : borderline
+  Judge --> Deny : exfiltration intent
+}
+
+Allow : ALLOW -> upstream
+Redact : REDACT -> transform, then upstream
+Deny : DENY -> nothing runs, receipt written
+
+Allow --> [*]
+Redact --> [*]
+Deny --> [*]
+
+note right of Constrain
+  Raise-only: if the class floor is
+  human/destructive, an upstream ALLOW
+  is raised, never lowered.
+  deny > revoked/expired > human > redact > allow
+end note
+@enduml
