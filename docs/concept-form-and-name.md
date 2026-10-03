@@ -69,18 +69,28 @@ differentiator here is not the presence of a judge — everyone has one — but 
 every "no"**. Vendors that decide out-of-band state the problem themselves: alerting is
 not a control, because the log arrives after the table is gone.
 
-## 5. The name: ADNOT
+## 5. The name: TENET
 
-*adnotare* — "to note down"; in Roman law an *adnotatio* was the note that gave a
-document its force. For a witness at the boundary the meaning is the action itself:
-**note the verdict down, and show it.**
+Set by the founder on 2026-10-03, replacing ADNOT.
 
-| Check (2026-10-03) | Result |
-|---|---|
-| `.dev` / `.io` / `.ai` | free (`.com` taken) |
-| npm / PyPI | 404 / 404 |
-| US trademark registry | **0 results** for "adnot" |
-| Live product with this name | none in AI or security (only surnames and a small Indian dev firm) |
+*tenet* — Latin, third person of *tenēre*, "to hold": **the order holds the action**. It is also
+the palindrome at the centre of the **Sator Square** — the oldest word square known (Pompeii,
+before AD 79) — reading identically in both directions, which is exactly what the record must do:
+a rewrite has to show. The name it replaced, **ADNOT** — *adnotare*, "to note down", in Roman law
+an *adnotatio* was the note that gave a document its force — was dropped by the founder's
+decision, not for a defect: it was the cleanest name on the board (zero marks, free domains) and
+it stays on the record as a spare.
+
+| Check (2026-10-03) | TENET | ADNOT (kept for reference) |
+|---|---|---|
+| `.dev` / `.io` / `.ai` | `.dev`, `.io` free (no DNS record); `.ai` taken (44.232.173.249) | all three free (no DNS) |
+| npm / PyPI | taken / taken (HTTP 200) | 404 / 404 |
+| US trademark registry | **crowded — not clearable**: USPTO 99151322 "TENET" (American Sports Licensing, live), TENET TECHNOLOGIES (filed 2000), Tenet Apps FZCO | **0 results** for "adnot" |
+| Live product with this name | Tenet Healthcare, the 2020 film, Tenet Apps | none in AI or security (only surnames and a small Indian dev firm) |
+
+Honest reading: TENET names the **idea** here and in the pitch. It is not a product mark — a
+product or a domain carrying it would need its own clearance, or one of the spares (ADNOT,
+PRAES).
 
 Rejected finalists, with the reason kept on the record:
 
@@ -90,6 +100,8 @@ Rejected finalists, with the reason kept on the record:
 - **SURETY · WARDEN · VERDICT · ATTEST** — live class 9/42 trademarks, including
   "Warden AI" and an assurance-software vendor a banking jury may know.
 - **VOWEN · SIGLUM** — live companies (a voice-to-text AI; Siglum Labs Ltd).
+- **ADNOT** — the Stage-3 name, dropped 2026-10-03 by the founder's decision; still the cleanest
+  on the board (zero marks, `adnot.dev` / `.io` / `.ai` free, not on npm or PyPI) — the spare.
 - **PRAES** — clean and legally the most precise ("the one who answers for another"),
   kept as the reserve name; on the ear it reads as "prays".
 
