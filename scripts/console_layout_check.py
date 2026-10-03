@@ -47,7 +47,7 @@ def main(path: Path) -> int:
     )
     check(
         "footer is outside the main content sections",
-        bool(re.search(r"</section>\s*<footer>.*?</footer>\s*</div>\s*<script", layout, re.S)),
+        bool(re.search(r"</section>\s*<footer>.*?</footer>\s*</div>\s*$", layout, re.S)),
         "footer must close after hero/content sections",
     )
 
