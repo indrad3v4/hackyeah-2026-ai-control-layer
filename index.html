@@ -588,8 +588,13 @@ if(QA){
     const inside=(box,el)=>{const a=box.getBoundingClientRect(),b=el.getBoundingClientRect();
       return b.left>=a.left-0.5&&b.right<=a.right+0.5&&b.top>=a.top-0.5&&b.bottom<=a.bottom+0.5;};
     const spills=[].concat(...cells.map(c=>[...c.children].filter(ch=>!inside(c,ch)))).length;
-    const cellsOk = cells.length===6 && cells.every(c=>{const r=c.getBoundingClientRect();
-      return r.top>0 && r.bottom<=window.innerHeight+0.5 && r.width>80;}) && spills===0;
+    /* Complete is a different question from in-view. The cells must always be laid out and must
+       not spill; whether they are inside the current viewport only matters in the mode that
+       claims to show everything at once. Conflating the two failed every scrolled size. */
+    const cellsComplete = cells.length===6 && spills===0;
+    const cellsInView = cells.every(c=>{const r=c.getBoundingClientRect();
+      return r.top>0 && r.bottom<=window.innerHeight+0.5 && r.width>80;});
+    const cellsOk = cellsComplete && cellsInView;
     const clipped=[].concat(...cells.map(c=>[...c.children].filter(ch=>ch.scrollHeight>ch.clientHeight+1))).length;
 
     /* The invariants. Each one is a defect found in review, expressed so a machine can fail. */
@@ -619,8 +624,8 @@ if(QA){
     /* The no-scroll contract holds only in the mode that claims it; the invariants hold always. */
     const allInView = tiles.every(t=>t.ok);
     const ok = overlaps.length===0 && !revokeOverTarget && cut.length===0 &&
-               squeezed.length===0 && spills===0 && cellsOk &&
-               (scrollMode ? true : (allInView && !pageScrolls));
+               squeezed.length===0 && spills===0 && cellsComplete &&
+               (scrollMode ? true : (allInView && !pageScrolls && cellsInView));
 
     const qa=document.createElement('div');
     qa.id='qa-report';

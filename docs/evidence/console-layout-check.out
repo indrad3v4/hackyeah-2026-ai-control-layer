@@ -1,0 +1,10 @@
+PASS  body declares a grid row for every flow child                           4 rows declared, 4 flow children
+PASS  the footer is the last flow child, not an envelope                      footer at 2943, last section at 2653
+PASS  the footer closes once, and after the last section                      </footer> appears 1x
+PASS  the kill switch has a floor, so the button cannot overlap the selector  min-height=112px (a 56px button needs room)
+PASS  a responsive block covers narrow AND short viewports                    2 responsive block(s): (max-width:1399px), (max-height:899px); (max-width:780px)
+PASS  below the design size the page may scroll instead of hiding content     2 media block(s), 1 with overflow:auto
+PASS  table cells that can truncate carry a title                             2 renderer(s) with a title attribute on their cells
+PASS  the QA hook publishes a machine-readable verdict                        needed by scripts/console_layout_sweep.py and by F12
+
+8/8 layout invariants hold in index.html

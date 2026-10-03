@@ -40,10 +40,15 @@ def load_page(page, url: str, width: int, height: int) -> dict:
         for (const k of ['ok','mode','overlaps','revokeOverTarget','cut','squeezed'])
             out[k] = el.dataset[k];
         out.text = el.textContent;
+        out.publishes_verdict = el.dataset.ok !== undefined;
         return out;
     }""")
     report["viewport"] = f"{width}x{height}"
     report["ok"] = str(report.get("ok")).lower() == "true"
+    if not report.get("publishes_verdict"):
+        report["text"] = ("the page renders a #qa-report but publishes no verdict on it - the QA "
+                          "hook has no data-ok/dataset fields. A page that cannot be judged "
+                          "fails, it does not pass: " + str(report.get("text"))[:160])
     return report
 
 
