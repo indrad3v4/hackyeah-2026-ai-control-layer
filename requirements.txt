@@ -6,4 +6,5 @@ pydantic>=2.6
 httpx>=0.27
 openai-agents>=0.0.7
 openai>=1.40
-mcp>=2
+mcp==2.3.0  # the tool server imports mcp.server.mcpserver; pin what is proven
+
