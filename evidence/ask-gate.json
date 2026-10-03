@@ -1,0 +1,126 @@
+{
+  "generated_at": "20261003T174207Z",
+  "questions": [
+    {
+      "q": "What is happening?",
+      "http": 200,
+      "answer": "Record: 4 agent(s), 12 receipt(s), 1 pending. Last decision: A-0006 \u2014 deploy-agent \u2192 infra.deploy 'human' (upstream_contacted=false, receipt #4a9e4f9d).",
+      "grounded": true,
+      "evidence": {
+        "run_id": "run-deploy-6",
+        "action_id": "A-0006",
+        "warrant": "W-4421",
+        "decision": "human",
+        "upstream_contacted": false,
+        "receipt": "4a9e4f9d"
+      }
+    },
+    {
+      "q": "Why was A-0003 denied?",
+      "http": 200,
+      "answer": "A-0003: support-copilot \u2192 crm.bulk_export was decided 'deny' (class read_personal \u00b7 warrant W-4419 (active) \u00b7 state decided). upstream_contacted=false, receipt #b86731d3. Reason: export=false \u00b7 no PII fields in warrant scope \u00b7 PII fields requested: email, pesel \u00b7 class read_personal.",
+      "grounded": true,
+      "evidence": {
+        "run_id": "run-support-3",
+        "action_id": "A-0003",
+        "warrant": "W-4419",
+        "decision": "deny",
+        "upstream_contacted": false,
+        "receipt": "b86731d3"
+      }
+    },
+    {
+      "q": "Which action is waiting for me?",
+      "http": 200,
+      "answer": "1 action(s) waiting for a person: A-0006 \u00b7 deploy-agent \u2192 infra.deploy (irreversible) \u00b7 warrant W-4421 (active) \u00b7 receipt #4a9e4f9d.",
+      "grounded": true,
+      "evidence": {
+        "run_id": "run-deploy-6",
+        "action_id": "A-0006",
+        "warrant": "W-4421",
+        "decision": "human",
+        "upstream_contacted": false,
+        "receipt": "4a9e4f9d"
+      }
+    },
+    {
+      "q": "What happened to A-0004?",
+      "http": 200,
+      "answer": "A-0004: deploy-agent \u2192 infra.deploy was decided 'human' (class irreversible \u00b7 warrant W-4421 (active) \u00b7 state approved \u00b7 decided by Indra). upstream_contacted=true, rows 1, receipt #6e820cf1. Reason: deploy requires human authority \u00b7 class irreversible.",
+      "grounded": true,
+      "evidence": {
+        "run_id": "run-deploy-4",
+        "action_id": "A-0004",
+        "warrant": "W-4421",
+        "decision": "human",
+        "upstream_contacted": true,
+        "receipt": "6e820cf1"
+      }
+    },
+    {
+      "q": "Did A-0005 reach upstream?",
+      "http": 200,
+      "answer": "A-0005: report-bot \u2192 crm.bulk_export was decided 'human' (class read_personal \u00b7 warrant W-4423 (active) \u00b7 state denied \u00b7 decided by Indra). upstream_contacted=false, receipt #ea621148. Reason: a mass export is a person's decision, not a schedule's \u00b7 class read_personal.",
+      "grounded": true,
+      "evidence": {
+        "run_id": "run-report-5",
+        "action_id": "A-0005",
+        "warrant": "W-4423",
+        "decision": "human",
+        "upstream_contacted": false,
+        "receipt": "ea621148"
+      }
+    },
+    {
+      "q": "Show me the receipt.",
+      "http": 200,
+      "answer": "Record: 4 agent(s), 12 receipt(s), 1 pending. Last decision: A-0006 \u2014 deploy-agent \u2192 infra.deploy 'human' (upstream_contacted=false, receipt #4a9e4f9d).",
+      "grounded": true,
+      "evidence": {
+        "run_id": "run-deploy-6",
+        "action_id": "A-0006",
+        "warrant": "W-4421",
+        "decision": "human",
+        "upstream_contacted": false,
+        "receipt": "4a9e4f9d"
+      }
+    }
+  ],
+  "correlation": {
+    "action_id": "A-0004",
+    "decision": "human",
+    "state": "approved",
+    "upstream_contacted": true,
+    "receipt": "6e820cf1",
+    "in_state_log": true,
+    "same_receipt_as_state": true
+  },
+  "action_ids": {
+    "allow": {},
+    "redact": null,
+    "deny": "A-0003",
+    "hold": "A-0004",
+    "deny2": "A-0005",
+    "revoke": "A-0006"
+  },
+  "chain": {
+    "ok": true,
+    "length": 12,
+    "head": "1cb7aabf486b47ed",
+    "history": {
+      "rotations": 0,
+      "archived_rows": 0,
+      "last_closed_head": null,
+      "archives_ok": true,
+      "problems": []
+    },
+    "anchor": {
+      "anchored": true,
+      "ok": true,
+      "signed": true,
+      "head": "1cb7aabf486b47ed",
+      "length": 12,
+      "anchors": 12
+    }
+  }
+}
