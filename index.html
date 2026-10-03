@@ -184,6 +184,7 @@ async function renderSelected(e){
  $("controlHint").textContent=e.upstream_contacted===false?"Boundary has not been crossed for this action. Operator control is still available where the policy path permits it.":"Inspect the proof before intervening.";
  $("controlResult").textContent=e.reason||"No operator action taken.";
  $("eventState").textContent=e.state||"recorded";
+ renderPath(e);
  $("details").innerHTML=[
   ["What",e.intent||e.tool],["Agent",e.agent],["Actor",e.actor],["Action class",e.action_class],
   ["Warrant",e.warrant],["Warrant state",e.warrant_state],["Policy",e.policy],["Decision",e.decision],
@@ -199,7 +200,8 @@ async function renderSelected(e){
   ["Receipt",e.receipt_id||"not present",!!e.receipt_id,false]
  ].map(x=>'<div class="tl '+(x[2]?"done ":"")+(x[3]?"stop":"")+'"><div class="bullet"></div><div><b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span></div></div>').join("");
  $("deny").disabled=!e.event_id||denied;
- $("human").disabled=!e.event_id||e.decision==="human"||denied;
+ $("human").textContent=e.decision==="human"?"Approve hold":"Require human";
+ $("human").disabled=e.decision!=="human";
  $("revoke").disabled=!e.agent||e.state==="halted";
  $("techRun").textContent=e.run_id||"—";
 }
@@ -234,7 +236,7 @@ async function operator(action){
  const e=events.find(x=>x.event_id===selected);if(!e)return;
  const token=localStorage.getItem("warrnt_admin")||"";
  if(!token){$("controlResult").textContent="Operator authentication required. No control action was sent.";return;}
- const endpoint=action==="deny"?"/api/actions/"+encodeURIComponent(selected)+"/deny":null;
+ const endpoint=action==="deny"?"/api/actions/"+encodeURIComponent(selected)+"/deny":action==="approve"?"/api/actions/"+encodeURIComponent(selected)+"/approve":null;
  if(!endpoint){$("controlResult").textContent="This control requires the authenticated operator path; no action was sent.";return;}
  try{const out=await get(endpoint,{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:"security-operator"})});$("controlResult").textContent=out.reason||out.decision||"Operator decision recorded.";await refresh();}catch(err){$("controlResult").textContent="Operator action failed: "+err.message;}
 }
