@@ -15,6 +15,18 @@ Frankfurter upstream (``upstream/frankfurter_server.py``) and reads the answer f
   4. reads the upstream's log and asserts the ALLOW ``call_id`` is present and the DENY and
      HUMAN ``call_id`` are absent. The upstream is the witness, not the layer.
 
+It then proves the ACT-2 contract on the same live process, so identity, entitlement,
+separation of duties and non-contact are all measured against the same real upstream:
+
+  * **T7** an unheld entitlement (``equity.read_snapshot``) is refused before the order is
+    priced, and the refused ``call_id`` is absent from the upstream's log;
+  * **T8** the identity that requested a hold may not approve it (409
+    ``separation_of_duties``), the hold stays pending and un-contacted, and a *different*
+    named person can still approve it;
+  * **T9** ``/api/attest/non-contact`` proves from both records that a denied action never
+    crossed, refuses (409) an action the record shows as contacted, and ``/api/upstream/log``
+    reads the real log with its digest.
+
 Exits non-zero on any failed check, and prints one JSON line plus a PASS/FAIL table.
 
     python scripts/t1_upstream_proof.py [--evidence docs/t1-upstream-evidence.json]
@@ -142,7 +154,10 @@ def main() -> int:
     up_port, cp_port = _free_port(), _free_port()
     env_up = {**os.environ, "FRANKFURTER_LOG": str(upstream_log)}
     env_cp = {**os.environ, "TENET_STATE_DIR": str(state_dir), "WARRNT_ADMIN_TOKEN": ADMIN_TOKEN,
-              "WARRNT_DEV": "1", "WARRNT_UPSTREAM": f"http://127.0.0.1:{up_port}/mcp"}
+              "WARRNT_DEV": "1", "WARRNT_UPSTREAM": f"http://127.0.0.1:{up_port}/mcp",
+              # ACT-2 §4: the control plane reads the same upstream access log the proof does,
+              # so ``/api/upstream/log`` and ``/api/attest/non-contact`` witness the real file.
+              "WARRNT_UPSTREAM_LOG": str(upstream_log)}
 
     upstream = subprocess.Popen(
         [PY, "-m", "upstream.frankfurter_server", "--port", str(up_port),
@@ -179,7 +194,9 @@ def main() -> int:
               {"rates": res.get("rates"), "date": res.get("date"), "source": res.get("source")})
         check("ALLOW: the action is on the record", bool(res.get("action_id")), res.get("action_id"))
 
-        # ---- DENY: a warrant that does not cover fx.rate ---------------------------------
+        # ---- DENY: an actor that holds no right to the FX market --------------------------
+        # ACT-2 §2 order: the entitlement gate (22) runs before policy (30), so a warrant
+        # that holds only ``crm.read`` is refused on the entitlement, not later at the order.
         deny_id = "call-t1-deny-001"
         out = _mcp(base, "support-copilot", tokens.get("support-copilot", ""), "fx.read_rate",
                    {"call_id": deny_id, "base": "EUR", "symbols": "USD"})
@@ -319,13 +336,94 @@ def main() -> int:
               "call-t6-revoked-001" not in _call_ids(_upstream_log(upstream_log)),
               sorted(_call_ids(_upstream_log(upstream_log))))
 
+        # ---- T7 (ACT-2 §2): entitlement is NOT authority - unheld right, no contact -------
+        # ``equity.read_snapshot`` is a live read the layer knows how to classify, but no
+        # seeded agent holds the ``market_data.equity.read`` right. support-copilot's warrant
+        # is about crm.read, so the entitlement gate refuses before the order is ever priced.
+        ent_id = "call-t7-entitlement-001"
+        out = _mcp(base, "support-copilot", tokens.get("support-copilot", ""),
+                   "equity.read_snapshot", {"call_id": ent_id})
+        err = out.get("error", {})
+        check("T7: an unheld entitlement is a deterministic DENY before execution",
+              err.get("code") == -32001
+              and err.get("data", {}).get("decision") == "deny"
+              and err.get("data", {}).get("gate") == "entitlement",
+              {"code": err.get("code"), "data": err.get("data"), "message": err.get("message")})
+        check("T7: the refusal names the missing right",
+              err.get("data", {}).get("entitlement") == "market_data.equity.read",
+              err.get("data", {}).get("entitlement"))
+        ent_aid = err.get("data", {}).get("action_id", "")
+        check("T7: the equity call never reached the upstream",
+              ent_id not in _call_ids(_upstream_log(upstream_log)),
+              sorted(_call_ids(_upstream_log(upstream_log))))
+
+        # ---- T8 (ACT-2 §3): separation of duties - the requester may not approve ---------
+        sod_id = "call-t8-sod-001"
+        out = _mcp(base, "fx-auditor", tokens.get("fx-auditor", ""), "fx.read_rate",
+                   {"call_id": sod_id, "base": "EUR", "symbols": "USD"})
+        sod_aid = (out.get("error", {}).get("data", {}) or {}).get("action_id", "")
+        check("T8: an auditor read is held for a person", bool(sod_aid), sod_aid)
+        _st_sod, sod_row = _call(f"{base}/api/actions/{sod_aid}")
+        sod_requester = (sod_row or {}).get("requester", "")
+        check("T8: the held action records the identity that requested it", bool(sod_requester),
+              {"requester": sod_requester, "principal": (sod_row or {}).get("principal")})
+        _st_self, self_appr = _call(f"{base}/api/actions/{sod_aid}/approve", method="POST",
+                                    body={"by": sod_requester},
+                                    headers={"x-warrnt-admin": ADMIN_TOKEN})
+        check("T8: the requester may NOT approve their own hold (409 separation_of_duties)",
+              _st_self == 409 and (self_appr or {}).get("refused") == "separation_of_duties",
+              {"status": _st_self, "body": self_appr})
+        _st_sod2, sod_row2 = _call(f"{base}/api/actions/{sod_aid}")
+        check("T8: a refused self-approval leaves the hold pending and un-contacted",
+              (sod_row2 or {}).get("state") == "pending"
+              and (sod_row2 or {}).get("upstream_contacted") is False,
+              {"state": (sod_row2 or {}).get("state"),
+               "upstream_contacted": (sod_row2 or {}).get("upstream_contacted")})
+        _st_diff, diff_appr = _call(f"{base}/api/actions/{sod_aid}/approve", method="POST",
+                                    body={"by": "operator-002-approver"},
+                                    headers={"x-warrnt-admin": ADMIN_TOKEN})
+        check("T8: a DIFFERENT named person may still approve it",
+              _st_diff == 200 and (diff_appr or {}).get("executed") is True,
+              {"status": _st_diff, "body": diff_appr})
+
+        # ---- T9 (ACT-2 §4): attestation of non-contact, read from BOTH records ----------
+        _st_att, att = _call(f"{base}/api/attest/non-contact", method="POST",
+                             body={"action_id": ent_aid},
+                             headers={"x-warrnt-admin": ADMIN_TOKEN})
+        check("T9: a denied action is attested as non-contact (200)",
+              _st_att == 200 and (att or {}).get("contacted") is False
+              and (att or {}).get("boundary_attempts") == 0,
+              {"status": _st_att, "body": att})
+        check("T9: the attestation reports the upstream log unchanged around the read",
+              (att or {}).get("count_before") == (att or {}).get("count_after"),
+              {"before": (att or {}).get("count_before"),
+               "after": (att or {}).get("count_after")})
+        _st_att_allow, att_allow = _call(f"{base}/api/attest/non-contact", method="POST",
+                                         body={"action_id": aid},
+                                         headers={"x-warrnt-admin": ADMIN_TOKEN})
+        check("T9: an action the record shows as contacted is REFUSED (409)",
+              _st_att_allow == 409 and (att_allow or {}).get("contacted") is True,
+              {"status": _st_att_allow, "body": att_allow})
+        _st_att_x, att_x = _call(f"{base}/api/attest/non-contact", method="POST",
+                                 body={"action_id": "A-999999"},
+                                 headers={"x-warrnt-admin": ADMIN_TOKEN})
+        check("T9: attesting an unknown action is a 404", _st_att_x == 404,
+              {"status": _st_att_x, "body": att_x})
+        _st_log, ulog = _call(f"{base}/api/upstream/log", headers={"x-warrnt-admin": ADMIN_TOKEN})
+        check("T9: the upstream log route reads the real file with a digest",
+              _st_log == 200 and (ulog or {}).get("exists") is True
+              and len(str((ulog or {}).get("sha256", ""))) == 64,
+              {"status": _st_log, "exists": (ulog or {}).get("exists"),
+               "total": (ulog or {}).get("total")})
+
         ok = all(c["ok"] for c in CHECKS)
         evidence = {
             "ok": ok,
             "proved_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "upstream": {"url": "https://api.frankfurter.dev/v1/latest",
                          "service": "upstream.frankfurter_server", "log": str(upstream_log)},
-            "call_ids": {"allowed": allow_id, "denied": deny_id, "held": human_id},
+            "call_ids": {"allowed": allow_id, "denied": deny_id, "held": human_id,
+                         "entitlement_denied": ent_id, "self_approval_refused": sod_id},
             "upstream_log": rows,
             "checks": CHECKS,
             "failed": [c["check"] for c in CHECKS if not c["ok"]],

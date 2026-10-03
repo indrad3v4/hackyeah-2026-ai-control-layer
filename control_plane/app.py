@@ -279,6 +279,181 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         return JSONResponse({"chain": k.chain(), **k.proof(limit=max(1, min(limit, 200))),
                              "mode": config.mode()})
 
+    # --------------------------------------------------- one canonical chain per run (T9/§9)
+    @app.get("/api/proof/{run_id}")
+    def proof_for_run(run_id: str) -> JSONResponse:
+        """The canonical chain for ONE run, assembled only from records that already exist.
+
+        Read-only by construction: it reads the kernel's own actions for this ``run_id``, their
+        receipts, the upstream's journal and the provider's event journal. It never calls the
+        provider, never infers a missing id and never creates evidence. A chain with a hole is
+        reported ``INCOMPLETE`` with the missing steps named; a contradiction - a denial that
+        still contacted the upstream - is reported ``FAIL``. Neither is rounded up (D12).
+        """
+        k, denied = _kernel_or_503(app)
+        if denied:
+            return denied
+        assert k is not None  # _kernel_or_503 guarantees a kernel past its 503 branch
+        from control_room import provider as provider_module  # local: not on any decision path
+
+        rows = [a for a in k.actions(limit=200) if str(a.get("run_id") or "") == run_id]
+        events = provider_module.read_events(run_id=run_id)
+        started = [e for e in events if e.get("event") == "deepseek.request.started"]
+        completed = [e for e in events if e.get("event") == "deepseek.request.completed"]
+        failed = [e for e in events if e.get("event") == "deepseek.request.failed"]
+        upstream = k.upstream_log(limit=200)
+        journal = upstream.get("entries") or []
+        actions: list[dict[str, Any]] = []
+        for row in rows:
+            action_id = str(row.get("action_id") or "")
+            record = k.action(action_id) if action_id else None
+            record = record if isinstance(record, dict) else {}
+            crossing = record.get("execution_result") or {}
+            receipt = row.get("receipt") or (record.get("receipt") or {}).get("id")
+            decision = str(row.get("decision") or "")
+            attempts = record.get("boundary_attempts")
+            if attempts is None:
+                attempts = (record.get("receipt") or {}).get("boundary_attempts")
+            actions.append({
+                "action_id": action_id,
+                "agent": row.get("agent"),
+                "tool": row.get("tool"),
+                "action_class": row.get("action_class"),
+                "authority": {"warrant": row.get("warrant"), "warrant_state": row.get("warrant_state"),
+                              "policy_result": row.get("policy_result"),
+                              "entitlement": row.get("entitlement") or crossing.get("entitlement")},
+                "proposal_source": row.get("proposal_source") or "deepseek",
+                "decision": {"decision": decision, "reason": row.get("reason"),
+                             "decided_by": "tenet-kernel", "state": row.get("state")},
+                "execution": {"upstream_contacted": bool(row.get("upstream_contacted")
+                                                         or crossing.get("http_status")),
+                              "boundary_attempts": attempts,
+                              "http_status": crossing.get("http_status"),
+                              "upstream": crossing.get("upstream") or crossing.get("url")},
+                "receipt": {"receipt_id": receipt},
+                "upstream_journal_calls": [e for e in journal
+                                           if str(e.get("call_id") or "") == action_id],
+            })
+        missing: list[str] = []
+        if started and not completed:
+            missing.append("llm.call response (the provider call did not complete)")
+        if not actions:
+            missing.append("action")
+        for a in actions:
+            if not a["decision"]["decision"]:
+                missing.append("decision")
+            elif a["decision"]["decision"] in ("allow", "redact"):
+                if not a["receipt"]["receipt_id"]:
+                    missing.append("receipt")
+                if not a["execution"]["upstream_contacted"]:
+                    missing.append("upstream contact for a permitted call")
+        violations = [a["action_id"] for a in actions
+                      if a["decision"]["decision"] == "deny" and a["execution"]["boundary_attempts"]]
+        status = "FAIL" if violations else ("COMPLETE" if not missing else "INCOMPLETE")
+        return JSONResponse({
+            "run_id": run_id,
+            "status": status,
+            "missing": sorted(set(missing)),
+            "llm_authority": False,
+            "authority_source": "tenet-kernel",
+            "orchestration": {
+                "provider": "deepseek",
+                "base_url": provider_module.BASE_URL,
+                "model_requested": provider_module.MODEL,
+                "model_served": sorted({e.get("model_served") for e in completed
+                                        if e.get("model_served")}),
+                "calls_started": len(started),
+                "calls_completed": len(completed),
+                "calls_failed": len(failed),
+                "llm_request_ids": [e.get("request_id") for e in completed if e.get("request_id")],
+                "input_tokens": sum(int(e.get("input_tokens") or 0) for e in completed),
+                "output_tokens": sum(int(e.get("output_tokens") or 0) for e in completed),
+                "max_latency_ms": max([int(e.get("latency_ms") or 0) for e in completed] or [0]),
+            },
+            "agents": sorted({str(a.get("agent") or "") for a in actions if a.get("agent")}),
+            "actions": actions,
+            "provider_events": events,
+            "upstream": {"path": upstream.get("path"), "exists": upstream.get("exists"),
+                         "sha256": upstream.get("sha256"), "total": upstream.get("total")},
+        })
+
+    # ------------------------------------------- ACT-4: the security-decision projection
+    @app.get("/api/security-events")
+    def security_events(limit: int = 60) -> JSONResponse:
+        """The security-decision feed the Control Room's first screen renders (ACT-4 slice A).
+
+        A read-only projection of kernel state (actions + receipts) joined with the persisted
+        provider evidence, so the operator can see, per action, what the agent tried to do, the
+        kernel's verdict and whether data actually left the boundary. It decides nothing, and
+        ``llm_authority`` is always ``false`` - the model trace is evidence, never a permission.
+        Unknown fields are ``null``, never a default that reads as success. Unavailable kernel
+        -> 503, the same refusal body every other read returns.
+        """
+        k, denied = _kernel_or_503(app)
+        if denied:
+            return denied
+        body = k.security_events(limit=max(1, min(limit, 200)))
+        return JSONResponse({**body, "mode": config.mode()})
+
+    @app.get("/api/security-events/{run_id}")
+    def security_event(run_id: str) -> JSONResponse:
+        """One run's ``SecurityEvent``s plus the causal graph ``run_id → model_trace_id →
+        action_id → decision → upstream_call_id → receipt_id`` (``docs/act-3-causal-graph.md``).
+
+        The chain is evidence, not authority: the kernel's decision is the only place authority
+        lives, and ``upstream_call_id`` is ``null`` until slice B mints it at the boundary -
+        ``action_id`` is never relabelled as a call id. A partial chain is reported ``INCOMPLETE``
+        with the missing nodes named, never rounded up. Unknown run -> 404; unavailable kernel
+        -> 503, the same refusal body as every other read.
+        """
+        k, denied = _kernel_or_503(app)
+        if denied:
+            return denied
+        body = k.security_event(run_id)
+        if body is None:
+            return JSONResponse({"error": f"unknown run {run_id}",
+                                 "hint": "GET /api/security-events lists the runs"}, status_code=404)
+        return JSONResponse({**body, "mode": config.mode()})
+
+    # ------------------------------------------- ACT-2 §4: proof of non-contact (evidence)
+    @app.get("/api/upstream/log")
+    def upstream_log(limit: int = 200, tool: str = "",
+                     x_warrnt_admin: str = Header(default="")) -> JSONResponse:
+        """The real upstream's own access log, as the kernel read it (ACT-2 §4).
+
+        Operator-authenticated (the log names callers) and projected through the kernel's one
+        implementation of the read, so this route and the node's cannot show different logs.
+        ``exists: false`` when no log is configured - never a fake empty proof (D12).
+        """
+        denied = _require_admin(app, x_warrnt_admin)
+        if denied:
+            return denied
+        k, unavailable = _kernel_or_503(app)
+        if unavailable:
+            return unavailable
+        return JSONResponse(k.upstream_log(limit=max(0, min(limit, 500)), tool=tool))
+
+    @app.post("/api/attest/non-contact")
+    def attest_non_contact(body: dict[str, Any] = Body(default={}),
+                           x_warrnt_admin: str = Header(default="")) -> JSONResponse:
+        """Prove, from the record, that an action did NOT contact the upstream (ACT-2 §4).
+
+        The attestation is assembled by the kernel from facts it already holds - the action's
+        ``upstream_contacted`` flag, its ``boundary_attempts`` counter, and the upstream's own
+        access log. 409 the moment either side shows contact; 404 for an unknown action. The
+        control plane decides nothing here: it relays the kernel's verdict and its status.
+        """
+        denied = _require_admin(app, x_warrnt_admin)
+        if denied:
+            return denied
+        k, unavailable = _kernel_or_503(app)
+        if unavailable:
+            return unavailable
+        action_id = str((body or {}).get("action_id") or "").strip()
+        out = dict(k.attest_non_contact(action_id))
+        status = int(out.pop("status", 200))
+        return JSONResponse(out, status_code=status)
+
     # ------------------------------------------------------- human-decision endpoints
     @app.post("/api/actions/{action_id}/approve")
     async def approve(action_id: str, request: Request,
@@ -547,6 +722,7 @@ async def _resolve(app: FastAPI, action_id: str, *, approve: bool, request: Requ
     plane is a control plane anyone can drive) and a named person (a human decision without a
     name on it is not a decision). Only then does the kernel run the held call.
     """
+    from control_plane.kernel import SeparationOfDutiesRefused
     from warrnt.controlplane import HoldRefused  # type: ignore import-not-found
 
     denied = _require_admin(app, token)
@@ -562,6 +738,12 @@ async def _resolve(app: FastAPI, action_id: str, *, approve: bool, request: Requ
                             status_code=422)
     try:
         out = k.resolve_hold(action_id, approve, by)
+    except SeparationOfDutiesRefused as exc:
+        # ACT-2 §3: the requester may not approve their own hold. A distinct refusal with its
+        # own marker, so a caller can tell "you may not decide this" from "this hold is gone".
+        # The kernel records the refusal before it raises (a denial is itself an event, D5).
+        return JSONResponse({"error": str(exc), "action_id": action_id,
+                             "refused": "separation_of_duties"}, status_code=409)
     except HoldRefused as exc:
         return JSONResponse({"error": str(exc), "action_id": action_id}, status_code=409)
     except Exception:  # noqa: BLE001 - a kernel that cannot answer must fail closed

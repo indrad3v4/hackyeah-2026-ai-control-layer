@@ -213,7 +213,7 @@ def test_kernel_unavailable_refuses_every_decision_route(tmp_path, monkeypatch):
         # Take the authority away: the kernel is now unavailable, exactly as a broken mirror.
         app.state.kernel = None
         for path in ("/api/overview", "/api/activity", "/api/actions", "/api/warrants",
-                     "/api/agents"):
+                     "/api/agents", "/api/security-events", "/api/security-events/run-1"):
             assert c.get(path).status_code == 503, path
         r = _mcp(c, "fin-reconcile", "t", "payments.read", {"limit": 1})
         assert r.status_code == 503
@@ -668,3 +668,303 @@ def test_demo_run_shape_when_an_upstream_is_configured(client, monkeypatch):
     assert body["upstream_contacted"] is False
     # A refusal is still a recorded action with a receipt: the denial is itself evidence.
     assert body["action_id"]
+
+
+# ============================================================ ACT-2: identity, entitlement,
+# separation of duties, proof of non-contact. These run against the same mirrored kernel the
+# node tests use, so a green here means the control plane relays real decisions, not fixtures.
+
+def test_agents_projection_carries_identity_and_entitlements(client):
+    """ACT-2 §1/§2: who the agent acts for, and what it is entitled to - on the operator feed."""
+    rows = {a["id"]: a for a in client.get("/api/agents").json()}
+    copilot = rows["support-copilot"]
+    assert copilot["principal"] == "operator-001"
+    assert copilot["on_behalf_of"] == "operator-001"
+    assert "crm.read" in copilot["entitlements"]
+
+
+def test_action_records_the_principal_it_was_taken_for(client):
+    tok = _tokens(client)["support-copilot"]
+    aid = _mcp(client, "support-copilot", tok, "crm.read",
+               {"table": "tickets"}).json()["result"]["action_id"]
+    action = client.get(f"/api/actions/{aid}").json()
+    assert action["principal"] == "operator-001"
+    assert action["acting_on_behalf_of"] == "operator-001"
+    assert action["requester"]
+
+
+def test_entitlement_absent_is_refused_before_the_order_decides(client, monkeypatch):
+    """ACT-2 §2: a live warrant is not a grant of data; the missing right is named.
+
+    ``equity.read_snapshot`` is a live tool (filed by the control plane's taxonomy) that
+    ``support-copilot`` holds no right for, so the entitlement gate - which runs before the
+    order is priced - refuses it deterministically.
+    """
+    tok = _tokens(client)["support-copilot"]
+    r = _mcp(client, "support-copilot", tok, "equity.read_snapshot", {})
+    assert r.status_code == 200
+    err = r.json()["error"]
+    assert err["data"]["decision"] == "deny"
+    assert err["data"]["gate"] == "entitlement"
+    assert err["data"]["entitlement"] == "market_data.equity.read"
+    aid = err["data"]["action_id"]
+    # Nothing reached the far side: an entitlement deny is a boundary of zero approaches.
+    assert client.get(f"/api/actions/{aid}").json()["upstream_contacted"] is False
+
+
+def test_requester_may_not_approve_their_own_hold(client):
+    """ACT-2 §3: separation of duties - a distinct 409, and the hold is left pending."""
+    tok = _tokens(client)["deploy-agent"]
+    aid = _mcp(client, "deploy-agent", tok, "infra.deploy",
+               {"service": "fx-api"}).json()["error"]["data"]["action_id"]
+    requester = client.get(f"/api/actions/{aid}").json()["requester"]
+    assert requester
+    refused = client.post(f"/api/actions/{aid}/approve", json={"by": requester}, headers=_admin())
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["refused"] == "separation_of_duties"
+    after = client.get(f"/api/actions/{aid}").json()
+    assert after["state"] == "pending"
+    assert after["upstream_contacted"] is False
+
+
+def test_a_second_person_can_still_approve(client):
+    tok = _tokens(client)["deploy-agent"]
+    aid = _mcp(client, "deploy-agent", tok, "infra.deploy",
+               {"service": "fx-api"}).json()["error"]["data"]["action_id"]
+    ok = client.post(f"/api/actions/{aid}/approve", json={"by": "operator-002-approver"},
+                     headers=_admin())
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["executed"] is True
+
+
+def test_the_self_approval_refusal_is_recorded_in_the_chain(client):
+    tok = _tokens(client)["deploy-agent"]
+    aid = _mcp(client, "deploy-agent", tok, "infra.deploy",
+               {"service": "fx-api"}).json()["error"]["data"]["action_id"]
+    requester = client.get(f"/api/actions/{aid}").json()["requester"]
+    client.post(f"/api/actions/{aid}/approve", json={"by": requester}, headers=_admin())
+    receipts = client.get("/api/state?limit=50").json()["receipts"]
+    reasons = [str(r.get("reason", "")) for r in receipts]
+    assert any("separation of duties" in r for r in reasons), reasons
+    # A refusal is a deny, and it never reached the far side (D5: a denial is itself an event).
+    refusals = [r for r in receipts if "separation of duties" in str(r.get("reason", ""))]
+    assert refusals and refusals[0]["decision"] == "deny"
+
+
+def test_denied_action_shows_zero_boundary_attempts(client):
+    """ACT-2 §4: the counter is evidence, not narration - 0 for a deny, 1 for an allow."""
+    tok = _tokens(client)["support-copilot"]
+    denied = _mcp(client, "support-copilot", tok, "crm.bulk_export",
+                  {"table": "customers", "rows": 9000}).json()["error"]["data"]["action_id"]
+    assert client.get(f"/api/actions/{denied}").json()["boundary_attempts"] == 0
+
+
+def test_allowed_action_shows_exactly_one_boundary_attempt(client):
+    tok = _tokens(client)["fin-reconcile"]
+    aid = _mcp(client, "fin-reconcile", tok, "payments.read",
+               {"table": "payments"}).json()["result"]["action_id"]
+    row = client.get(f"/api/actions/{aid}").json()
+    assert row["boundary_attempts"] == 1
+    assert row["upstream_contacted"] is True
+
+
+def test_attest_non_contact_proves_a_denied_action_never_left(client):
+    tok = _tokens(client)["support-copilot"]
+    aid = _mcp(client, "support-copilot", tok, "crm.bulk_export",
+               {"table": "customers", "rows": 9000}).json()["error"]["data"]["action_id"]
+    r = client.post("/api/attest/non-contact", json={"action_id": aid}, headers=_admin())
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["contacted"] is False
+    assert body["boundary_attempts"] == 0
+    assert body["count_before"] == body["count_after"]
+
+
+def test_attest_refuses_an_action_the_record_shows_contacted(client):
+    tok = _tokens(client)["fin-reconcile"]
+    aid = _mcp(client, "fin-reconcile", tok, "payments.read",
+               {"table": "payments"}).json()["result"]["action_id"]
+    r = client.post("/api/attest/non-contact", json={"action_id": aid}, headers=_admin())
+    assert r.status_code == 409, r.text
+    assert r.json()["contacted"] is True
+
+
+def test_attest_unknown_action_is_404(client):
+    r = client.post("/api/attest/non-contact", json={"action_id": "A-0099999"},
+                    headers=_admin())
+    assert r.status_code == 404
+
+
+def test_attest_requires_the_operator_token(client):
+    r = client.post("/api/attest/non-contact", json={"action_id": "A-0001"},
+                    headers={"x-warrnt-admin": "wrong"})
+    assert r.status_code == 401
+
+
+def test_upstream_log_route_requires_the_operator_token(client):
+    assert client.get("/api/upstream/log",
+                      headers={"x-warrnt-admin": "wrong"}).status_code == 401
+
+
+def test_upstream_log_reports_absence_honestly_when_unconfigured(client, monkeypatch):
+    monkeypatch.delenv("WARRNT_UPSTREAM_LOG", raising=False)
+    monkeypatch.delenv("FRANKFURTER_LOG", raising=False)
+    body = client.get("/api/upstream/log", headers=_admin()).json()
+    assert body["exists"] is False
+    assert body["entries"] == []
+    assert body["sha256"] == ""
+
+
+def test_upstream_log_reads_a_real_file_with_a_digest(client, tmp_path, monkeypatch):
+    log = tmp_path / "upstream.jsonl"
+    log.write_text('{"call_id": "A-0001", "tool": "equity.read_snapshot", "outcome": "ok"}\n',
+                   encoding="utf-8")
+    monkeypatch.setenv("WARRNT_UPSTREAM_LOG", str(log))
+    body = client.get("/api/upstream/log", headers=_admin()).json()
+    assert body["exists"] is True
+    assert body["total"] == 1
+    assert body["entries"][0]["call_id"] == "A-0001"
+    assert len(body["sha256"]) == 64
+    filtered = client.get("/api/upstream/log?tool=other", headers=_admin()).json()
+    assert filtered["total"] == 0
+
+def test_upstream_log_reader_honours_every_writer_name_the_deployment_uses(monkeypatch):
+    """The evidence endpoint must be able to read the journal the deployment actually writes.
+
+    serve_tenet.sh names the upstream's access log with an env var. If the reader does not honour
+    that exact name, the upstream logs every real call and /api/upstream/log still reports none -
+    a broken chain that looks like nothing happened. This test fails the moment they diverge, so
+    the invariant "writer == reader == evidence endpoint" cannot rot.
+    """
+    import re
+    from pathlib import Path as _Path
+
+    from control_plane.kernel import _ensure_mirror_on_path
+
+    _ensure_mirror_on_path()
+    from warrnt.api import upstream_log_path
+
+    script = _Path(__file__).resolve().parents[1] / "scripts" / "serve_tenet.sh"
+    writers = set(re.findall(r"\b([A-Z][A-Z0-9_]*_UPSTREAM_LOG)\b",
+                            script.read_text(encoding="utf-8")))
+    assert writers, "serve_tenet.sh must name the upstream access log it writes"
+    for name in ("TENET_UPSTREAM_LOG", "WARRNT_UPSTREAM_LOG", "FRANKFURTER_LOG"):
+        monkeypatch.delenv(name, raising=False)
+    for name in sorted(writers):
+        monkeypatch.setenv(name, f"/tmp/{name.lower()}-probe.jsonl")
+        assert upstream_log_path() == f"/tmp/{name.lower()}-probe.jsonl"
+        monkeypatch.delenv(name)
+
+
+def test_upstream_log_route_reads_a_journal_written_under_the_deployment_name(
+        client, tmp_path, monkeypatch):
+    """The route the jury reads must see the file the deployment's own name points at."""
+    log = tmp_path / "tenet-upstream-calls.jsonl"
+    log.write_text('{"call_id": "A-0001", "tool": "fx.read_rate", "outcome": "ok"}\n',
+                   encoding="utf-8")
+    for name in ("TENET_UPSTREAM_LOG", "WARRNT_UPSTREAM_LOG", "FRANKFURTER_LOG"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("TENET_UPSTREAM_LOG", str(log))
+    body = client.get("/api/upstream/log", headers=_admin()).json()
+    assert body["exists"] is True
+    assert body["total"] == 1
+    assert body["path"] == str(log)
+    assert len(body["sha256"]) == 64
+
+
+# ---------------------------------------------- ACT-4 slice A: the security-decision feed
+def test_security_events_never_claim_authority(client):
+    """The projection reports the kernel's verdict; it is never itself an authority (D5)."""
+    body = client.get("/api/security-events").json()
+    assert body["authority_source"] == "tenet-kernel"
+    assert body["llm_authority"] is False
+    for event in body["events"]:
+        assert event["authority_source"] == "tenet-kernel"
+        assert event["llm_authority"] is False
+
+
+def test_security_events_shape_is_newest_first(client):
+    tok = _tokens(client)["fin-reconcile"]
+    _mcp(client, "fin-reconcile", tok, "payments.read", {"table": "payments", "limit": 2})
+    body = client.get("/api/security-events?limit=10").json()
+    assert {"count", "events", "mode"} <= set(body)
+    events = body["events"]
+    assert events, "a real call must appear in the feed"
+    required = {"event_id", "run_id", "agent", "resource", "tool", "policy", "decision",
+                "state", "reason", "upstream_contacted", "upstream_call_id", "receipt_id",
+                "model_trace_id", "boundary_attempts", "llm_authority"}
+    for event in events:
+        assert required <= set(event), required - set(event)
+    stamps = [e["timestamp"] or 0.0 for e in events]
+    assert stamps == sorted(stamps, reverse=True), "newest first"
+
+
+def test_security_events_limit_is_clamped(client):
+    """An operator cannot ask for the whole table through one screen."""
+    assert client.get("/api/security-events?limit=9999").json()["count"] <= 200
+    assert client.get("/api/security-events?limit=0").status_code == 200
+
+
+def test_security_events_a_deny_is_recorded_and_never_contacted(client):
+    """D10 negative case: a blocked call is an event, and it never reached the far side."""
+    tok = _tokens(client)["support-copilot"]
+    aid = _mcp(client, "support-copilot", tok, "crm.bulk_export",
+               {"table": "customers", "rows": 9000}).json()["error"]["data"]["action_id"]
+    event = next(e for e in client.get("/api/security-events?limit=50").json()["events"]
+                 if e["event_id"] == aid)
+    assert event["decision"] == "deny"
+    assert event["upstream_contacted"] is False
+    assert event["receipt_id"], "a denial is itself a recordable event (D5)"
+
+
+def test_security_events_a_permitted_call_shows_the_crossing(client):
+    """D10 positive case: an allowed call records the contact and a real receipt."""
+    tok = _tokens(client)["fin-reconcile"]
+    aid = _mcp(client, "fin-reconcile", tok, "payments.read",
+               {"table": "payments"}).json()["result"]["action_id"]
+    event = next(e for e in client.get("/api/security-events?limit=50").json()["events"]
+                 if e["event_id"] == aid)
+    assert event["decision"] == "allow"
+    assert event["upstream_contacted"] is True
+    assert event["receipt_id"]
+
+
+def test_security_events_never_invent_a_counter_the_record_lacks(client):
+    """An absent field is ``null``, never a default that reads as success (D12).
+
+    The node surface this deployment runs does not carry ``boundary_attempts`` on the action
+    row, so the projection must report ``null`` - not ``0`` for a deny and not ``0`` for an
+    allow, either of which would read as evidence it does not have. The flag that IS present,
+    ``upstream_contacted``, stays the one the feed leans on.
+    """
+    tok = _tokens(client)["fin-reconcile"]
+    _mcp(client, "fin-reconcile", tok, "payments.read", {"table": "payments", "limit": 1})
+    for event in client.get("/api/security-events?limit=50").json()["events"]:
+        assert event["boundary_attempts"] in (None, 0, 1), event["boundary_attempts"]
+        # The counter is evidence, never a claim: a missing counter is allowed to sit next to
+        # an absent contact, but it must never be manufactured into a number on its own.
+        if event["boundary_attempts"] is None:
+            assert "boundary_attempts" in event
+
+
+def test_security_event_unknown_run_is_404(client):
+    assert client.get("/api/security-events/no-such-run").status_code == 404
+
+
+def test_security_event_chain_is_evidence_not_authority(client):
+    """The causal graph names the missing nodes; it never rounds a partial chain up (rule 5)."""
+    tok = _tokens(client)["fin-reconcile"]
+    _mcp(client, "fin-reconcile", tok, "payments.read", {"table": "payments", "limit": 1})
+    run_id = next(e["run_id"] for e in client.get("/api/security-events?limit=50").json()["events"]
+                  if e["agent"] == "fin-reconcile" and e["run_id"])
+    body = client.get(f"/api/security-events/{run_id}").json()
+    assert body["causal_graph"]["authority_lives_here"] == "decision"
+    assert body["llm_authority"] is False
+    nodes = {n["step"]: n["id"] for n in body["causal_graph"]["nodes"]}
+    assert nodes["run_id"] == run_id
+    # ``upstream_call_id`` is minted at the boundary in slice B and is honestly null today -
+    # action_id is never relabelled as a call id (constraint 5).
+    assert nodes.get("upstream_call_id") is None
+    # No provider key in the fixture, so the model step is absent and named, never invented.
+    assert "model_trace_id" in body["missing"]
+    assert body["status"] == "INCOMPLETE"

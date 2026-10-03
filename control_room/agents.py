@@ -19,7 +19,8 @@ from typing import Any
 import httpx
 
 from .models import ControlAnswer, Evidence
-from .provider import bind_sdk, build_provider, key_present, provider_status
+from .provider import (bind_sdk, build_provider, current_run_id, key_present, provider_status,
+                        set_run_id)
 
 try:  # the SDK is required for the live path but must not break import in a bare checkout
     from agents import Agent, Runner, function_tool
@@ -32,6 +33,13 @@ except Exception:  # noqa: BLE001
 CONTROL_PLANE_URL = os.environ.get("TENET_CONTROL_PLANE_URL", "http://127.0.0.1:8080").rstrip("/")
 
 SPECIALISTS = ["governance_agent", "kernel_agent", "control_plane_agent"]
+
+# The agent whose live warrant carries the orchestrator's proposals. It is read from the
+# kernel's own registry inside this process - the token the kernel issued for it is used here
+# and never becomes part of a tool argument, a tool result or the model's context. A caller may
+# point the proposal at another enforced agent by name; there is no default that bypasses the
+# registry.
+PROPOSAL_AGENT_ENV = "TENET_PROPOSAL_AGENT"
 
 # Set by the control plane at startup (``control_plane.app``): the very kernel this process
 # serves. When present, the specialist tools and the evidence floor read it **in-process** - no
@@ -102,6 +110,59 @@ def _control_plane_inspect(question: str = "") -> str:
                        "activity": _read("/api/activity?limit=10")}, default=str)
 
 
+def _propose_action(tool: str, base: str = "EUR", symbols: str = "USD",
+                    rationale: str = "") -> str:
+    """Submit a proposal to the kernel. The model chooses what to ask for; the kernel decides.
+
+    This is the orchestrator's ONE write-shaped tool and it writes nothing itself: it calls the
+    kernel's own :meth:`Kernel.intercept` - the same entry point ``/mcp`` and ``/api/demo/run``
+    use - with the run id this answer is serving, and returns the verdict with the ids the
+    kernel produced. A denial is a result, not an error: the caller is told what the kernel
+    said, in the kernel's own words.
+
+    The agent token comes from the kernel's registry in this process. It is not an argument,
+    so the model can neither choose it nor read it back.
+    """
+    if _KERNEL is None:
+        return json.dumps({"submitted": False, "authority": "tenet-kernel",
+                           "error": "no kernel is bound in this process; the proposal was not "
+                                    "submitted and nothing was decided here"})
+    agent_id = os.environ.get(PROPOSAL_AGENT_ENV, "").strip() or "fx-trader"
+    try:
+        tokens = {str(x.get("id")): str(x.get("token") or "") for x in _KERNEL.agents(dev=True)}
+    except Exception as exc:  # noqa: BLE001 - a read failure is reported, never papered over
+        return json.dumps({"submitted": False, "authority": "tenet-kernel",
+                           "error": f"{type(exc).__name__}: {exc}"})
+    token = tokens.get(agent_id, "")
+    if not token:
+        return json.dumps({"submitted": False, "agent": agent_id, "authority": "tenet-kernel",
+                           "error": "no live warrant for this agent in this deployment"})
+    run_id = current_run_id() or ""
+    try:
+        decision, reason, detail, receipt, executed = _KERNEL.intercept(
+            agent_id, token, tool, {"base": base, "symbols": symbols}, run_id=run_id)
+    except Exception as exc:  # noqa: BLE001 - the kernel's refusal is the answer, not a crash
+        return json.dumps({"submitted": True, "agent": agent_id, "tool": tool, "run_id": run_id,
+                           "authority": "tenet-kernel", "decision": "deny",
+                           "error": f"{type(exc).__name__}: {exc}"})
+    word = decision.value if hasattr(decision, "value") else str(decision)
+    detail = detail if isinstance(detail, dict) else {}
+    action_id = str(detail.get("action_id") or (detail.get("action") or {}).get("id") or "")
+    record = _KERNEL.action(action_id) if action_id else None
+    record = record if isinstance(record, dict) else {}
+    crossing = record.get("execution_result") or {}
+    # "Contacted" means the upstream answered with a status. A permitted call whose transport
+    # failed leaves none, and claiming a crossing anyway is the one thing this product forbids.
+    contacted = bool(crossing.get("http_status")) and word in ("allow", "redact")
+    return json.dumps({"submitted": True, "proposed_by": "deepseek", "authority": "tenet-kernel",
+                       "llm_authority": False, "agent": agent_id, "tool": tool,
+                       "resource": str(detail.get("resource") or ""), "run_id": run_id,
+                       "action_id": action_id, "decision": word, "reason": reason,
+                       "executed": bool(executed), "upstream_contacted": contacted,
+                       "receipt": record.get("receipt") or (receipt or {}).get("id"),
+                       "rationale": rationale}, default=str)
+
+
 def build_specialists(model: Any = None) -> tuple[Any, Any, Any]:
     """The three specialists, each grounded in its own kernel-backed tool."""
     if not Agent:
@@ -139,6 +200,12 @@ def build_orchestrator(specialists: tuple[Any, Any, Any], model: Any = None) -> 
         return None
     governance, kernel, control = specialists
     tools = []
+    # The proposal tool is the orchestrator's, not a specialist's: routing stays read-only, and
+    # the one path that asks the kernel for a decision is the one the model drives directly -
+    # with the kernel, never the model, producing the verdict.
+    proposal = _tool(_propose_action)
+    if proposal:
+        tools.append(proposal)
     if governance:
         tools.append(governance.as_tool(
             tool_name="governance_agent",
@@ -156,7 +223,11 @@ def build_orchestrator(specialists: tuple[Any, Any, Any], model: Any = None) -> 
         instructions=("Answer the operator only from what the specialist tools returned. Cite "
                       "the real ids in the evidence; never invent an action, decision, receipt "
                       "or upstream contact. You never authorize and you cannot allow anything - "
-                      "the TENET Enforcement Kernel decides."),
+                      "the TENET Enforcement Kernel decides. To ask for a read you may call "
+                      "propose_action with a tool id from the live set (fx.read_rate, "
+                      "equity.read_snapshot) and report the kernel's verdict verbatim, "
+                      "including a denial; never describe an action as allowed, denied or "
+                      "executed unless that tool result says so."),
         tools=tools,
         model=model,
     )
@@ -200,6 +271,9 @@ async def answer(user_text: str, *, run_id: str | None = None) -> ControlAnswer:
     answer and never an allow.
     """
     run_id = run_id or str(uuid.uuid4())
+    # Stamp the run BEFORE the client is built: the client's transport is wired to the run id
+    # at construction, and every event it journals must carry this answer's run.
+    set_run_id(run_id)
     evidence = _evidence_from_records()
     provider = build_provider()
     model = bind_sdk(provider) if provider else None

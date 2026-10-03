@@ -15,8 +15,13 @@ Rules this module keeps:
 """
 from __future__ import annotations
 
+import contextvars
+import hashlib
+import json
 import os
+import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Optional
 
 BASE_URL = "https://api.deepseek.com"
@@ -32,6 +37,143 @@ class Provider:
     model: str
     base_url: str
     client: Any
+
+
+# The provider's own event journal: one safe line per real call, so the deployment can show
+# what the answer above it was built from without ever writing a key, a header or a body. The
+# path is env-named so the platform can keep it next to the rest of the state.
+EVENT_LOG_ENV = "TENET_DEEPSEEK_LOG"
+DEFAULT_EVENT_LOG = "state/provider/deepseek-events.jsonl"
+
+# The run id the orchestrator is currently serving. A context var, so an async caller cannot
+# stamp its events onto another caller's run.
+_RUN_ID: "contextvars.ContextVar[str | None]" = contextvars.ContextVar("tenet_run_id", default=None)
+
+
+def set_run_id(run_id: str | None) -> None:
+    """Bind the run id that every provider event must carry. Set once, by :func:`answer`."""
+    _RUN_ID.set(run_id)
+
+
+def current_run_id() -> str | None:
+    return _RUN_ID.get()
+
+
+def event_log_path() -> str:
+    return os.environ.get(EVENT_LOG_ENV, "").strip() or DEFAULT_EVENT_LOG
+
+
+def emit(event: dict) -> None:
+    """Append one event. Safe fields only - never a key, a header value, a prompt or a body."""
+    line = json.dumps(event, ensure_ascii=False, sort_keys=True)
+    print("[deepseek] " + line, flush=True)  # the platform's log carries it too
+    path = Path(event_log_path())
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+    except OSError:
+        pass
+
+
+def read_events(run_id: str = "") -> list[dict]:
+    """Read the journal back. This is a read: it never calls the provider and never invents.
+
+    An unreadable or missing journal is an empty list, which the caller must report as an
+    absent step - not as a chain that passed.
+    """
+    out: list[dict] = []
+    try:
+        with open(event_log_path(), "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                if run_id and str(row.get("run_id") or "") != run_id:
+                    continue
+                out.append(row)
+    except OSError:
+        return []
+    return out
+
+
+class _EvidenceTransport:
+    """The client's own transport, wrapped: one event pair per real provider call.
+
+    It delegates every attribute and every request to the real transport under it, so the
+    call path is unchanged; it only observes. A read of the response body is taken from the
+    same object the SDK is about to read, so nothing is rewrapped and no connection is
+    disturbed.
+    """
+
+    def __init__(self, inner: Any):
+        self._inner = inner
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+    async def handle_async_request(self, request: Any) -> Any:
+        started = time.perf_counter()
+        body = b""
+        try:
+            body = request.content if isinstance(request.content, (bytes, bytearray)) else b""
+        except Exception:  # noqa: BLE001 - a body we cannot read must not break the call
+            pass
+        try:
+            payload = json.loads(body.decode("utf-8", "ignore") or "{}")
+        except Exception:  # noqa: BLE001
+            payload = {}
+        base = {
+            "run_id": current_run_id(),
+            "provider": "deepseek",
+            "base_url": "https://" + str(request.url.host),
+            "path": str(request.url.path),
+            "model_requested": payload.get("model"),
+            "stream": bool(payload.get("stream")),
+            "messages": len(payload.get("messages") or []),
+            "tools_offered": len(payload.get("tools") or []),
+            "prompt_sha256": hashlib.sha256(body).hexdigest(),
+            # presence only: the header's value is never read out
+            "has_authorization_header": bool(request.headers.get("authorization")),
+        }
+        emit({**base, "event": "deepseek.request.started"})
+        try:
+            response = await self._inner.handle_async_request(request)
+        except Exception as exc:  # noqa: BLE001 - record, then let the failure travel
+            emit({**base, "event": "deepseek.request.failed", "status": None,
+                  "latency_ms": int((time.perf_counter() - started) * 1000),
+                  "error": type(exc).__name__})
+            raise
+        raw = b""
+        try:
+            raw = await response.aread()
+        except Exception:  # noqa: BLE001 - a stream we cannot buffer is still a real response
+            pass
+        try:
+            parsed = json.loads(raw.decode("utf-8", "ignore") or "{}")
+        except Exception:  # noqa: BLE001
+            parsed = {}
+        usage = parsed.get("usage") or {}
+        choice = (parsed.get("choices") or [{}])[0] if isinstance(parsed.get("choices"), list) else {}
+        emit({**base, "event": "deepseek.request.completed",
+              "status": response.status_code,
+              "request_id": response.headers.get("x-ds-trace-id"),
+              "provider_response_id": parsed.get("id"),
+              "model_served": parsed.get("model"),
+              "finish_reason": choice.get("finish_reason"),
+              "latency_ms": int((time.perf_counter() - started) * 1000),
+              "input_tokens": usage.get("prompt_tokens"),
+              "output_tokens": usage.get("completion_tokens"),
+              "total_tokens": usage.get("total_tokens"),
+              "response_sha256": hashlib.sha256(raw).hexdigest(),
+              # the model may reason and propose; it never holds authority
+              "llm_authority": False,
+              "authority_source": "tenet-kernel"})
+        return response
 
 
 def key_present() -> bool:
@@ -56,13 +198,21 @@ def build_provider() -> Optional[Provider]:
         client = AsyncOpenAI(api_key=key, base_url=BASE_URL)
     except Exception:  # noqa: BLE001
         return None
+    # Wrap the client's own transport so every real call is journalled. Inside its own try: an
+    # unwireable journal must never stop the provider from being built (the call path is older
+    # and more important than the evidence about it).
+    try:
+        client._client._transport = _EvidenceTransport(client._client._transport)
+    except Exception:  # noqa: BLE001
+        pass
     return Provider(name="deepseek", model=MODEL, base_url=BASE_URL, client=client)
 
 
 def provider_status() -> dict[str, Any]:
     """What /health may say about the provider. Never includes the key or its value."""
     return {"provider": "deepseek", "model": MODEL, "base_url": BASE_URL,
-            "key": "PRESENT" if key_present() else "ABSENT"}
+            "key": "PRESENT" if key_present() else "ABSENT",
+            "event_log": event_log_path()}
 
 
 def build_model(provider: "Provider") -> Any:

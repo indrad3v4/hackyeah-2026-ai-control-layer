@@ -12,6 +12,7 @@ Two rules this module exists to enforce:
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -23,6 +24,16 @@ NODE_DIR = REPO_ROOT / "node"
 
 class KernelUnavailable(RuntimeError):
     """The enforcement kernel could not produce a decision. Callers must fail closed."""
+
+
+class SeparationOfDutiesRefused(RuntimeError):
+    """The named person may not decide a request they themselves are the actor of.
+
+    Declared here, in the control plane's own boundary layer, because the rule belongs to
+    TENET's policy layering. The mirror carries no such rule and does not export such a name -
+    importing one from ``warrnt.controlplane`` would be a reference to something that does not
+    exist, so the check lives where it is actually enforced.
+    """
 
 
 def _ensure_mirror_on_path() -> None:
@@ -63,6 +74,38 @@ def _refresh(warrant: Any, now: float) -> str:
     return refresh_state(warrant, now)
 
 
+# ============================================== ACT-2 §2: the entitlement register
+# A warrant grants authority to act; it is not a grant of data. This register answers the
+# second question - which data an agent holds the right to read - and it lives with the
+# operator, not in the mirror: the kernel enforces it, the register states it. A tool the
+# register does not file is not gated here (the mirrored taxonomy may know tools the
+# operator holds no opinion about).
+ENTITLEMENT_OF_TOOL: dict[str, str] = {
+    "crm.read": "crm.tickets.read",
+    "fx.read_rate": "market_data.fx.read",
+    "fx.last": "market_data.fx.read",
+    "equity.read_snapshot": "market_data.equity.read",
+}
+
+ENTITLEMENTS: dict[str, set[str]] = {
+    "support-copilot": {"crm.tickets.read"},
+    "fx-trader": {"market_data.fx.read"},
+    "fx-auditor": {"market_data.fx.read"},
+}
+
+
+def missing_entitlement(agent_id: str, tool: str) -> str:
+    """The right the register withholds, or ``""`` when it grants it (or holds no opinion).
+
+    A tool with no filed right is not silently entitled: it is simply not this gate's
+    business, and the mirrored order decides it as before.
+    """
+    right = ENTITLEMENT_OF_TOOL.get(tool, "")
+    if not right:
+        return ""
+    return "" if right in ENTITLEMENTS.get(agent_id, set()) else right
+
+
 class Kernel:
     """A thin, read-only-plus-decide handle on the enforcement kernel.
 
@@ -85,8 +128,21 @@ class Kernel:
         return self.proxy.actions.listing(state="pending", limit=limit)
 
     def action(self, action_id: str) -> Optional[dict[str, Any]]:
+        """One action, plus the identity facts from the actor's own agent record.
+
+        No field is invented: ``requester`` is the identity the ledger recorded as having
+        asked for the act, and the delegation facts are read from the agent the order was
+        issued to. An action whose agent is unknown carries empty strings, not guesses.
+        """
         a = self.proxy.actions.get(action_id)
-        return a.public() if a is not None else None
+        if a is None:
+            return None
+        row = a.public()
+        agent = self.proxy.agents.get(a.agent)
+        row["requester"] = a.actor or a.agent
+        row["principal"] = getattr(agent, "principal", "") or ""
+        row["acting_on_behalf_of"] = getattr(agent, "on_behalf_of", "") or ""
+        return row
 
     def registry_recent(self, limit: int = 60) -> list[dict[str, Any]]:
         return self.proxy.registry.recent(limit)
@@ -109,11 +165,88 @@ class Kernel:
         out = []
         for a in p.agents.values():
             row = {"id": a.id, "role": a.role, "warrant": a.warrant,
-                   "state": a.state, "last": a.last}
+                   "state": a.state, "last": a.last,
+                   # ACT-2 §1/§2: the identity/delegation facts and the held entitlements, so
+                   # the operator projection says who acts, for whom, and on what right - the
+                   # same fields the node's own /api/agents serves.
+                   "principal": getattr(a, "principal", ""),
+                   "on_behalf_of": getattr(a, "on_behalf_of", ""),
+                   "entitlements": list(getattr(a, "entitlements", []) or []),
+                   "scope": list(getattr(a, "scope", []) or [])}
             if dev:
                 row["token"] = a.token
             out.append(row)
         return out
+
+    # ------------------------------------------------- ACT-2 §4: evidence, not assertion
+    def upstream_log(self, limit: int = 200, tool: str = "") -> dict[str, Any]:
+        """The real upstream's own access log, read from disk (the other side's record).
+
+        Delegates to the node's one implementation of the read (``warrnt.api.upstream_log_path``
+        + the same JSONL parse), so the control plane cannot show a different log than the
+        node. When no log is configured the answer carries ``exists: false`` - never a fake
+        empty proof (D12).
+        """
+        from warrnt.api import _sha256_of, upstream_log_path  # type: ignore import-not-found
+
+        raw_path = upstream_log_path()
+        entries: list[dict[str, Any]] = []
+        if raw_path:
+            path = Path(raw_path)
+            if path.exists():
+                with open(path, "r", encoding="utf-8") as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            row = json.loads(line)
+                        except ValueError:
+                            continue
+                        if tool and row.get("tool") != tool:
+                            continue
+                        entries.append(row)
+        exists = bool(raw_path) and Path(raw_path).exists()
+        return {"path": raw_path, "exists": exists, "total": len(entries),
+                "sha256": _sha256_of(raw_path),
+                "entries": entries[-max(0, limit):] if limit else entries}
+
+    def attest_non_contact(self, action_id: str) -> dict[str, Any]:
+        """Prove from the record that an action did NOT reach the upstream (ACT-2 §4).
+
+        Assembled from facts the kernel already holds: the action's ``upstream_contacted``
+        flag, its ``boundary_attempts`` counter, and the upstream's own access log read for
+        the action's call_id. The result carries ``status`` (200 / 404 / 409) so the caller
+        maps it without a second rule; the control plane never decides contact, it only
+        reports what the record says.
+        """
+        p = self.proxy
+        action = p.actions.get(action_id) if action_id else None
+        if action is None:
+            return {"status": 404, "error": f"unknown action {action_id}",
+                    "hint": "GET /api/actions lists the ledger"}
+        if action.upstream_contacted:
+            return {"status": 409, "contacted": True, "action_id": action.action_id,
+                    "boundary_attempts": action.boundary_attempts,
+                    "note": "the record shows this action crossed the egress boundary - it may "
+                            "not be attested as non-contact"}
+        log = self.upstream_log(limit=0)
+        entries = log.get("entries") or []
+        count_before = len(entries)
+        call_ids = {row.get("call_id") for row in entries if row.get("call_id")}
+        count_after = count_before   # reading a file contacts nothing
+        if action.action_id in call_ids:
+            return {"status": 409, "contacted": True, "action_id": action.action_id,
+                    "count_before": count_before, "count_after": count_after,
+                    "boundary_attempts": action.boundary_attempts,
+                    "note": "the upstream's own access log names this action's call_id"}
+        return {"status": 200, "contacted": False, "action_id": action.action_id,
+                "count_before": count_before, "count_after": count_after,
+                "boundary_attempts": action.boundary_attempts,
+                "upstream_contacted": action.upstream_contacted,
+                "log_path": log.get("path", ""), "log_exists": log.get("exists", False),
+                "note": ("the action's record shows upstream_contacted=false and the upstream's "
+                         "own access log does not name it: nothing reached the far side")}
 
     def counts(self) -> dict[str, int]:
         return self.proxy.actions.counts()
@@ -306,6 +439,256 @@ class Kernel:
             "chain": self.chain(),
         }
 
+    # ------------------------------------------------- ACT-4: security decision projection
+    # ``security_events`` is a READ-ONLY projection: it joins records the kernel already holds
+    # (canonical actions + their receipts) with the persisted provider evidence, so the first
+    # screen of the Control Room can answer, in plain language, what an agent tried to do, why
+    # TENET allowed or blocked it, and whether data actually left the boundary. It decides
+    # nothing, contacts nothing and invents nothing: an absent field is ``null``, never a
+    # default that reads as success (AGENTS.md D5/D12; diagnosis §5).
+    #
+    # The vocabulary is fixed by ``docs/act-3-causal-graph.md``: ``upstream_call_id`` (``U-…``)
+    # is minted at the boundary and is not available in this slice, so it is rendered ``null``
+    # - never ``action_id`` relabelled (constraint 5). The id that answers "who allowed this"
+    # is the kernel's action, and it stays separate from every other id.
+
+    def _provider_events_by_run(self) -> dict[str, list[dict[str, Any]]]:
+        """Provider evidence, grouped by the run the orchestrator stamped it with.
+
+        Reads the assistance surface's own provider journal - a persisted record of real
+        requests - through its one reader. A missing or unreadable journal is an empty map: an
+        absent model trace is reported as absent, never filled in (D12). This is a read; it
+        never calls the provider.
+        """
+        try:
+            from control_room import provider as provider_module
+
+            events = provider_module.read_events()
+        except Exception:  # noqa: BLE001 - a missing journal is an absent step, not a failure
+            return {}
+        by_run: dict[str, list[dict[str, Any]]] = {}
+        for event in events:
+            run_id = str(event.get("run_id") or "")
+            if run_id:
+                by_run.setdefault(run_id, []).append(event)
+        return by_run
+
+    @staticmethod
+    def _model_evidence(events: list[dict[str, Any]]) -> dict[str, Any]:
+        """Project the model-trace facts from a run's provider events.
+
+        ``model_trace_id`` is the provider's own request id (``x-ds-trace-id``); it is the only
+        thing that proves THIS run reached the model. Tokens/latency are reported only when the
+        provider actually returned them - a rejected call leaves them ``null``, never ``0``.
+        """
+        completed = [e for e in events if e.get("event") == "deepseek.request.completed"]
+        started = [e for e in events if e.get("event") == "deepseek.request.started"]
+        failed = [e for e in events if e.get("event") == "deepseek.request.failed"]
+        trace_ids = [e.get("request_id") for e in completed if e.get("request_id")]
+        served = sorted({e.get("model_served") for e in completed if e.get("model_served")})
+        requesters = [e.get("model_requested") for e in events if e.get("model_requested")]
+        latencies = [int(e["latency_ms"]) for e in completed if e.get("latency_ms") is not None]
+        statuses = [int(e["status"]) for e in completed if e.get("status") is not None]
+        in_tokens = [int(e["input_tokens"]) for e in completed if e.get("input_tokens") is not None]
+        out_tokens = [int(e["output_tokens"]) for e in completed if e.get("output_tokens") is not None]
+        # ``request_id`` is the provider's own ``x-ds-trace-id``, so it is a real trace id ONLY
+        # when the provider actually answered. A transport failure that never reached the
+        # provider leaves the local id in the journal with no response id behind it: showing
+        # that as a model trace would present a local id as proof the model was reached (D12).
+        # So the trace id is withheld unless a completed response carried a provider id.
+        responded = any(e.get("provider_response_id") for e in completed)
+        # The HTTP status is the honest "did the model answer" signal: a 401 is a real response
+        # carrying a real trace id, but it is NOT a successful reasoning step - the UI says so.
+        ok = bool(statuses) and all(200 <= s < 300 for s in statuses)
+        trace_id = trace_ids[0] if (trace_ids and responded) else None
+        return {
+            "model_trace_id": trace_id,
+            "model_requested": requesters[0] if requesters else None,
+            "model_served": served[0] if len(served) == 1 else (served or None),
+            "model_calls_started": len(started),
+            "model_calls_completed": len(completed),
+            "model_calls_failed": len(failed),
+            "provider_status": statuses[-1] if statuses else None,
+            "provider_reached": bool(completed) and responded,
+            "provider_ok": ok,
+            "latency_ms": max(latencies) if latencies else None,
+            "tokens": ({"input": sum(in_tokens), "output": sum(out_tokens)}
+                       if in_tokens or out_tokens else None),
+        }
+
+    @staticmethod
+    def _intent(tool: str, params: dict[str, Any] | None) -> Optional[str]:
+        """A short, plain-language reading of what the call wants, from its own arguments.
+
+        Built from the arguments the action actually carried - never a canned sentence. When
+        the arguments do not describe a human-readable intent, the answer is ``null`` rather
+        than a generic string that would read like a claim.
+        """
+        params = params or {}
+        values = params.get("values") if isinstance(params.get("values"), dict) else params
+        base = values.get("base")
+        symbols = values.get("symbols")
+        if tool == "fx.read_rate" and base and symbols:
+            return f"{base} → {symbols} market rate"
+        if tool == "equity.read_snapshot" and symbols:
+            sym = symbols if isinstance(symbols, str) else ",".join(map(str, symbols))
+            return f"equity snapshot for {sym}"
+        table = values.get("table")
+        if table:
+            return f"read from {table}"
+        return None
+
+    def _receipt_index(self, limit: int = 200) -> dict[str, dict[str, Any]]:
+        """Short-hash -> receipt row, so an action's ``boundary_attempts`` can be found.
+
+        ``boundary_attempts`` lives on the receipt in some mirrors and on the action in
+        others; the projection reads both and reports ``null`` when neither carries it.
+        """
+        out: dict[str, dict[str, Any]] = {}
+        try:
+            for entry in self.registry_recent(limit):
+                short = (entry.get("hash") or "")[:8]
+                if short:
+                    out[short] = entry
+        except Exception:  # noqa: BLE001 - a missing receipt index is an absent field, not a crash
+            return {}
+        return out
+
+    def security_events(self, limit: int = 60) -> dict[str, Any]:
+        """The security-decision feed: one ``SecurityEvent`` per canonical action, newest first.
+
+        A read-only projection of kernel state (actions + receipts) joined with persisted
+        provider evidence. It carries authority only in the sense that it *reports* the
+        kernel's verdict - it makes none: ``llm_authority`` is always ``false`` and the model
+        trace is evidence, never a permission.
+        """
+        limit = max(1, min(int(limit or 60), 200))
+        actions = self.actions(limit)
+        by_run = self._provider_events_by_run()
+        receipts = self._receipt_index()
+        events = [self._security_event_from(a, by_run, receipts) for a in actions]
+        events.sort(key=lambda e: (e.get("timestamp") or 0.0, e.get("action_id") or ""),
+                    reverse=True)
+        return {
+            "count": len(events[:limit]),
+            "authority_source": "tenet-kernel",
+            "llm_authority": False,
+            "events": events[:limit],
+        }
+
+    def _security_event_from(self, action: dict[str, Any],
+                             by_run: dict[str, list[dict[str, Any]]],
+                             receipts: dict[str, dict[str, Any]]) -> dict[str, Any]:
+        """Project one ``SecurityEvent`` from an Action row + the surrounding evidence."""
+        run_id = str(action.get("run_id") or "")
+        action_id = str(action.get("action_id") or "")
+        receipt_id = action.get("receipt") or None
+        crossing = action.get("execution_result") or {}
+        receipt_row = receipts.get(str(receipt_id or "")[:8], {}) if receipt_id else {}
+        attempts = action.get("boundary_attempts")
+        if attempts is None:
+            attempts = receipt_row.get("boundary_attempts")
+        contacted = bool(action.get("upstream_contacted"))
+        model = self._model_evidence(by_run.get(run_id, []))
+        return {
+            "event_id": action_id or run_id or None,
+            "run_id": run_id or None,
+            "timestamp": action.get("ts") or None,
+            "agent": action.get("agent") or None,
+            "actor": action.get("actor") or None,
+            "intent": self._intent(str(action.get("tool") or ""), action.get("parameters")),
+            "resource": action.get("tool") or None,
+            "tool": action.get("tool") or None,
+            "action_class": action.get("action_class") or None,
+            "warrant": action.get("warrant") or None,
+            "warrant_state": action.get("warrant_state") or None,
+            "policy": action.get("policy_result") or None,
+            "decision": action.get("decision") or None,
+            "decision_id": None,   # slice B mints D-…; the kernel-owned unit today is the action
+            "state": action.get("state") or None,
+            "reason": action.get("reason") or None,
+            "upstream_contacted": contacted,
+            # U-… is minted at the boundary in slice B; until then it is honestly null -
+            # ``action_id`` is NOT a call id and must never be shown as one (constraint 5).
+            "upstream_call_id": None,
+            "execution_result": crossing or None,
+            "receipt_id": receipt_id,
+            "model_trace_id": model["model_trace_id"],
+            "model_requested": model["model_requested"],
+            "model_served": model["model_served"],
+            "latency_ms": model["latency_ms"],
+            "tokens": model["tokens"],
+            "boundary_attempts": attempts,
+            "attempts": attempts,
+            "authority_source": "tenet-kernel",
+            "llm_authority": False,
+        }
+
+    def security_event(self, run_id: str) -> Optional[dict[str, Any]]:
+        """One run's ``SecurityEvent``(s) plus the causal graph, read from records only.
+
+        The graph is the chain ``run_id → model_trace_id → action_id → decision →
+        upstream_call_id → receipt_id`` (``docs/act-3-causal-graph.md``) and it is **not an
+        authority chain**: the model trace proves the request reached the model, the action is
+        the unit of enforcement, the decision is authority, the receipt is a record. A missing
+        node is reported as ``null`` and named in ``missing`` - a partial chain is never rounded
+        up to PASS (rule 5). ``None`` means the run is unknown to the kernel.
+        """
+        run_id = str(run_id or "")
+        if not run_id:
+            return None
+        actions = [a for a in self.actions(200) if str(a.get("run_id") or "") == run_id]
+        by_run = self._provider_events_by_run()
+        receipts = self._receipt_index()
+        provider_events = by_run.get(run_id, [])
+        if not actions and not provider_events:
+            return None
+        events = [self._security_event_from(a, by_run, receipts) for a in actions]
+        events.sort(key=lambda e: e.get("action_id") or "")
+        model = self._model_evidence(provider_events)
+        nodes: list[dict[str, Any]] = []
+        missing: list[str] = []
+        nodes.append({"step": "run_id", "id": run_id, "proves": "the agent run"})
+        nodes.append({"step": "model_trace_id", "id": model["model_trace_id"],
+                      "proves": "the request reached the model"})
+        if not model["model_trace_id"]:
+            missing.append("model_trace_id")
+        for event in events:
+            nodes.append({"step": "action_id", "id": event["event_id"],
+                          "proves": "the unit of enforcement"})
+            nodes.append({"step": "decision", "id": event.get("decision"),
+                          "proves": "authority (allow / deny / redact / human / revoked)"})
+            if not event.get("decision"):
+                missing.append("decision")
+            nodes.append({"step": "upstream_call_id", "id": event.get("upstream_call_id"),
+                          "proves": "a real contact left the boundary"})
+            nodes.append({"step": "receipt_id", "id": event.get("receipt_id"),
+                          "proves": "the recorded outcome"})
+            if not event.get("receipt_id"):
+                missing.append("receipt_id")
+        # A permitted call with no proof of contact is an incomplete chain, named - never
+        # assumed to have reached the far side (absence is a result, rule 4).
+        no_contact = [e["event_id"] for e in events
+                      if e.get("decision") in ("allow", "redact") and not e.get("upstream_contacted")]
+        if no_contact:
+            missing.append("upstream contact for a permitted call: " + ", ".join(no_contact))
+        return {
+            "run_id": run_id,
+            "authority_source": "tenet-kernel",
+            "llm_authority": False,
+            "status": "COMPLETE" if not missing else "INCOMPLETE",
+            "missing": sorted(set(missing)),
+            "model": model,
+            "causal_graph": {
+                "chain": "run_id → model_trace_id → action_id → decision → "
+                         "upstream_call_id → receipt_id",
+                "nodes": nodes,
+                "authority_lives_here": "decision",
+                "note": "authority = kernel.decision, never the model trace",
+            },
+            "events": events,
+        }
+
     # ---------------------------------------------------------------- decisions
     def intercept(self, agent_id: str, token: str, tool: str,
                   params: dict[str, Any] | None,
@@ -317,13 +700,75 @@ class Kernel:
         Action record (see :meth:`_record_crossing`). It never alters a verdict and never
         contacts anything by itself.
         """
+        right = missing_entitlement(agent_id, tool)
+        if right:
+            # The gate runs before the order is priced: authority to act is not the right to
+            # this data, and a held right is refused whichever way the warrant would go.
+            reason = f"no entitlement to {right}"
+            action_id, receipt_id = self._record_refusal(
+                agent_id=agent_id, tool=tool, reason=reason, entitlement=right)
+            detail = {"action_id": action_id, "receipt": receipt_id, "gate": "entitlement",
+                      "entitlement": right, "upstream_contacted": False,
+                      "boundary_attempts": 0}
+            return "deny", reason, detail, {"hash": receipt_id}, False
+
         decision, reason, detail, receipt, executed = self.proxy.intercept(
             agent_id, token, tool, params, run_id=run_id)
         self._record_crossing(tool, detail, executed)
         return decision, reason, detail, receipt, executed
 
+    def _record_refusal(self, *, agent_id: str, tool: str, reason: str,
+                        entitlement: str = "", action_id: str = "") -> tuple[str, str]:
+        """File a refusal this control plane's own gate made, in the node's ledger and chain.
+
+        The refusal is an event like any other (D5): it gets an action, a receipt and a chain
+        entry, so a reader sees the same shape whether the kernel refused the call or the
+        register did. Nothing is contacted and nothing is decided twice - the record states
+        the fact of the refusal, not a second verdict.
+
+        With ``action_id`` the receipt is filed against an act that already exists (the hold a
+        person may not decide); the act itself is left exactly as it was.
+        """
+        from warrnt.proxy import _clock  # type: ignore import-not-found
+
+        p = self.proxy
+        if action_id:
+            held = p.actions.get(action_id)
+        else:
+            agent = p.agents.get(agent_id)
+            held = p.actions.record(
+                run_id="", agent=agent_id, tool=tool, actor=agent_id,
+                warrant=getattr(agent, "warrant", "-"), parameters={}, decision="deny",
+                reason=reason, upstream_contacted=False, boundary_attempts=0, ts=p._now())
+        receipt = p.registry.append(
+            t=_clock(), decision="deny", agent=(held.agent if held else agent_id), tool=tool,
+            warrant=(held.warrant if held else "-"), reason=reason, params="", rows_after=0,
+            ts=p._now())
+        if held is not None and not action_id:
+            held.receipt, held.state = receipt["hash"][:8], "decided"
+            p.actions.save(held)
+        return (held.action_id if held is not None else ""), receipt["hash"][:8]
+
     def resolve_hold(self, action_id: str, approve: bool, by: str) -> dict[str, Any]:
-        """A named person releases or refuses a held action; the kernel runs the call."""
+        """A named person releases or refuses a held action; the kernel runs the call.
+
+        Separation of duties is checked here, before the kernel is asked: the person who
+        releases a hold must not be the actor who requested it. The refusal is raised, not
+        softened into an allow, and it applies to a deny as well as an approve - a decision
+        made by the party under decision is not a decision either way.
+        """
+        held = self.proxy.actions.get(action_id)
+        actor = str(getattr(held, "actor", "") or getattr(held, "agent", "") or "").strip()
+        if held is not None and actor and by.strip().lower() == actor.lower():
+            # D5: a refusal is an event. The chain records who tried to decide an act they
+            # requested, before the caller is told no - the hold itself is left pending.
+            self._record_refusal(
+                agent_id=str(getattr(held, "agent", "") or ""),
+                tool=str(getattr(held, "tool", "") or ""),
+                reason=f"separation of duties · {by} requested {action_id} and may not decide it",
+                action_id=action_id)
+            raise SeparationOfDutiesRefused(
+                f"{by} is the actor of {action_id} and may not also decide it")
         out = self.proxy.resolve_hold(action_id, approve, by)
         if isinstance(out, dict) and out.get("executed"):
             tool = str((out.get("action") or {}).get("tool") or "")
@@ -399,7 +844,16 @@ class Kernel:
 
 
 def _agent_state(proxy: Any, warrant: Any) -> Any:
-    """Build the agent identity the kernel keeps for a freshly issued warrant."""
+    """Build the agent identity the kernel keeps for a freshly issued warrant.
+
+    Delegates to the proxy's own builder so a live-warrant agent carries the same ACT-2
+    identity facts (``principal``, ``on_behalf_of``, ``entitlements``, ``scope``) as a seeded
+    one. If an older mirror has no such helper, the plain AgentState is the fallback - the
+    live path must never fail open, but it also must never fail *loud* over a missing feature.
+    """
+    builder = getattr(proxy, "_new_agent", None)
+    if callable(builder):
+        return builder(warrant)
     from warrnt.models import AgentState  # type: ignore import-not-found
 
     return AgentState(id=warrant.agent, role=warrant.role, warrant=warrant.id,
@@ -430,6 +884,13 @@ def _live_warrants() -> list[Any]:
                      reason="read-only · attach a desk note to the audit trail · PII stripped",
                      redact=["fields"]),
                 Rule(tool="fx.last", effect="allow", reason="read-only · last fetched rate"),
+                # ACT-2 §2 (T7): the warrant ALLOWS this read - the authority gate passes it -
+                # but the entitlement register does not grant fx-trader the equity right, so
+                # the entitlement gate denies it before the warrant is ever priced. This is the
+                # one place a valid order and a held right disagree on purpose: it makes
+                # "a warrant is not a grant of data" a distinction the test suite can execute.
+                Rule(tool="equity.read_snapshot", effect="allow",
+                     reason="read-only · equity snapshot · authority granted, entitlement required"),
             ],
         ),
         WarrantSpec(
@@ -452,6 +913,7 @@ LIVE_BOUNDARY: dict[str, str] = {
     "fx.read_rate": "outbound",   # performs one real HTTPS GET to the ECB reference rates
     "fx.audit_note": "internal",  # travels to the upstream but never leaves the box
     "fx.last": "internal",        # served from the upstream's own cache, no egress
+    "equity.read_snapshot": "internal",  # ACT-2 §2 (T7): the second resource, same egress path
 }
 
 LIVE_WARRANTS: list[Any] = []
@@ -466,6 +928,10 @@ LIVE_TOOL_CLASSES: dict[str, str] = {
     "fx.read_rate": "observe",
     "fx.audit_note": "draft",
     "fx.last": "observe",
+    # ACT-2 §2 (T7): a second resource, so entitlement is a real distinction and not a
+    # synonym for the warrant. ``equity.read_snapshot`` is an ``observe`` too, but it reads a
+    # *different* resource than the FX tools - and the two are entitled separately.
+    "equity.read_snapshot": "observe",
 }
 
 
