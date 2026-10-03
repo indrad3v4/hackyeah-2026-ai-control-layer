@@ -52,3 +52,9 @@ comment can cite them.
   management are produced in an exportable form, not only rendered in a UI.
 - **D12 — Nothing is claimed as working that was not executed.** The README separates what
   runs today from what is designed, and the split is maintained as the code grows.
+
+- **D13 — The contract is frozen, but not immutable.** A frozen interface changes only by
+  an explicit, recorded unfreeze: the reason, the exact field added or removed, and the
+  matching update in every consumer. The unfreeze is a commit of its own. A control that
+  cannot be expressed in the receipt vocabulary means the vocabulary is incomplete — fix
+  the vocabulary first, then add the control.
