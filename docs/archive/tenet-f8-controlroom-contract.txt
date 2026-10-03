@@ -1,0 +1,78 @@
+ARCHIVED 2026-10-03 — superseded by docs/TENET-CONTRACT.txt (canonical). Kept for history only.
+======================================================================
+TENET — F8 CONTROL ROOM CONTRACT (frozen, Indra's ruling 2026-10-03)
+========================================================================
+RULING: F8 = a REAL TENET Control Room UI on Reflex/Python. Not cosmetics on the
+old static page. A separate ACT, with a separate verification + roast.
+
+WHY (Indra): the value for the user and the jury is not that an API exists. It is
+that the operator can SEE and CONTROL the loop:
+USER -> TENET ORCHESTRATOR -> AGENT -> ACTION -> AUTHORITY/WARRANT ->
+TENET ENFORCEMENT -> DECISION -> EXECUTION/REFUSAL -> RECEIPT -> PROOF.
+A live backend under the old demo UI does not meet the goal of PR #14.
+
+SEQUENCING (hard): F2/F3 (brain + API) -> F5 (live runtime on Railway) ->
+F6/F7 (live scenarios, fail-closed) -> THEN F8. F8 is verified AGAINST RAILWAY
+PRODUCTION after F5/F6/F7 - not locally, not against a screenshot.
+
+BINDING RULES
+ R1. Reflex/Python, not React/TypeScript.
+ R2. TENET is the user-facing name. WARRNT survives only as the internal
+     technical namespace where compatibility requires it.
+ R3. The UI is NOT a source of authorization truth. It reads decisions and state
+     from the TENET control plane / kernel. It never invents a decision.
+ R4. No fake / demo activity in production.
+ R5. Do not create a second permission taxonomy. The kernel's taxonomy is the
+     only one; the UI renders it.
+
+MINIMUM SURFACES
+ COMMAND   - chat with the TENET Orchestrator, real /api/ask, real run_id
+ ACTIVITY  - real actions/events: pending / executing / completed / refused
+ ACTION INSPECTOR - action_id, agent, actor, tool, action_class, warrant/authority,
+             policy result, decision, reason, upstream_contacted, execution result,
+             receipt
+ AUTHORITY - agents, warrants, active/revoked/expired, revoke action
+ HUMAN CONTROL - the pending human action, approve, deny; after the decision the UI
+             shows the REAL result (not a toast)
+ PROOF     - receipt, run_id <-> action_id correlation, upstream_contacted,
+             execution/refusal
+
+KEY UX TEST (the jury script)
+ 1. User asks: "What is happening?"
+ 2. TENET answers from the real control-plane state.
+ 3. User asks: "Why was support-copilot blocked?"
+ 4. The UI opens that concrete Action Inspector.
+ 5. User asks: "Did it reach the CRM?"
+ 6. The answer comes from upstream_contacted + execution_result + receipt -
+    NOT from a model's guess.
+ 7. User performs a revoke.
+ 8. The UI shows the real revoke -> authority state -> affected action(s) -> receipt.
+
+BUILD ORDER (risk control, Indra): do NOT attempt the whole interface at once.
+First ONE vertical live slice: real /api/ask -> real action -> real kernel decision
+-> real receipt -> the Control Room displays that action. Only then extend the
+other panels.
+
+PASS / FAIL
+ PASS: Indra opens the Railway URL, sees a real action, asks TENET about it, opens
+       its evidence, sees the decision, upstream_contacted and the receipt, and
+       performs a permitted operator action.
+ FAIL: the UI only renders pre-prepared data.
+
+ENVIRONMENT FACTS (this box, reuse from T2)
+ - No python3/python in PATH. uv IS installed. Venv outside the repo, e.g.
+   /root/work/tenet-cp-venv (uv venv --python 3.12, uv pip install ...).
+ - Node 24 is present (Reflex export needs it).
+ - Real DeepSeek key: set -a; . /root/.hermes/.env; set +a (name DEEPSEEK_API_KEY;
+   never echo it, never write it into any file in the repo).
+ - Railway deploy (F5 recipe, verified against the live schema): startCommand and
+   healthcheckPath come from serviceInstanceUpdate; the branch is NOT settable via
+   source (ServiceSource carries only repo/image) - deploy the PR commit with
+   serviceInstanceDeployV2(serviceId, environmentId, commitSha).
+
+ONE ARCHITECTURAL DECISION (Hermes, to keep one production service / one check)
+ Reflex's backend IS a FastAPI app. Mount the control-plane routes into the same
+ Reflex API runtime (or run them behind one process) so that /api/* and the UI
+ share one container, one URL and one healthcheck - the shape Indra asked for
+ (Railway production service = the whole TENET runtime, logical separation kept).
+END OF F8 CONTRACT

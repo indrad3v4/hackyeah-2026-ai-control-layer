@@ -1,0 +1,92 @@
+TENET — REAL UPSTREAM VERTICAL SLICE (T1-T6) — CONTRACT
+=======================================================
+Author: the ORCHESTRATOR. Implementer: you (Cline, deepseek-chat). Verifier: the orchestrator,
+from OUTSIDE the process. Your self-report is never evidence (AGENTS.md D12). Paste real output.
+
+WHY: the production surface is live but every action so far touches a SIMULATED upstream. The
+jury must see ONE real external financial-data call go THROUGH enforcement, with a receipt that
+proves what left the box, what came back and that TENET stood in front of it.
+
+SEQUENCING (hard): this ACT is T1-T6. The Control Room UI redesign is a SEPARATE later ACT.
+Do not start UI work here. Do not restyle the console page in this ACT.
+
+NON-NEGOTIABLE RULES
+- The kernel remains the ONLY authority. No second permission/action taxonomy anywhere.
+- The UI is never a source of truth; if you touch it at all, it only reads kernel state.
+- Enforcement BEFORE execution: no tool body may run and no bytes may leave the box before the
+  kernel decision allows it.
+- NEVER fake a live value: no hardcoded rate, no fixture fallback in live mode, no "pretend"
+  upstream. If the network is unreachable, the receipt must say so honestly (decision may still
+  be allow, execution failed, upstream_contacted true).
+
+T1. REAL UPSTREAM
+- Add the first real external tool: `fx.read_rate` — GET
+  https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD (public, no key, ECB reference data).
+- Action class: `read_external_data`; boundary: `outbound`. Issuer stays `risk-office`.
+- Entitlement: only the FX agents (`fx-trader`, `fx-auditor` — both already exist in the live
+  register) may hold this tool in scope. Every other actor must be DENIED with a reason that
+  names the missing scope.
+- The tool runs ONLY after the kernel returns an allowing decision.
+
+T2. THE RECEIPT MUST PROVE THE CROSSING
+For an allowed `fx.read_rate` action, the action record and its receipt must carry, at minimum:
+  endpoint (exact URL called, query included),
+  http_status,
+  response_sha256 (sha256 of the raw response body),
+  value (the parsed USD rate) — this is public market data, not personal data,
+  upstream_contacted: true,
+  latency_ms,
+  run_id, action_id, receipt id.
+A denied/refused action must carry `upstream_contacted: false` AND the record must show that the
+tool body was never entered (see T3).
+
+T3. PROOF THAT NOTHING LEFT THE BOX ON DENY
+- Instrument the tool layer with a counter that increments ONLY when the HTTP request is about to
+  be sent (and a second counter for requests actually completed).
+- A test must show: denied action -> sent_counter unchanged -> upstream_contacted false.
+- This must be asserted from the kernel's own record, not from the tool's self-report.
+
+T4. REDACTION IS PRE-EGRESS
+- Add one tool case where a parameter is redacted BEFORE the request leaves: e.g. `fx.audit_note`
+  posting a note that contains an account identifier. The request that leaves the box must carry
+  the REDACTED form; the receipt must show the transformation (field name + sha256 of the
+  original + sha256 of what was sent) and MUST NOT contain the original value.
+- Add a test that the original value appears nowhere in: the upstream request, the action record,
+  the receipt, the API response. Honest note if the mirror cannot do pre-egress transformation:
+  report the limitation plainly instead of faking the check.
+
+T5. HUMAN HOLD ON A REAL TOOL
+- One real-tool path must require human approval (policy or warrant flag, your choice, no new
+  taxonomy): the action is held BEFORE any HTTP request; approving it lets the real call happen
+  and the receipt shows the real status; denying it must leave upstream_contacted false with the
+  sent_counter unchanged.
+- Verify hold persistence across a process restart in the proof script.
+
+T6. REVOKE AGAINST A REAL TOOL
+- Revoke the FX agent's warrant; the next `fx.read_rate` must be REFUSED (or halted), with
+  upstream_contacted false and the sent_counter unchanged. The receipt/record must show the
+  authority state at decision time.
+
+EVIDENCE (all of it pasted by you, in this order)
+1. The exact local run command.
+2. curl transcript against a locally booted instance: /health, /api/overview, /api/activity?limit=10,
+   plus the full JSON of ONE allowed fx action (showing endpoint, http_status, response_sha256,
+   value, upstream_contacted true, run_id, action_id, receipt).
+3. The same for one DENIED, one REDACTED and one HUMAN-HOLD-then-APPROVED case.
+4. `scripts/tenet_live_proof.py` with the real key sourced — the full JSON line, run TWICE in a
+   row with fresh state, both green, pasted. (If a check is flaky, fix the check honestly — never
+   weaken it into a tautology, and never let a check pass by catching a bare word like "sk-" out
+   of a normal English word.)
+5. pytest summaries: node/tests, tests/, and scripts/check_console.py + the D6 gate script.
+   Baselines that must stay green: node 151, console 2/2, D6 gate OK.
+6. Per-AC PASS / NOT VERIFIED with the one evidence line that proves it.
+7. Known limitations, stated plainly.
+
+HYGIENE
+- Scoped commits only (the tool, the kernel/plumbing delta, tests, proof script). No pushes, no
+  new branches. Do NOT edit node/** except where the upstream tool registration genuinely lives
+  there — and if you do, do not change the mirror PIN; explain it.
+- Never create .railway/ inside the repo, never commit __pycache__ or a venv, never write the
+  provider key into any file in this repo.
+- Do NOT invent documents that claim the orchestrator authored them. Do not add unrequested
+  contracts, roadmaps or design docs. If you think a decision is missing, ask in the report.

@@ -1,0 +1,531 @@
+{
+  "ok": true,
+  "proved_at": "2026-10-03T19:43:32Z",
+  "upstream": {
+    "url": "https://api.frankfurter.dev/v1/latest",
+    "service": "upstream.frankfurter_server",
+    "log": "/tmp/tenet-t1-proof-calls.jsonl"
+  },
+  "call_ids": {
+    "allowed": "call-t1-allow-001",
+    "denied": "call-t1-deny-001",
+    "held": "call-t1-human-001",
+    "entitlement_denied": "call-t7-entitlement-001",
+    "self_approval_refused": "call-t8-sod-001"
+  },
+  "upstream_log": [
+    {
+      "args": {
+        "base": "EUR",
+        "call_id": "call-t1-allow-001",
+        "symbols": "USD"
+      },
+      "call_id": "call-t1-allow-001",
+      "crossing": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "latency_ms": 43.408,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225
+      },
+      "error": "",
+      "outcome": "ok",
+      "pid": 51963,
+      "rate_fetched": true,
+      "tool": "fx.read_rate",
+      "ts": 1791056612.650146
+    }
+  ],
+  "checks": [
+    {
+      "check": "control plane is up and healthy",
+      "ok": true,
+      "detail": {
+        "status": "LIVE",
+        "mode": "live",
+        "reason": "kernel present · provider key present",
+        "provider": "deepseek",
+        "model": "deepseek-chat",
+        "provider_key": "PRESENT",
+        "model_provider": "deepseek",
+        "commit": "c7450bee07cd",
+        "uptime": 1,
+        "kernel": "available",
+        "live_upstream": "configured"
+      }
+    },
+    {
+      "check": "the live-upstream warrants are registered",
+      "ok": true,
+      "detail": [
+        "deploy-agent",
+        "fin-reconcile",
+        "fx-auditor",
+        "fx-trader",
+        "report-bot",
+        "support-copilot"
+      ]
+    },
+    {
+      "check": "ALLOW: fx.rate executed",
+      "ok": true,
+      "detail": "read-only · live reference rate · in scope · class observe"
+    },
+    {
+      "check": "ALLOW: the real Frankfurter rate came back",
+      "ok": true,
+      "detail": {
+        "rates": {
+          "USD": 1.1225
+        },
+        "date": "2026-10-02",
+        "source": "https://api.frankfurter.dev/v1/latest"
+      }
+    },
+    {
+      "check": "ALLOW: the action is on the record",
+      "ok": true,
+      "detail": "A-0047"
+    },
+    {
+      "check": "DENY: support-copilot is refused before execution",
+      "ok": true,
+      "detail": "entitlement_absent: market_data.fx.read"
+    },
+    {
+      "check": "HUMAN: fx-auditor is held, not executed",
+      "ok": true,
+      "detail": "this order prices a live read with a person's decision · class observe"
+    },
+    {
+      "check": "T3: the boundary exposes its own egress counter",
+      "ok": true,
+      "detail": {
+        "sent": 1,
+        "completed": 1,
+        "failed": 0,
+        "pid": 51963,
+        "log": "/tmp/tenet-t1-proof-calls.jsonl",
+        "rate_cached": true
+      }
+    },
+    {
+      "check": "T3: sent_counter is unchanged across a denial (nothing left the box)",
+      "ok": true,
+      "detail": {
+        "before": 1,
+        "after": 1
+      }
+    },
+    {
+      "check": "T3: the allowed call is the one that moved sent_counter",
+      "ok": true,
+      "detail": {
+        "sent": 1,
+        "completed": 1
+      }
+    },
+    {
+      "check": "T3: the denied call is absent from the upstream's own access log",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001"
+      ]
+    },
+    {
+      "check": "upstream log records the allowed call_id",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001"
+      ]
+    },
+    {
+      "check": "upstream log proves the denied call never arrived",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001"
+      ]
+    },
+    {
+      "check": "upstream log proves the held call never arrived",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001"
+      ]
+    },
+    {
+      "check": "the upstream fetched a real rate (not a fixture)",
+      "ok": true,
+      "detail": [
+        {
+          "call_id": "call-t1-allow-001",
+          "rate_fetched": true
+        }
+      ]
+    },
+    {
+      "check": "the layer marks only the real call as upstream_contacted",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "check": "the layer marks the denied call as NOT upstream_contacted",
+      "ok": true,
+      "detail": false
+    },
+    {
+      "check": "T2: the action record carries endpoint",
+      "ok": true,
+      "detail": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 43.408
+      }
+    },
+    {
+      "check": "T2: the action record carries http_status",
+      "ok": true,
+      "detail": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 43.408
+      }
+    },
+    {
+      "check": "T2: the action record carries response_sha256",
+      "ok": true,
+      "detail": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 43.408
+      }
+    },
+    {
+      "check": "T2: the action record carries value",
+      "ok": true,
+      "detail": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 43.408
+      }
+    },
+    {
+      "check": "T2: the action record carries latency_ms",
+      "ok": true,
+      "detail": {
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 43.408
+      }
+    },
+    {
+      "check": "T2: the recorded endpoint is the real Frankfurter URL",
+      "ok": true,
+      "detail": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD"
+    },
+    {
+      "check": "T2: the recorded status is a real 200",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "check": "T2: the digest agrees with the upstream's own (re-hash agreement)",
+      "ok": true,
+      "detail": {
+        "layer": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "upstream": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297"
+      }
+    },
+    {
+      "check": "T4: the redacted call still executed (redact ranks with allow)",
+      "ok": true,
+      "detail": {
+        "decision": "redact",
+        "reason": "read-only · attach a desk note to the audit trail · PII stripped · personal fields stripped before execution: iban · class draft",
+        "executed": true,
+        "action_id": "A-0051",
+        "receipt": "f675833d",
+        "redacted": [
+          "iban"
+        ],
+        "upstream_params": {
+          "call_id": "call-t4-redact-001",
+          "desk": "rates",
+          "fields": [
+            "desk"
+          ]
+        },
+        "tool": "fx.audit_note",
+        "rows": 1,
+        "ok": true,
+        "upstream": true,
+        "call_id": "call-t4-redact-001",
+        "desk": "rates",
+        "received_fields": [
+          "desk"
+        ]
+      }
+    },
+    {
+      "check": "T4: the upstream received the call with the personal field already removed",
+      "ok": true,
+      "detail": {
+        "upstream_received_fields": [
+          "desk"
+        ]
+      }
+    },
+    {
+      "check": "T4: only the personal field was dropped; the non-personal one survived",
+      "ok": true,
+      "detail": {
+        "upstream_received_fields": [
+          "desk"
+        ]
+      }
+    },
+    {
+      "check": "T5: a live read was held for a person",
+      "ok": true,
+      "detail": "A-0049"
+    },
+    {
+      "check": "T5: the hold is pending and has not contacted the upstream",
+      "ok": true,
+      "detail": {
+        "state": "pending",
+        "upstream_contacted": false
+      }
+    },
+    {
+      "check": "T5: approving the hold executes it",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "state": "approved",
+        "executed": true
+      }
+    },
+    {
+      "check": "T5: the approved read carries its crossing on the record",
+      "ok": true,
+      "detail": {
+        "rows": 1,
+        "outcome": "ok",
+        "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+        "http_status": 200,
+        "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+        "value": 1.1225,
+        "latency_ms": 22.246,
+        "boundary": "outbound"
+      }
+    },
+    {
+      "check": "T5: the approved read reached the upstream, exactly once",
+      "ok": true,
+      "detail": [
+        [
+          "call-t1-allow-001",
+          "ok"
+        ],
+        [
+          "call-t4-redact-001",
+          "ok"
+        ],
+        [
+          "call-t1-human-001",
+          "ok"
+        ]
+      ]
+    },
+    {
+      "check": "T6: revoking the trader halts it",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "body": {
+          "agent": "fx-trader",
+          "state": "halted",
+          "by": "operator",
+          "warrant": "W-9001",
+          "revoked_at": 1791056612.8239386
+        }
+      }
+    },
+    {
+      "check": "T6: a revoked actor is REFUSED before execution",
+      "ok": true,
+      "detail": {
+        "code": -32003,
+        "decision": "revoked",
+        "message": "agent halted · warrant W-9001 pulled"
+      }
+    },
+    {
+      "check": "T6: the revoked call never reached the boundary",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001",
+        "call-t1-human-001",
+        "call-t4-redact-001"
+      ]
+    },
+    {
+      "check": "T7: an unheld entitlement is a deterministic DENY before execution",
+      "ok": true,
+      "detail": {
+        "code": -32001,
+        "data": {
+          "decision": "deny",
+          "executed": false,
+          "agent": "support-copilot",
+          "entitlement": "market_data.equity.read",
+          "tool": "equity.read_snapshot",
+          "held": [
+            "crm.read"
+          ],
+          "gate": "entitlement",
+          "class": "observe",
+          "action_id": "A-0053",
+          "receipt": "facfdfb2",
+          "rows_after": 0
+        },
+        "message": "entitlement_absent: market_data.equity.read"
+      }
+    },
+    {
+      "check": "T7: the refusal names the missing right",
+      "ok": true,
+      "detail": "market_data.equity.read"
+    },
+    {
+      "check": "T7: the equity call never reached the upstream",
+      "ok": true,
+      "detail": [
+        "call-t1-allow-001",
+        "call-t1-human-001",
+        "call-t4-redact-001"
+      ]
+    },
+    {
+      "check": "T8: an auditor read is held for a person",
+      "ok": true,
+      "detail": "A-0054"
+    },
+    {
+      "check": "T8: the held action records the identity that requested it",
+      "ok": true,
+      "detail": {
+        "requester": "operator-002",
+        "principal": "operator-002"
+      }
+    },
+    {
+      "check": "T8: the requester may NOT approve their own hold (409 separation_of_duties)",
+      "ok": true,
+      "detail": {
+        "status": 409,
+        "body": {
+          "error": "separation of duties: operator-002 requested action A-0054 and may not approve it - a different named approver is required",
+          "action_id": "A-0054",
+          "refused": "separation_of_duties"
+        }
+      }
+    },
+    {
+      "check": "T8: a refused self-approval leaves the hold pending and un-contacted",
+      "ok": true,
+      "detail": {
+        "state": "pending",
+        "upstream_contacted": false
+      }
+    },
+    {
+      "check": "T8: a DIFFERENT named person may still approve it",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "body": {
+          "action_id": "A-0054",
+          "state": "approved",
+          "decision": "human",
+          "receipt_id": "0779c131",
+          "upstream_contacted": true,
+          "executed": true,
+          "outcome": "ok",
+          "decided_by": "operator-002-approver"
+        }
+      }
+    },
+    {
+      "check": "T9: a denied action is attested as non-contact (200)",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "body": {
+          "contacted": false,
+          "action_id": "A-0053",
+          "count_before": 4,
+          "count_after": 4,
+          "boundary_attempts": 0,
+          "upstream_contacted": false,
+          "log_path": "/tmp/tenet-t1-proof-calls.jsonl",
+          "log_exists": true,
+          "note": "the action's record shows upstream_contacted=false and the upstream's own access log does not name it: nothing reached the far side"
+        }
+      }
+    },
+    {
+      "check": "T9: the attestation reports the upstream log unchanged around the read",
+      "ok": true,
+      "detail": {
+        "before": 4,
+        "after": 4
+      }
+    },
+    {
+      "check": "T9: an action the record shows as contacted is REFUSED (409)",
+      "ok": true,
+      "detail": {
+        "status": 409,
+        "body": {
+          "contacted": true,
+          "action_id": "A-0047",
+          "boundary_attempts": 1,
+          "note": "the record shows this action crossed the egress boundary - it may not be attested as non-contact"
+        }
+      }
+    },
+    {
+      "check": "T9: attesting an unknown action is a 404",
+      "ok": true,
+      "detail": {
+        "status": 404,
+        "body": {
+          "error": "unknown action A-999999",
+          "hint": "GET /api/actions lists the ledger"
+        }
+      }
+    },
+    {
+      "check": "T9: the upstream log route reads the real file with a digest",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "exists": true,
+        "total": 4
+      }
+    }
+  ],
+  "failed": []
+}
