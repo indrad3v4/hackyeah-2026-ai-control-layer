@@ -494,8 +494,12 @@ function armOff(){
   armed=false; clearTimeout(armTimer); armTimer=null;
   $('revoke').classList.remove('arm');
 }
-function opToken(){ try{ return sessionStorage.getItem('warrnt_admin')||''; }catch(e){ return ''; } }
-function setOpToken(v){ try{ sessionStorage.setItem('warrnt_admin', v); }catch(e){} }
+/* The control plane is not anonymous: mutations need the operator token in
+   `x-warrnt-admin`. Storage and key follow the node's own console
+   (node/docs/control-plane-auth.md): localStorage['warrnt_admin'], asked for once on the
+   first 401 so a refusal is visible on the screen rather than silent. */
+function opToken(){ try{ return localStorage.getItem('warrnt_admin')||''; }catch(e){ return ''; } }
+function setOpToken(v){ try{ localStorage.setItem('warrnt_admin', v); }catch(e){} }
 
 function syncRevoke(){
   const b=$('revoke'), a=selectedAgent();
@@ -509,10 +513,6 @@ function syncRevoke(){
   } else if(a.state==='halted'){
     label='/revoke — halted';
     hint='<b>'+a.id+'</b> is already stopped: order <b>'+a.warrant+'</b> is pulled and its TTL is zero. Select another agent to revoke.';
-  } else if(LIVE && !opToken()){
-    label='/revoke — token required';
-    hint='The control plane is not anonymous: pulling an order needs the operator token (<code>x-warrnt-admin</code>). Press to enter it once — it is kept for this session only.';
-    off=false;
   } else if(armed){
     label='/revoke — confirm';
     hint='Armed for <b>'+a.id+'</b>. Press again within 4 s to pull order <b>'+a.warrant+'</b> and halt the chain.';
@@ -535,11 +535,6 @@ function syncRevoke(){
 $('revoke').addEventListener('click', async ()=>{
   const a=selectedAgent();
   if(revoking) return;
-  if(LIVE && !opToken()){
-    const entered=prompt('Operator token (x-warrnt-admin) — kept for this session only:');
-    if(entered){ setOpToken(entered.trim()); revokeNote=''; syncRevoke(); }
-    return;
-  }
   if(!a || a.state==='halted') return;
   if(!armed){
     armed=true; revokeNote=''; syncRevoke();
@@ -549,27 +544,40 @@ $('revoke').addEventListener('click', async ()=>{
   armOff();
   const id=a.id;
   revoking=true; revokeNote=''; syncRevoke();
+  const post=async token=>{
+    const r=await fetch('/revoke',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-warrnt-admin':token},
+      body:JSON.stringify({agent:id}),
+      signal:AbortSignal.timeout(2500)
+    });
+    return r.status;
+  };
   let live=true;
   try{
     if(LIVE){
-      const r=await fetch('/revoke',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-warrnt-admin':opToken()},
-        body:JSON.stringify({agent:id}),
-        signal:AbortSignal.timeout(2500)
-      });
-      if(!r.ok) throw new Error('node answered HTTP '+r.status);
+      let status=await post(opToken());
+      if(status===401){
+        const entered=prompt('The node refused: operator token required (x-warrnt-admin). Kept in localStorage:');
+        if(entered){ setOpToken(entered.trim()); status=await post(opToken()); }
+      }
+      if(status!==200) throw new Error('node answered HTTP '+status);
     }
   }catch(e){
     live=false;
     revokeNote = LIVE
-      ? 'The node did not confirm ('+e.message+') — the halt shown below is local only.'
+      ? 'The node did not confirm ('+e.message+') — nothing was changed here, so the agent is left as it was. Fix the cause and press again.'
       : '';
   }
-  revoke(id, null);
-  $('modeBadge').textContent='REVOKED';
-  setTimeout(()=>$('modeBadge').textContent='PRE-EXEC',2500);
-  if(!live) logKill('<b>REVOKE</b> '+id+' · not confirmed by the node');
+  if(live){
+    revoke(id, null);
+    $('modeBadge').textContent='REVOKED';
+    setTimeout(()=>$('modeBadge').textContent='PRE-EXEC',2500);
+  } else {
+    /* The node did not confirm: paint nothing. A console that shows HALTED next to a failed
+       call is the same lie as the button that only ever mutated local state. */
+    logKill('<b>REVOKE</b> '+id+' · not confirmed by the node — nothing changed');
+  }
   revoking=false; syncRevoke();
 });
 $('target').addEventListener('change',()=>{ armOff(); syncRevoke(); });
