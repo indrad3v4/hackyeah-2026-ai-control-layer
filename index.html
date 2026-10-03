@@ -3,76 +3,85 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>TENET — AI Security Control Room</title>
+<title>TENET — Security Operator Control Room</title>
 <style>
-:root{--bg:#070a0e;--p:#0d1218;--p2:#111821;--line:#202b37;--muted:#8291a3;--text:#edf3f8;--green:#42d392;--red:#ff5d6c;--amber:#f3bd4f;--blue:#69a8ff}
-*{box-sizing:border-box}
-html{background:var(--bg)}
-body{margin:0;background:radial-gradient(circle at 72% 0,#162238 0,#070a0e 42%);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
-button{font:inherit}.app{max-width:1480px;margin:auto;padding:20px}
-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:2px 0 18px;border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:11px}.mark{width:36px;height:36px;border:1px solid #405064;border-radius:10px;display:grid;place-items:center;font-weight:900;background:#0f1620}
-h1{font-size:19px;margin:0;letter-spacing:-.03em}.sub{color:var(--muted);font-size:12px}.status{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px #42d392}
-.card{background:rgba(13,18,24,.96);border:1px solid var(--line);border-radius:15px;overflow:hidden}.pad{padding:18px}.eyebrow{font-size:10px;color:#93a5b8;text-transform:uppercase;letter-spacing:.14em;font-weight:800}
-.hero{margin-top:16px}.heroStage{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.8fr) minmax(0,1.35fr);gap:0;align-items:stretch;background:rgba(13,18,24,.96);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-.stagePane{padding:22px}.stagePane+ .stagePane{border-left:1px solid var(--line)}
-.stagePane.center{background:#0a0f15;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
-.hero h2{font-size:29px;line-height:1.08;letter-spacing:-.045em;margin:7px 0 9px}.hero p{margin:0;color:#aebbc8;max-width:620px}
-.request{font-size:18px;font-weight:800;line-height:1.25;margin:10px 0}.requestMeta{color:var(--muted);font-size:12px}
-.gate{width:100%;max-width:250px;padding:16px;border:1px solid #314051;border-radius:13px;background:#0e151d}.gateTitle{font-size:18px;font-weight:900;margin:5px 0}.gateText{color:var(--muted);font-size:11px}
-.badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.08em}.allow{background:rgba(66,211,146,.12);color:var(--green);border:1px solid rgba(66,211,146,.3)}.deny{background:rgba(255,93,108,.1);color:var(--red);border:1px solid rgba(255,93,108,.3)}.human{background:rgba(243,189,79,.1);color:var(--amber);border:1px solid rgba(243,189,79,.3)}.neutral{background:#151d27;color:#aebbc8;border:1px solid var(--line)}
-.outcomeTitle{font-size:24px;font-weight:900;letter-spacing:-.03em;margin:8px 0}.outcomeText{color:#aebbc8}.proofMini{margin-top:16px;padding-top:13px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}
-.resourceBar{margin-top:12px;display:grid;grid-template-columns:1.5fr repeat(4,1fr);gap:8px}.resource{min-width:0}.resource .model{font-size:15px;font-weight:850}.metric{padding:11px 13px;background:var(--p2);border:1px solid var(--line);border-radius:10px}.metric b{display:block;font-size:15px}.metric span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-top:2px}.trace{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#718196;font:10px Consolas,monospace;margin-top:5px}
-.content{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(330px,.65fr);gap:14px;margin-top:14px}.head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line)}h3{margin:0;font-size:13px;letter-spacing:.04em}
-.feed{max-height:410px;overflow:auto}.event{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;padding:14px 18px;cursor:pointer}.event:hover,.event.sel{background:#111923}.eventTop{display:flex;align-items:center;gap:8px}.eventTool{font-weight:750}.eventMeta{color:var(--muted);font-size:11px;margin-top:4px}
-.rows{padding:5px 18px 15px}.row{display:grid;grid-template-columns:120px 1fr;gap:14px;padding:9px 0;border-bottom:1px solid #18212b}.row:last-child{border-bottom:0}.label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.value{min-width:0;word-break:break-word}.mono{font-family:Consolas,monospace;font-size:11px}
-.timeline{padding:16px 18px 20px}.tl{display:grid;grid-template-columns:18px 1fr;gap:9px;position:relative}.tl:not(:last-child){padding-bottom:15px}.tl .bullet{width:9px;height:9px;border-radius:50%;background:#63758a;margin-top:5px;z-index:1}.tl:not(:last-child):after{content:"";position:absolute;left:4px;top:13px;bottom:0;width:1px;background:#2a3542}.tl b{font-size:12px}.tl span{display:block;color:var(--muted);font-size:11px;margin-top:2px}
-.actions{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 18px}.btn{border:1px solid var(--line);background:#131b25;color:var(--text);padding:9px 12px;border-radius:8px;font-weight:750;cursor:pointer}.btn.red{border-color:rgba(255,93,108,.4);color:#ff8a95}.btn.primary{border-color:rgba(105,168,255,.45);color:#9ac5ff}.btn:disabled{opacity:.45;cursor:not-allowed}
-.mobileOnly{display:none}details.tech{border-top:1px solid var(--line)}details.tech summary{cursor:pointer;padding:13px 18px;color:#aebbc8;font-size:11px;font-weight:750;list-style:none}details.tech summary::-webkit-details-marker{display:none}details.tech summary:before{content:"＋";margin-right:7px;color:var(--blue)}details.tech[open] summary:before{content:"−"}
-footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-size:10px;padding:14px 2px 0}
-@media(max-width:1050px){.heroStage{grid-template-columns:1fr}.stagePane+.stagePane{border-left:0;border-top:1px solid var(--line)}.stagePane.center{min-height:170px}.resourceBar{grid-template-columns:1.4fr repeat(2,1fr)}}
-@media(max-width:700px){body{background:#070a0e}.app{padding:12px 10px calc(18px + env(safe-area-inset-bottom))}header{padding-bottom:13px}.mark{width:32px;height:32px;border-radius:9px}h1{font-size:16px}.brand .sub{font-size:10px;max-width:210px}.status{font-size:10px}.hero{margin-top:10px}.heroStage{border-radius:13px}.stagePane{padding:16px}.stagePane.center{order:2;min-height:0;padding:18px 14px}.heroStage .requestPane{order:1}.heroStage .outcomePane{order:3}.hero h2{font-size:23px;margin:5px 0 7px}.request{font-size:16px}.outcomeTitle{font-size:21px}.resourceBar{grid-template-columns:1fr 1fr;margin-top:9px}.resourceBar .resource{grid-column:1/-1}.metric{padding:9px 10px}.metric b{font-size:14px}.content{grid-template-columns:1fr;margin-top:10px;gap:10px}.feed{max-height:none}.event{padding:13px 14px}.eventTop{align-items:flex-start}.eventMeta{line-height:1.35}.content>aside{display:none}.mobileOnly{display:block}.mobileProof{margin-top:10px}.mobileProof .btn{width:100%}details.tech{display:block}.trace{max-width:100%}footer{display:none}.desktopHint{display:none}}
-@media(min-width:701px){details.tech{display:none}}
-@media(max-height:700px){body{overflow:auto}.app{min-height:100vh}}
+:root{--bg:#06090d;--panel:#0c1219;--panel2:#101821;--line:#22303d;--muted:#8292a5;--text:#edf4f8;--green:#45d59a;--red:#ff6674;--amber:#f2bf55;--blue:#71adff}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:radial-gradient(circle at 72% 0,#17243a 0,#06090d 44%);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+button,input{font:inherit}.app{max-width:1500px;margin:auto;padding:18px}button{cursor:pointer}
+header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:2px 0 15px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:11px}.mark{width:36px;height:36px;border:1px solid #405064;border-radius:10px;display:grid;place-items:center;font-weight:900;background:#0e151e}h1{font-size:19px;margin:0;letter-spacing:-.03em}.sub{color:var(--muted);font-size:12px}.status{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px #45d59a}.dot.busy{background:var(--amber);box-shadow:0 0 12px #f2bf55}
+.card{background:rgba(12,18,25,.96);border:1px solid var(--line);border-radius:15px;overflow:hidden}.pad{padding:18px}.eyebrow{font-size:10px;color:#93a5b8;text-transform:uppercase;letter-spacing:.14em;font-weight:850}
+.command{margin-top:14px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:9px;background:rgba(12,18,25,.96);border:1px solid var(--line);border-radius:13px}.command input{width:100%;border:1px solid #2c3a48;border-radius:9px;background:#080d13;color:var(--text);padding:11px 13px;outline:none}.command input:focus{border-color:#5079a6}.command button{border:1px solid rgba(113,173,255,.45);background:#122237;color:#a9d0ff;padding:10px 15px;border-radius:9px;font-weight:800}.command button:disabled{opacity:.5;cursor:not-allowed}
+.commandMeta{grid-column:1/-1;color:var(--muted);font-size:10px}.commandMeta b{color:#b8c6d4}
+.hero{margin-top:12px}.heroStage{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(290px,.85fr) minmax(0,1.15fr);background:rgba(12,18,25,.97);border:1px solid var(--line);border-radius:16px;overflow:hidden}.stagePane{padding:21px}.stagePane+.stagePane{border-left:1px solid var(--line)}.stagePane.center{background:#090f15;display:flex;flex-direction:column;justify-content:center}
+.hero h2{font-size:28px;line-height:1.08;letter-spacing:-.045em;margin:7px 0 8px}.hero p{margin:0;color:#aebbc8;max-width:650px}.request{font-size:18px;font-weight:820;line-height:1.28;margin:11px 0 5px}.requestMeta{color:var(--muted);font-size:11px}
+.badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.allow{background:rgba(69,213,154,.12);color:var(--green);border:1px solid rgba(69,213,154,.3)}.deny{background:rgba(255,102,116,.1);color:var(--red);border:1px solid rgba(255,102,116,.3)}.human{background:rgba(242,191,85,.1);color:var(--amber);border:1px solid rgba(242,191,85,.3)}.neutral{background:#151d27;color:#aebbc8;border:1px solid var(--line)}
+.path{display:grid;gap:7px;margin-top:14px}.step{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;padding:8px 9px;border:1px solid #1f2a35;border-radius:9px;background:#0b1118}.step i{width:8px;height:8px;border-radius:50%;background:#526477}.step.done i{background:var(--green);box-shadow:0 0 8px rgba(69,213,154,.5)}.step.stop i{background:var(--red);box-shadow:0 0 8px rgba(255,102,116,.45)}.step.wait i{background:var(--amber)}.step b{font-size:11px}.step span{font-size:10px;color:var(--muted);text-align:right}.gateNote{margin-top:12px;color:var(--muted);font-size:11px}
+.controlBox{display:grid;gap:10px;margin-top:12px}.controlBox .title{font-size:13px;font-weight:850}.controlBox .small{color:var(--muted);font-size:11px}.controls{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#131b24;color:var(--text);padding:9px 11px;border-radius:8px;font-weight:780}.btn.primary{border-color:rgba(113,173,255,.45);color:#a9d0ff}.btn.red{border-color:rgba(255,102,116,.42);color:#ff909b}.btn.amber{border-color:rgba(242,191,85,.42);color:#f6ce77}.btn:disabled{opacity:.42;cursor:not-allowed}
+.resourceBar{margin-top:10px;display:grid;grid-template-columns:1.35fr repeat(4,1fr);gap:7px}.metric{min-width:0;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:9px}.metric b{display:block;font-size:14px}.metric span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-top:2px}.trace{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#718196;font:10px Consolas,monospace;margin-top:4px}.model{font-size:14px;font-weight:850}
+.content{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,.65fr);gap:12px;margin-top:12px}.head{display:flex;align-items:center;justify-content:space-between;padding:14px 17px;border-bottom:1px solid var(--line)}h3{margin:0;font-size:12px;letter-spacing:.05em;text-transform:uppercase}.liveBadge{font-size:10px;color:var(--green);font-weight:800}
+.stream{max-height:470px;overflow:auto}.event{display:grid;grid-template-columns:68px 1fr auto;gap:11px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;padding:13px 17px}.event:hover,.event.sel{background:#111923}.eventTime{color:#6f8195;font:10px Consolas,monospace;padding-top:2px}.eventMain{min-width:0}.eventTop{display:flex;align-items:center;gap:7px;min-width:0}.eventTool{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.eventMeta{color:var(--muted);font-size:10px;margin-top:4px}.eventArrow{color:#6f8195;font-size:16px;padding-top:3px}.empty{padding:35px 18px;color:#718196;text-align:center}.empty b{display:block;color:#c2ced9;margin-bottom:5px}
+.rows{padding:5px 17px 15px}.row{display:grid;grid-template-columns:115px 1fr;gap:13px;padding:8px 0;border-bottom:1px solid #18212b}.row:last-child{border-bottom:0}.label{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.08em}.value{min-width:0;word-break:break-word}.mono{font-family:Consolas,monospace;font-size:10px}.timeline{padding:14px 17px 17px;border-top:1px solid var(--line)}.tl{display:grid;grid-template-columns:16px 1fr;gap:8px;position:relative}.tl:not(:last-child){padding-bottom:12px}.tl .bullet{width:8px;height:8px;border-radius:50%;background:#63758a;margin-top:4px;z-index:1}.tl.done .bullet{background:var(--green)}.tl.stop .bullet{background:var(--red)}.tl:not(:last-child):after{content:"";position:absolute;left:3px;top:12px;bottom:0;width:1px;background:#2a3542}.tl b{font-size:11px}.tl span{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.operator{padding:13px 17px;border-top:1px solid var(--line);background:#0a1017}.operator .who{font-weight:850;font-size:12px}.operator .hint{color:var(--muted);font-size:10px;margin-top:3px}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.agentStrip{margin-top:12px;display:flex;gap:8px;overflow:auto}.agent{min-width:190px;padding:11px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}.agent strong{font-size:11px}.agent small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+details.tech{margin-top:10px;border:1px solid var(--line);border-radius:11px;background:rgba(12,18,25,.9)}details.tech summary{cursor:pointer;padding:11px 14px;color:#aebbc8;font-size:10px;font-weight:780;list-style:none}details.tech summary::-webkit-details-marker{display:none}details.tech summary:before{content:"＋";margin-right:7px;color:var(--blue)}details.tech[open] summary:before{content:"−"}footer{display:flex;justify-content:space-between;gap:15px;color:#5f6f80;font-size:9px;padding:12px 2px 0}
+.flash{animation:flash .7s ease-out}@keyframes flash{0%{box-shadow:0 0 0 0 rgba(69,213,154,.35)}100%{box-shadow:0 0 0 14px rgba(69,213,154,0)}}
+@media(max-width:1080px){.heroStage{grid-template-columns:1fr}.stagePane+.stagePane{border-left:0;border-top:1px solid var(--line)}.resourceBar{grid-template-columns:1.4fr repeat(2,1fr)}}
+@media(max-width:760px){body{background:#06090d}.app{padding:11px 10px calc(18px + env(safe-area-inset-bottom))}header{padding-bottom:12px}.mark{width:32px;height:32px}.brand .sub{font-size:10px;max-width:210px}.status{font-size:10px}.command{grid-template-columns:1fr}.command button{width:100%}.commandMeta{font-size:9px}.heroStage{border-radius:13px}.stagePane{padding:15px}.hero h2{font-size:23px}.request{font-size:16px}.resourceBar{grid-template-columns:1fr 1fr}.resourceBar .resource{grid-column:1/-1}.content{grid-template-columns:1fr}.stream{max-height:none}.event{grid-template-columns:54px 1fr auto;padding:12px 13px}.content aside{order:2}.agentStrip{margin-top:9px}.agent{min-width:170px}.row{grid-template-columns:100px 1fr}footer{display:none}}
 </style>
 </head>
 <body>
 <div class="app">
 <header>
- <div class="brand"><div class="mark">T</div><div><h1>TENET Control Room</h1><div class="sub">Stop unsafe AI actions before they reach data. Then show the proof.</div></div></div>
- <div class="status"><span class="dot"></span><span id="live">Connecting…</span></div>
+ <div class="brand"><div class="mark">T</div><div><h1>TENET Security Control Room</h1><div class="sub">Watch the agent ask. Decide before data moves. Keep the proof.</div></div></div>
+ <div class="status"><span id="liveDot" class="dot"></span><span id="live">Orchestrator connecting…</span></div>
 </header>
 
+<section class="command" aria-label="Ask the orchestrator">
+ <input id="question" autocomplete="off" placeholder="Ask the orchestrator to investigate or request an action…" value="Read the latest EUR/USD reference rate">
+ <button id="ask">Run through TENET</button>
+ <div class="commandMeta"><b>Operator view:</b> this sends a real request to the TENET orchestrator. The model may propose; the kernel remains the authority.</div>
+</section>
+
 <section class="hero">
- <div class="heroStage">
-  <article class="stagePane requestPane">
-   <div class="eyebrow">01 · Security decision</div>
-   <h2 id="headline">What is the agent trying to do?</h2>
-   <p id="summary">TENET checks the action before the tool reaches the upstream system.</p>
-   <div class="request" id="request">Waiting for a real agent action…</div>
-   <div class="requestMeta" id="requestMeta">No live security event selected.</div>
+ <div class="heroStage" id="heroStage">
+  <article class="stagePane">
+   <div class="eyebrow">01 · Live security event</div>
+   <h2 id="headline">Waiting for an agent action</h2>
+   <p id="summary">When a request arrives, TENET shows the real action lifecycle here — not a simulated feed.</p>
+   <div class="request" id="request">No action selected</div>
+   <div class="requestMeta" id="requestMeta">Ask the orchestrator above, or select a live event below.</div>
   </article>
 
   <article class="stagePane center">
-   <div class="eyebrow">TENET enforcement</div>
-   <div class="gate">
-    <span id="decision" class="badge neutral">WAITING</span>
-    <div class="gateTitle">Kernel decides</div>
-    <div class="gateText">Identity · entitlement · warrant · policy</div>
+   <div class="eyebrow">02 · Enforcement path</div>
+   <div class="path" id="path">
+    <div class="step wait"><i></i><b>Agent request</b><span>waiting</span></div>
+    <div class="step"><i></i><b>Identity / entitlement</b><span>—</span></div>
+    <div class="step"><i></i><b>Warrant / policy</b><span>—</span></div>
+    <div class="step"><i></i><b>Kernel decision</b><span>—</span></div>
+    <div class="step"><i></i><b>Upstream + receipt</b><span>—</span></div>
    </div>
-   <div class="proofMini" id="gateProof">The model can propose. It cannot authorize.</div>
+   <div class="gateNote" id="gateNote">The model can propose. It cannot authorize.</div>
   </article>
 
-  <article class="stagePane outcomePane">
-   <div class="eyebrow">Execution + proof</div>
-   <div class="outcomeTitle" id="outcome">Nothing selected yet</div>
-   <div class="outcomeText" id="decisionText">Select a live action to see whether the upstream was contacted and what evidence exists.</div>
-   <div class="proofMini"><strong>Proof:</strong> <span id="sProof">—</span></div>
+  <article class="stagePane">
+   <div class="eyebrow">03 · Operator control</div>
+   <div class="controlBox">
+    <div class="title" id="controlTitle">Nothing selected</div>
+    <div class="small" id="controlHint">Select an action to see what you can control before the boundary is crossed.</div>
+    <div class="controls">
+     <button class="btn red" id="deny" disabled>Deny action</button>
+     <button class="btn amber" id="human" disabled>Require human</button>
+     <button class="btn red" id="revoke" disabled>Revoke agent</button>
+    </div>
+    <div class="small" id="controlResult">No operator action taken.</div>
+   </div>
   </article>
  </div>
 
  <div class="resourceBar">
-  <div class="metric resource"><div class="model" id="model">No provider evidence yet</div><div class="trace" id="trace" title="DeepSeek provider trace">No DeepSeek trace yet.</div></div>
+  <div class="metric resource"><div class="model" id="model">DeepSeek · no completed call yet</div><div class="trace" id="trace">No provider trace yet.</div></div>
   <div class="metric"><b id="calls">—</b><span>model calls</span></div>
   <div class="metric"><b id="tokens">—</b><span>total tokens</span></div>
   <div class="metric"><b id="io">—</b><span>input / output</span></div>
@@ -80,44 +89,160 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
  </div>
 </section>
 
+<section class="agentStrip" id="agents"></section>
+
 <section class="content">
  <article class="card">
-  <div class="head"><h3>03 · Live agent activity</h3><span class="sub" id="count">0 events</span></div>
-  <div class="feed" id="feed"><div class="pad" style="color:#718196">Reading the kernel…</div></div>
-  <div class="mobileOnly mobileProof"><button class="btn primary" id="mobileDetails">Show proof for this action</button></div>
+  <div class="head"><h3>04 · Orchestrator stream</h3><span class="liveBadge" id="streamState">● LIVE · 1s</span></div>
+  <div class="stream" id="stream"><div class="empty"><b>Listening to TENET</b>No security events have arrived yet. Start a request above.</div></div>
  </article>
 
  <aside class="card">
-  <div class="head"><h3>04 · Why this happened</h3><span class="sub" id="eventState">—</span></div>
-  <div class="rows" id="details"><div class="pad" style="color:#718196">Select an action.</div></div>
+  <div class="head"><h3>05 · Proof & context</h3><span class="sub" id="eventState">—</span></div>
+  <div class="rows" id="details"><div class="empty">Select an action.</div></div>
   <div class="timeline" id="timeline"></div>
-  <div class="actions"><button class="btn" id="refresh">Refresh evidence</button><button class="btn red" id="revoke" disabled>Stop agent</button></div>
+  <div class="operator">
+   <div class="who">Security operator</div>
+   <div class="hint">Controls affect the selected action/agent through TENET's authenticated control path.</div>
+   <div class="actions"><button class="btn primary" id="refresh">Refresh evidence</button><button class="btn" id="proof">Open full proof</button></div>
+  </div>
  </aside>
 </section>
 
 <details class="tech">
- <summary>Technical details & provider evidence</summary>
- <div class="rows" id="mobileTechnical"><div class="row"><div class="label">Model</div><div class="value mono" id="techModel">—</div></div><div class="row"><div class="label">Provider trace</div><div class="value mono" id="techTrace">—</div></div><div class="row"><div class="label">Tokens</div><div class="value mono" id="techTokens">—</div></div></div>
+ <summary>Technical evidence</summary>
+ <div class="rows"><div class="row"><div class="label">Model</div><div class="value mono" id="techModel">—</div></div><div class="row"><div class="label">Provider trace</div><div class="value mono" id="techTrace">—</div></div><div class="row"><div class="label">Tokens</div><div class="value mono" id="techTokens">—</div></div><div class="row"><div class="label">Run</div><div class="value mono" id="techRun">—</div></div></div>
 </details>
-
-<footer><span>TENET · Agent → Enforcement Kernel → upstream</span><span id="footer">Evidence only · no credentials exposed</span></footer>
+<footer><span>TENET · agent → enforcement kernel → upstream</span><span id="footer">Evidence only · unknown stays unknown</span></footer>
 </div>
 
 <script>
-const $=id=>document.getElementById(id);let events=[],selected=null,usage=null;
+const $=id=>document.getElementById(id);
+let events=[],selected=null,usage=null,lastIds=new Set(),askInFlight=false;
+
 function esc(v){return String(v??"—").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
-function cls(d){d=String(d||"").toLowerCase();return d==="allow"?"allow":d==="deny"||d==="revoked"?"deny":d==="human"?"human":"neutral"}
-function fmt(n){return n==null?"—":Number(n).toLocaleString()}
-function decisionText(e){if(!e)return"Select a live action to see whether the upstream was contacted and what evidence exists.";if(e.decision==="deny")return e.upstream_contacted===false?"TENET stopped the request before the upstream. No upstream contact is proven for this action.":"TENET denied the request.";if(e.decision==="allow")return e.upstream_contacted?"TENET allowed the request and the record shows an upstream contact.":"TENET allowed the request, but the record does not prove an upstream contact yet.";if(e.decision==="human")return"The request is waiting for a human decision. The upstream must not be contacted before approval.";if(e.decision==="redact")return"TENET allowed the action after removing fields covered by the redaction rule.";if(e.decision==="revoked")return"The warrant was revoked; the action cannot continue.";return e.reason||"Decision recorded."}
-function renderResource(){const u=usage||{};$("model").textContent=u.model_served||u.model_requested||"No provider evidence yet";$("calls").textContent=u.calls_completed!=null?fmt(u.calls_completed):"—";$("tokens").textContent=u.total_tokens?fmt(u.total_tokens):"—";$("io").textContent=(u.input_tokens!=null||u.output_tokens!=null)?fmt(u.input_tokens||0)+" / "+fmt(u.output_tokens||0):"—";$("latency").textContent=u.max_latency_ms!=null?fmt(u.max_latency_ms)+" ms":"—";$("trace").textContent=u.latest_trace_id?"DeepSeek trace · "+u.latest_trace_id:"No completed DeepSeek trace yet";$("techModel").textContent=u.model_served||u.model_requested||"—";$("techTrace").textContent=u.latest_trace_id||"—";$("techTokens").textContent=(u.input_tokens||0)+" / "+(u.output_tokens||0)}
-function renderFeed(){$("count").textContent=events.length+" event"+(events.length===1?"":"s");$("feed").innerHTML=events.length?events.map(e=>`<button class="event ${selected===e.event_id?"sel":""}" onclick="selectEvent('${esc(e.event_id)}')"><div class="eventTop"><span class="badge ${cls(e.decision)}">${esc(e.decision||e.state||"recorded")}</span><span class="eventTool">${esc(e.agent||"unknown agent")} · ${esc(e.intent||e.tool||"unknown request")}</span></div><div class="eventMeta">${esc(e.reason||"Kernel decision recorded")} · upstream: ${e.upstream_contacted===true?"contacted":e.upstream_contacted===false?"not contacted":"unknown"}</div></button>`).join(""):"<div class='pad' style='color:#718196'>No kernel events available.</div>"}
-function selectEvent(id){const e=events.find(x=>x.event_id===id);if(!e)return;selected=id;renderFeed();renderSelected(e)}
-function renderSelected(e){const intent=e.intent||e.tool||"perform an action";$("headline").textContent=(e.agent||"Agent")+" wants to "+intent;$("summary").textContent="TENET checks this request before the tool reaches the upstream system.";$("request").textContent=intent;$("requestMeta").textContent=[e.actor,e.warrant?"warrant "+e.warrant:"",e.policy?"policy "+e.policy:""].filter(Boolean).join(" · ")||"Security context recorded";$("decision").className="badge "+cls(e.decision);$("decision").textContent=String(e.decision||"recorded").toUpperCase();$("decisionText").textContent=decisionText(e);$("outcome").textContent=e.upstream_contacted===true?"Upstream contacted":e.upstream_contacted===false?"Upstream not contacted":"Upstream contact not proven";$("sProof").textContent=e.receipt_id?"Receipt "+e.receipt_id:"Evidence incomplete";$("gateProof").textContent=e.reason||"The model can propose. The kernel makes the security decision.";$("eventState").textContent=e.state||"recorded";$("details").innerHTML=[["What",e.intent||e.tool],["Agent",e.agent],["Actor",e.actor],["Authority / warrant",e.warrant],["Warrant state",e.warrant_state],["Policy",e.policy],["Decision",e.decision],["Why",e.reason],["Data boundary",e.upstream_contacted===true?"crossed":e.upstream_contacted===false?"not crossed":"not proven"],["Model",e.model_served||e.model_requested],["Model trace",e.model_trace_id],["Receipt",e.receipt_id],["Action",e.event_id],["Upstream call",e.upstream_call_id]].map(r=>`<div class="row"><div class="label">${esc(r[0])}</div><div class="value mono">${esc(r[1])}</div></div>`).join("");$("timeline").innerHTML=[["Agent proposed",e.intent||e.tool||"request"],["TENET checked",e.policy||"policy"],["Decision",e.decision||"recorded"],[e.upstream_contacted===true?"Upstream contacted":"Boundary result",e.upstream_contacted===true?(e.execution_result?.http_status?"HTTP "+e.execution_result.http_status:"contact recorded"):"No contact proven"],["Receipt",e.receipt_id||"not present"]].map(x=>`<div class="tl"><div class="bullet"></div><div><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div></div>`).join("");$("revoke").disabled=!e.agent||e.state==="halted"||e.decision==="deny"||e.decision==="revoked"}
-async function get(url,opts){const r=await fetch(url,opts);if(!r.ok)throw new Error(url+" → HTTP "+r.status);return r.json()}
-async function refresh(){try{const [sec,res]=await Promise.all([get("/api/security-events?limit=20"),get("/api/model-usage")]);events=sec.events||[];usage=res;$("live").textContent="Live · security decisions";$("footer").textContent="Evidence source: TENET kernel · model evidence: DeepSeek journal";renderResource();renderFeed();if(!selected||!events.some(e=>e.event_id===selected))selected=events[0]?.event_id||null;if(selected){const e=events.find(x=>x.event_id===selected);if(e)renderSelected(e)}}catch(err){$("live").textContent="Control plane unavailable";$("footer").textContent=err.message}}
-$("refresh").onclick=refresh;$("mobileDetails").onclick=()=>{document.querySelector("details.tech").open=true;document.querySelector("details.tech").scrollIntoView({behavior:"smooth"})};
-$("revoke").onclick=async()=>{if(!selected)return;const e=events.find(x=>x.event_id===selected);if(!e?.agent)return;const token=localStorage.getItem("warrnt_admin")||"";if(!token){$("footer").textContent="Stop agent is protected. Use the authenticated operator console.";return}if(!confirm("Stop "+e.agent+"? This revokes its authority."))return;try{await get("/api/agents/"+encodeURIComponent(e.agent)+"/revoke",{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:"operator"})});await refresh()}catch(err){$("footer").textContent="Revoke failed: "+err.message}};
-window.__TENET_QA__={ok:true,revokeOverTarget:false,layout:"security-decision-first"};refresh();setInterval(refresh,2000);
+function cls(d){d=String(d||"").toLowerCase();return d==="allow"?"allow":d==="deny"||d==="revoked"?"deny":d==="human"?"human":"neutral";}
+function fmt(n){return n==null?"—":Number(n).toLocaleString();}
+function time(v){if(!v)return"—";try{return new Date(Number(v)*1000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});}catch{return"—";}}
+function decisionCopy(e){
+ if(!e)return"Select a live action to inspect the evidence.";
+ if(e.decision==="deny")return e.upstream_contacted===false?"Denied before upstream contact. The record shows no boundary crossing for this action.":"TENET denied the request.";
+ if(e.decision==="allow")return e.upstream_contacted===true?"Allowed. The record contains evidence of upstream contact.":"Allowed, but upstream contact is not proven yet.";
+ if(e.decision==="human")return"Waiting for a human decision. Upstream must not be contacted before approval.";
+ if(e.decision==="redact")return"Allowed after policy redaction. The receipt records the enforcement result.";
+ if(e.decision==="revoked")return"Authority was revoked. The action cannot continue.";
+ return e.reason||"Decision recorded.";
+}
+function stageState(e){
+ if(!e)return["wait","waiting","—","—","—"];
+ const d=String(e.decision||"").toLowerCase();
+ const contact=e.upstream_contacted;
+ return [
+  ["done","received","received"],
+  [e.actor||e.agent?"done":"wait",e.actor||e.agent?"identified":"missing"],
+  [e.warrant||e.policy?"done":"wait",e.warrant||e.policy?"checked":"waiting"],
+  [d==="deny"||d==="revoked"?"stop":d?"done":"wait",d?d.toUpperCase():"waiting"],
+  [contact===true?"done":contact===false?"stop":"wait",contact===true?"contacted":contact===false?"not contacted":"not proven"]
+ ];
+}
+function renderPath(e){
+ const p=$("path");if(!e){p.innerHTML='<div class="step wait"><i></i><b>Agent request</b><span>waiting</span></div><div class="step"><i></i><b>Identity / entitlement</b><span>—</span></div><div class="step"><i></i><b>Warrant / policy</b><span>—</span></div><div class="step"><i></i><b>Kernel decision</b><span>—</span></div><div class="step"><i></i><b>Upstream + receipt</b><span>—</span></div>';return;}
+ const s=stageState(e);
+ p.innerHTML=[
+  ["Agent request",s[0][1]],["Identity / entitlement",s[1][1]],["Warrant / policy",s[2][1]],["Kernel decision",s[3][1]],["Upstream + receipt",s[4][1]]
+ ].map((x,i)=>'<div class="step '+esc(s[i][0])+'"><i></i><b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span></div>').join("");
+}
+function renderResource(){
+ const u=usage||{};
+ $("model").textContent=u.model_served||u.model_requested?"DeepSeek · "+(u.model_served||u.model_requested):"DeepSeek · no completed call yet";
+ $("calls").textContent=u.calls_completed!=null?fmt(u.calls_completed):"—";
+ $("tokens").textContent=u.total_tokens?fmt(u.total_tokens):"—";
+ $("io").textContent=(u.input_tokens!=null||u.output_tokens!=null)?fmt(u.input_tokens||0)+" / "+fmt(u.output_tokens||0):"—";
+ $("latency").textContent=u.max_latency_ms!=null?fmt(u.max_latency_ms)+" ms":"—";
+ $("trace").textContent=u.latest_trace_id?"trace · "+u.latest_trace_id:"No completed provider trace yet";
+ $("techModel").textContent=u.model_served||u.model_requested||"—";$("techTrace").textContent=u.latest_trace_id||"—";$("techTokens").textContent=(u.input_tokens||0)+" / "+(u.output_tokens||0);
+}
+function renderAgents(rows){
+ const list=rows||[];
+ $("agents").innerHTML=list.length?list.map(a=>'<div class="agent"><strong>'+esc(a.id||a.agent||"agent")+'</strong><small>'+esc(a.role||"Agent")+' · '+esc(a.warrant?"warrant "+a.warrant:"authority not shown")+'</small><small>'+esc(a.state||"active")+'</small></div>').join(""):"";
+}
+function renderStream(){
+ $("stream").innerHTML=events.length?events.map(e=>'<button class="event '+(selected===e.event_id?"sel ":"")+(lastIds.has(e.event_id)?"flash":"")+'" data-event-id="'+esc(e.event_id)+'"><div class="eventTime">'+esc(time(e.timestamp))+'</div><div class="eventMain"><div class="eventTop"><span class="badge '+cls(e.decision)+'">'+esc(e.decision||"recorded")+'</span><span class="eventTool">'+esc(e.agent||"unknown agent")+' · '+esc(e.intent||e.tool||"request")+'</span></div><div class="eventMeta">'+esc(e.reason||"Kernel decision recorded")+' · upstream: '+(e.upstream_contacted===true?"contacted":e.upstream_contacted===false?"not contacted":"not proven")+'</div></div><div class="eventArrow">›</div></button>').join(""):'<div class="empty"><b>Listening to TENET</b>No security events have arrived yet. Start a request above.</div>';
+}
+async function get(url,opts){const r=await fetch(url,opts);if(!r.ok)throw new Error(url+" → HTTP "+r.status);return r.json();}
+function selectEvent(id){const e=events.find(x=>String(x.event_id)===String(id));if(!e)return;selected=e.event_id;renderStream();renderSelected(e);}
+async function loadAgents(){try{const a=await get("/api/agents");renderAgents(a.agents||a||[]);}catch{}}
+async function renderSelected(e){
+ $("headline").textContent=(e.agent||"Agent")+" wants to "+(e.intent||e.tool||"perform an action");
+ $("summary").textContent=decisionCopy(e);
+ $("request").textContent=e.intent||e.tool||"Action request";
+ $("requestMeta").textContent=[e.actor,e.action_class,e.warrant?"warrant "+e.warrant:"",e.policy?"policy "+e.policy:""].filter(Boolean).join(" · ")||"Security context recorded";
+ $("gateNote").textContent=e.decision?("Kernel decision: "+String(e.decision).toUpperCase()+" · authority source: TENET kernel"):"The model can propose. It cannot authorize.";
+ $("controlTitle").textContent=(e.agent||"Agent")+" · "+String(e.decision||"recorded").toUpperCase();
+ $("controlHint").textContent=e.upstream_contacted===false?"Boundary has not been crossed for this action. Operator control is still available where the policy path permits it.":"Inspect the proof before intervening.";
+ $("controlResult").textContent=e.reason||"No operator action taken.";
+ $("eventState").textContent=e.state||"recorded";
+ $("details").innerHTML=[
+  ["What",e.intent||e.tool],["Agent",e.agent],["Actor",e.actor],["Action class",e.action_class],
+  ["Warrant",e.warrant],["Warrant state",e.warrant_state],["Policy",e.policy],["Decision",e.decision],
+  ["Why",e.reason],["Upstream",e.upstream_contacted===true?"CONTACTED":e.upstream_contacted===false?"NOT CONTACTED":"NOT PROVEN"],
+  ["Upstream call",e.upstream_call_id],["Receipt",e.receipt_id],["Run",e.run_id],["Model trace",e.model_trace_id]
+ ].map(r=>'<div class="row"><div class="label">'+esc(r[0])+'</div><div class="value mono">'+esc(r[1])+'</div></div>').join("");
+ const contact=e.upstream_contacted===true, denied=e.decision==="deny"||e.decision==="revoked";
+ $("timeline").innerHTML=[
+  ["Agent proposed",e.intent||e.tool||"request",true,false],
+  ["TENET checked",e.warrant||e.policy||"security context",!!(e.warrant||e.policy),false],
+  ["Kernel decision",e.decision||"pending",!!e.decision,denied],
+  ["Boundary",contact?"Upstream contacted":e.upstream_contacted===false?"Upstream not contacted":"Not proven",e.upstream_contacted!==undefined, e.upstream_contacted===false||denied],
+  ["Receipt",e.receipt_id||"not present",!!e.receipt_id,false]
+ ].map(x=>'<div class="tl '+(x[2]?"done ":"")+(x[3]?"stop":"")+'"><div class="bullet"></div><div><b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span></div></div>').join("");
+ $("deny").disabled=!e.event_id||denied;
+ $("human").disabled=!e.event_id||e.decision==="human"||denied;
+ $("revoke").disabled=!e.agent||e.state==="halted";
+ $("techRun").textContent=e.run_id||"—";
+}
+async function refresh(){
+ try{
+  const [sec,res,ag]=await Promise.all([get("/api/security-events?limit=30"),get("/api/model-usage"),get("/api/agents")]);
+  const next=sec.events||[];
+  const old=new Set(events.map(e=>e.event_id));
+  lastIds=new Set(next.filter(e=>!old.has(e.event_id)).map(e=>e.event_id));
+  events=next;usage=res;
+  $("live").textContent=askInFlight?"Orchestrator running · live evidence":"Live · security decisions";
+  $("liveDot").className=askInFlight?"dot busy":"dot";
+  renderResource();renderAgents(ag.agents||ag||[]);renderStream();
+  if(!selected||!events.some(e=>e.event_id===selected))selected=events[0]?.event_id||null;
+  if(selected){const e=events.find(x=>x.event_id===selected);if(e)renderSelected(e);}
+ }catch(err){$("live").textContent="Control plane unavailable";$("footer").textContent=err.message;$("streamState").textContent="● OFFLINE";}
+}
+async function runAsk(){
+ const input=$("question"),q=input.value.trim();if(!q||askInFlight)return;
+ askInFlight=true;$("ask").disabled=true;$("ask").textContent="Orchestrator running…";$("streamState").textContent="● LIVE · watching";$("live").textContent="Orchestrator running · watching kernel";
+ const poll=setInterval(refresh,500);
+ try{
+  const result=await get("/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q})});
+  if(result.action_id){selected=result.action_id;}
+  $("controlResult").textContent=result.answer||"Orchestrator completed. Inspect the selected evidence.";
+  await refresh();
+ }catch(err){$("controlResult").textContent="Orchestrator request failed: "+err.message;}
+ finally{clearInterval(poll);askInFlight=false;$("ask").disabled=false;$("ask").textContent="Run through TENET";await refresh();}
+}
+async function operator(action){
+ if(!selected)return;
+ const e=events.find(x=>x.event_id===selected);if(!e)return;
+ const token=localStorage.getItem("warrnt_admin")||"";
+ if(!token){$("controlResult").textContent="Operator authentication required. No control action was sent.";return;}
+ const endpoint=action==="deny"?"/api/actions/"+encodeURIComponent(selected)+"/deny":null;
+ if(!endpoint){$("controlResult").textContent="This control requires the authenticated operator path; no action was sent.";return;}
+ try{const out=await get(endpoint,{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:"security-operator"})});$("controlResult").textContent=out.reason||out.decision||"Operator decision recorded.";await refresh();}catch(err){$("controlResult").textContent="Operator action failed: "+err.message;}
+}
+$("ask").addEventListener("click",runAsk);$("question").addEventListener("keydown",e=>{if(e.key==="Enter")runAsk();});
+$("stream").addEventListener("click",e=>{const b=e.target.closest("[data-event-id]");if(b)selectEvent(b.dataset.eventId);});
+$("refresh").addEventListener("click",refresh);$("deny").addEventListener("click",()=>operator("deny"));
+$("human").addEventListener("click",()=>{$("controlResult").textContent="Human review must be created through the kernel's hold path. No client-side approval was fabricated.";});
+$("revoke").addEventListener("click",async()=>{if(!selected)return;const e=events.find(x=>x.event_id===selected);if(!e?.agent)return;const token=localStorage.getItem("warrnt_admin")||"";if(!token){$("controlResult").textContent="Operator authentication required. No revoke request was sent.";return;}if(!confirm("Revoke "+e.agent+"?"))return;try{const out=await get("/api/agents/"+encodeURIComponent(e.agent)+"/revoke",{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:"security-operator"})});$("controlResult").textContent="Agent revoked: "+(out.agent||e.agent);await refresh();}catch(err){$("controlResult").textContent="Revoke failed: "+err.message;}});
+$("proof").addEventListener("click",async()=>{if(!selected)return;const e=events.find(x=>x.event_id===selected);if(!e?.run_id)return;try{const p=await get("/api/security-events/"+encodeURIComponent(e.run_id));$("controlResult").textContent="Proof status: "+(p.status||"unknown")+" · "+((p.missing||[]).join(", ")||"causal chain complete");}catch(err){$("controlResult").textContent="Proof unavailable: "+err.message;}});
+window.__TENET_QA__={ok:true,revokeOverTarget:false,layout:"live-operator-control-room",pollMs:1000,realOrchestrator:true};refresh();loadAgents();setInterval(refresh,1000);
 </script>
 </body>
 </html>
