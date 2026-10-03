@@ -99,8 +99,8 @@ the file that carries it:
 
 | Canon component | What carries it here | State |
 |---|---|---|
-| Minimal kernel | `warrnt/proxy.py` — 247 of the node's 1 776 lines (14 %); it coordinates and holds no control table | built |
-| Services as separate modules | 12 modules outside the core — `warrnt/plugins/`, `policy.py`, `actions.py`, `actors.py`, `registry.py`, `anchor.py`, `upstream.py` | built |
+| Minimal kernel | `warrnt/proxy.py` — 238 of the node's 1 931 lines (12 %); it coordinates and holds no control table | built |
+| Services as separate modules | 17 modules outside the kernel, three of them the control gates themselves (`warrnt/plugins/act_class.py`, `actor_scope.py`, `order_policy.py`), plus `policy.py`, `actions.py`, `actors.py`, `registry.py`, `anchor.py`, `upstream.py` | built |
 | A defined interface | a gate = name · order · `check(ctx) → (decision, reason, detail) \| None`; outward, the seam is HTTP + JSON-RPC (MCP) | built |
 | Inter-process communication | the agent talks MCP over HTTP; the upstream is behind the `upstream.py` adapter, so the transport is not the policy | built |
 | **Service management** | `warrnt/gates.py` — `register(..., replace=True)` swaps a gate and `unregister(name)` pulls one **while the node runs**; discovery is `pkgutil` over `warrnt/plugins/` | built |
