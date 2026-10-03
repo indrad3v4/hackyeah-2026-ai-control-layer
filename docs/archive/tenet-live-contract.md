@@ -1,3 +1,5 @@
+ARCHIVED 2026-10-03 — superseded by docs/TENET-CONTRACT.txt (canonical). Kept for history only.
+======================================================================
 # TENET Control Room — LIVE contract (PR #14)
 
 STATUS: CONTRACT (acceptance criteria) · 2026-10-03 · branch `feat/control-room-v2-hermes`

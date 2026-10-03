@@ -1,0 +1,166 @@
+TENET — CONTROL ROOM REDESIGN CONTRACT (v2, 2026-10-03)
+=======================================================
+Companion to `docs/tenet-datastream-contract.txt` (v1). v1 builds the REAL data
+path; v2 makes that path UNDERSTANDABLE to a first-time jury. v2 is executed
+ONLY after v1 is verified on production.
+
+ROLE:
+ You are the IMPLEMENTER (Cline on deepseek-chat) in
+ `indrad3v4/hackyeah-2026-ai-control-layer`, branch `pr14-work`. Hermes wrote this
+ contract, reviews your PLAN before ACT, and verifies the result from OUTSIDE.
+ Your self-report is never evidence (AGENTS.md D12).
+
+TASK:
+ Rebuild the Control Room so a person who has never seen TENET understands, in
+ under 30 seconds: an AI agent wants to do something; TENET intercepts it; TENET
+ checks who the agent is, what it may do, which policy applies and whether a human
+ must approve; only then does the real request reach the external system; the
+ receipt proves what happened. This is NOT a cosmetic pass. Order of work:
+   T1 Diagnosis first: write docs/tenet-ui-diagnosis.txt naming each current
+      defect with the exact DOM/text evidence. Then the target information
+      architecture, the target data-flow model, and the API changes required.
+      Then implement. Do not redesign blindly.
+   T2 Identity/header: public name TENET (not WARRNT). Explanatory subtitle:
+      "AI CONTROL LAYER — authority before action". Header explains the PRODUCT,
+      not the implementation. `warrnt` only in internal identifiers.
+   T3 First screen = ONE live action story, not a dashboard: AGENT -> REQUEST ->
+      TENET CLASSIFIES (tool, action_class) -> AUTHORITY (warrant, actor) ->
+      POLICY -> DECISION -> EXECUTION (upstream contacted: yes/no) -> RESULT ->
+      RECEIPT. All values from the real record. No fixture in LIVE mode.
+   T4 Data flow is the main visual story and every node is selectable; clicking a
+      node shows its concrete evidence (POLICY -> policy id + matched rule +
+      decision; UPSTREAM -> endpoint + request status + upstream_contacted +
+      response metadata; RECEIPT -> receipt id + action id + run id + decision +
+      execution result). This must be a real component, not a decorative SVG.
+   T5 Agent panel states ROLE, ALLOWED actions, FORBIDDEN actions, AUTHORITY
+      (warrant id), CURRENT ACTION, STATUS. The reader must learn who the agent is,
+      what it may do and what it may NOT do.
+   T6 Kill switch becomes contextual: inside the Action Inspector, next to the
+      agent's authority ("REVOKE AUTHORITY"), not a standalone scary widget. After
+      revoke: AUTHORITY REVOKED, pending/future actions BLOCKED, upstream NOT
+      CONTACTED, receipt generated.
+   T7 Proof panel answers "why can we trust this event?": ACTION -> POLICY ->
+      DECISION -> UPSTREAM CONTACT -> EXECUTION -> RECEIPT with the concrete ids.
+   T8 Action class is shown CONTEXTUALLY on the selected action ("this action is
+      classified as read_external_data, and here is why that matters"), plus the
+      boundary (internal/outbound). Never as a standalone taxonomy reference block.
+   T9 HUMAN flow gets its own operator card: HUMAN APPROVAL REQUIRED, why, upstream
+      NOT CONTACTED yet, [APPROVE] [DENY]; after approve -> decision allow, upstream
+      contacted, execution; after deny -> decision deny, upstream NOT CONTACTED.
+      This must be the real kernel flow.
+   T10 "Explain this" control: a text control that renders an explanation DERIVED
+      FROM THE AUTHORITATIVE RECORD ("Action A-0017 was denied because the agent's
+      warrant does not include this tool."). Voice/TTS is an OPTIONAL enhancement
+      and must never delay core enforcement, and must never invent an explanation.
+   T11 Layout hierarchy: HEADER -> LIVE ACTION -> DATA FLOW -> ACTION INSPECTOR ->
+      AUTHORITY -> HUMAN CONTROL -> PROOF. Story first, details second. The old
+      six-independent-cards dashboard is not the entry experience.
+   T12 Remove DEMO FEED from the main surface. A jury must never have to ask
+      "is this the real system or a recorded demo?". The first screen answers that
+      itself: LIVE -> action -> decision -> real upstream -> receipt. DEMO/fixture
+      data may exist only behind an explicit, labelled mode.
+
+CONTEXT: (measured on this box, reuse — do not re-derive)
+ - LIVE DEFECT before v1: production served a STATIC file server (Caddy); `/` =
+   200 index.html, every `/api/*` = 404 `fileserver.NotFound`. v1 (T7) fixes the
+   deployment shape so ONE process serves UI + `/api/*` + `/health`. v2 must be
+   verified on that SAME production process, not only locally.
+ - Current surfaces: `index.html` (single page, served by `control_plane/app.py`),
+   `control_room/agents.py` (orchestrator + 3 specialists), `control_room/provider.py`
+   (explicit DeepSeek client), `node/warrnt/` kernel imported by `control_plane/kernel.py`.
+ - Read APIs available to the UI: GET /api/state, /api/activity?limit=N, /api/actions,
+   /api/actions/{id}, /api/actions/pending, /api/agents, /api/warrants, /api/proof,
+   /api/overview; POST /api/ask, approve, deny, revoke.
+ - Real upstream after v1: Frankfurter (api.frankfurter.dev), with an upstream access
+   log so `upstream_contacted` is read from the upstream itself.
+ - Real model after v1: DeepSeek via the assistance surface, with a
+   `model.deepseek_chat` action created BEFORE the provider is contacted.
+ - UI constraint: keep it dependency-light and served by the same process. No React,
+   no TypeScript, no new build pipeline unless the plan proves it is required.
+ - No python3 in PATH on this box — use the venv (/root/work/tenet-cp-venv).
+ - Railway CLI: unset RAILWAY_* env vars before any `railway` command.
+
+ИКР (ideal final result)
+ A financial-services jury member opens TENET for the first time and, without
+ documentation or source code, can answer all eleven questions: what TENET is;
+ what the agent is doing; what data is moving; where it is going; who authorized
+ it; what policy applied; whether TENET allowed or blocked it; whether the upstream
+ really received the request; what proves that; what happens on revoke; what
+ happens when human approval is required. Every answer is derived from the
+ authoritative kernel record, and the first screen demonstrates it live.
+
+ACCEPTANCE CRITERIA (PASS only if all hold)
+ AC1  no old public WARRNT branding on any user-facing surface
+ AC2  TENET identity is clear; header explains the product, not the implementation
+ AC3  first screen immediately demonstrates a real action (not an empty dashboard)
+ AC4  a real DeepSeek call occurs and is visible as a governed action
+ AC5  a real upstream API call occurs
+ AC6  the action is created BEFORE upstream execution
+ AC7  the kernel decides BEFORE upstream contact
+ AC8  ALLOW proves real upstream contact (real response + upstream log line)
+ AC9  DENY proves upstream_contacted=false (absent from the upstream's own log)
+ AC10 REDACT proves pre-egress transformation of the payload
+ AC11 HUMAN proves hold -> approval/deny -> execution (or proven non-execution)
+ AC12 REVOKE proves authority termination and blocked pending actions
+ AC13 activity derives from real events only
+ AC14 proof derives from real receipts (ids resolve to the chain)
+ AC15 the data flow is visually understandable and every node reveals evidence
+ AC16 the agent's role, permissions and boundaries are understandable
+ AC17 warrant/authority is understandable to a non-expert
+ AC18 the kill switch is contextual, part of the authority lifecycle
+ AC19 proof is understandable ("why can we trust this event?")
+ AC20 layout/footer are usable; no long technical-page feel
+ AC21 production UI is not a static fake dashboard and DEMO FEED is gone from the
+      main surface
+ AC22 GET /api/activity?limit=10 works
+ AC23 every piece of evidence is correlatable by run_id/action_id
+
+CONSTRAINTS:
+ - v1 contract is NOT yet merged — do not contradict it; build ON it.
+ - The kernel taxonomy is the ONLY permission taxonomy (no second one).
+ - LLM reasoning is never authority. The UI must make that distinction visually obvious.
+ - No fake activity, no fake timestamps, no fabricated receipts, no invented
+   explanations, no fabricated Goldman data.
+ - Do not persist or display sensitive raw payloads; redaction is pre-egress.
+ - One process, one URL, one healthcheck.
+ - Goldman Sachs narrative (exact, honest): "Financial-services AI agents increasingly
+   access external data and systems. TENET is the control layer that sits before
+   execution. The demo uses a real external financial data API to demonstrate the
+   enforcement path; the same architecture can govern an entitled enterprise
+   connector such as Goldman Sachs Marquee." Never claim a built GS integration.
+ - Commit atomically on `pr14-work`; no merge to main; no push to main.
+ - Audit/roast artifacts are NOT committed to the repo.
+
+NON-GOALS:
+ - No Goldman Sachs integration, no implied entitlement (document it as a future
+   entitled connector only).
+ - No cosmetic-only restyle; no new dashboard cards without a jury question they answer.
+ - No second permission model, no kernel rewrite, no framework migration.
+ - No TTS/voice in the critical path; text "Explain" first, voice only if it costs
+   nothing to the core.
+ - No re-doing v1 work (real upstream, five runs, activity derivation, deploy fix).
+
+OUTPUT FORMAT:
+ - docs/tenet-ui-diagnosis.txt (defects with DOM evidence, target IA, target data
+   flow, required API changes) BEFORE code.
+ - Atomic commits on `pr14-work`, each carrying the raw command output that proves it.
+ - Evidence for the redeployed production UI: external HTTP checks (HTTP status per
+   endpoint) plus a rendered-DOM text dump of the first screen showing the live action.
+ - A README section split: what runs today vs what is designed (D12).
+
+VERIFICATION / SELF-CHECK:
+ 1. External GET on production for /health, /api/activity?limit=10, /api/state —
+    paste status codes.
+ 2. Drive one real /api/ask on production and show the returned action_id, then GET
+    /api/actions/{id} and paste decision, upstream_contacted, receipt.
+ 3. Run the ALLOW and DENY runs again on production; show the upstream log excerpt
+    for each (present vs absent).
+ 4. Rendered-DOM dump of the first screen (no screenshot-only claim) proving the
+    live action is on it and DEMO FEED is gone.
+ 5. grep -ri "warnt" on index.html and the control room assets — only internal
+    namespace hits remain.
+ 6. pytest tests/ -q and the node suite stay green.
+ Report each as PASS/FAIL with the raw proving line. If a step cannot be run, say so
+ plainly and why — never mark it PASS.
+
+END OF CONTRACT

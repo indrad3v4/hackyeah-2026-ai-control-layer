@@ -1,0 +1,195 @@
+TENET — CANONICAL CONTRACT (v3, supersedes all earlier TENET contracts)
+======================================================================
+Author: the ORCHESTRATOR (Hermes), складзены па скіле `engineer`
+(coding/agentic-coding). Implementer: Cline on deepseek-chat.
+Verifier: the orchestrator, from OUTSIDE the process. A self-report is never
+evidence (AGENTS.md D12). Every claim must carry the command output that proves it.
+
+SUPERSEDES (archived, not deleted — see ARCHIVE below):
+  docs/tenet-finish-gate.txt
+  docs/tenet-f8-controlroom-contract.txt
+  docs/tenet-live-contract.md
+  docs/tenet-t2-controlplane-contract.txt
+  tenet-real-upstream-contract.txt
+  tenet-controlroom-redesign-contract.txt
+One contract, one truth. If a decision is missing here, ask in the report — do not
+invent a document.
+
+ROLE
+----
+You are the implementer of the Goldman Sachs Partner Task `AI Control Layer` on
+PR #14 / branch `pr14-work`. You write code, run it, and paste raw output. You hold
+no authority to declare success; the orchestrator re-runs your evidence externally.
+
+TASK
+----
+Make TENET a system that visibly STANDS IN FRONT OF a real AI action and enforces
+before egress — and prove it with real network traffic, real model calls and real
+receipts on Railway production.
+
+The one sentence the jury must be able to say after 30 seconds:
+
+  "An AI agent wants to do something. TENET intercepts the action, checks who the
+   agent is, what it is allowed to do, what policy applies and whether a human must
+   approve. Only then does the real request reach the external system. The receipt
+   proves what happened."
+
+CONTEXT
+-------
+- Public name TENET. WARRNT survives ONLY as the internal technical namespace.
+- Architecture (kept): control_room != control_plane != kernel != model provider.
+  One container / one URL / one healthcheck is allowed; the logical separation stays.
+- The kernel mirror pin is `a3b99218`. Do NOT edit node/** unless the upstream tool
+  registration genuinely lives there, and never change the pin.
+- Production is already live with the control plane (S0 commit a38ebb3):
+  https://hackyeah-2026-ai-control-layer-production.up.railway.app
+  Verified externally: /health 200 LIVE, /api/state 200 (real), /api/activity?limit=10 200.
+  But activity is EMPTY (count 0): the boundary is alive, the stream is not.
+- Baselines that must stay green: node/tests 151 · tests/ 38 · check_console.py 2/2 ·
+  the D6 gate script OK.
+- Box facts: no python3/python in PATH; uv IS installed; venv lives OUTSIDE the repo
+  (/root/work/tenet-cp-venv/bin/python). Node 24 present. Outbound network works.
+  Real DeepSeek key: `set -a; . /root/.hermes/.env; set +a` (DEEPSEEK_API_KEY) —
+  never echo it, never write it into any file in this repo.
+
+THE BOUNDARY OBJECT (this is what "datastream" means here)
+----------------------------------------------------------
+Not "market data". The object TENET must see and control on the request path is:
+
+  identity → agent → tenant/team → run_id/action_id → prompt/input → model/provider
+  → tool name → tool arguments → policy/profile → decision → execution → response
+  → usage/cost/latency → receipt
+
+Cloudflare, LiteLLM, Purview and Zscaler inspect this object at the boundary;
+LangSmith/Langfuse additionally correlate model calls, tool invocations and retrieval
+in one trace. TENET must sit on that path and decide BEFORE egress.
+Goldman Sachs (Marquee / GS Quant) is the target enterprise archetype, NOT a claimed
+integration. The honest line is: "the same control architecture can govern an entitled
+enterprise connector such as GS Marquee."
+
+ИКР (ideal final result)
+------------------------
+ONE Railway service serves the Control Room UI and /api/* on one URL, one healthcheck.
+A first-time operator opens it and sees, live and without documentation: a real agent,
+a real request, TENET's classification and authority check, the decision, whether the
+upstream was actually contacted, the real result, and the receipt that proves it.
+A denied action demonstrably never left the box. Nothing on screen is pre-prepared.
+
+STAGES (hard order; commit atomically after each)
+-------------------------------------------------
+S0  DEPLOY SHAPE — DONE (a38ebb3). One process serves UI + /api/* + /health.
+S1  REAL UPSTREAM. Add the first real external tool `fx.read_rate`:
+    GET https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD (public, no key,
+    ECB reference rates). action_class `read_external_data`, boundary `outbound`,
+    issuer `risk-office`. Only `fx-trader` and `fx-auditor` may hold it in scope;
+    every other actor is DENIED with a reason naming the missing scope. The tool body
+    runs ONLY after the kernel returns an allowing decision. The upstream is a separate
+    process with its OWN JSONL access log keyed by the caller's explicit `call_id` —
+    "the denied call never reached upstream" must be a fact about THAT log, not a
+    kernel counter.
+S2  THE RECEIPT PROVES THE CROSSING. An allowed fx action and its receipt carry at
+    minimum: endpoint (exact URL with query), http_status, response_sha256,
+    value (parsed rate — public market data), upstream_contacted true, latency_ms,
+    run_id, action_id, receipt id.
+S3  DENY PROVES NOTHING LEFT THE BOX. Instrument the tool layer with a counter that
+    increments only when the HTTP request is about to be sent (plus a completed
+    counter). A denied action must show sent_counter unchanged and
+    upstream_contacted false, asserted from the kernel's own record.
+S4  REDACTION IS PRE-EGRESS. One tool case where a parameter is transformed BEFORE the
+    request leaves (e.g. an account identifier in an audit note). The request that
+    leaves carries the redacted form; the receipt shows field name + sha256(original)
+    + sha256(sent) and MUST NOT contain the original value. Test that the original
+    appears nowhere in: the upstream request, the action record, the receipt, the API
+    response. If the mirror cannot do pre-egress transformation, state the limitation
+    plainly — never fake the check.
+S5  HUMAN HOLD ON A REAL TOOL. One real-tool path requires human approval: held BEFORE
+    any HTTP request; approve → the real call happens and the receipt shows the real
+    status; deny → upstream_contacted false, sent_counter unchanged. Verify hold
+    persistence across a process restart.
+S6  REVOKE AGAINST A REAL TOOL. Revoke the FX agent's warrant; the next `fx.read_rate`
+    is refused, upstream_contacted false, sent_counter unchanged, and the record shows
+    the authority state at decision time.
+S7  ACTIVITY FROM REAL EVENTS. Activity/events derive from actual action/evidence
+    records — no synthesised feed, no fake timestamps, no model-written descriptions
+    treated as telemetry. GET /api/activity?limit=10 must return real events.
+S8  MODEL EGRESS THROUGH THE KERNEL. The real DeepSeek call is itself an action
+    (model.deepseek_chat) created BEFORE the provider is contacted, with provider,
+    model, latency and usage recorded. LLM reasoning is NOT authority: the model may
+    propose; only the kernel permits execution. That distinction must be visible.
+S9  BRANDING. No public WARRNT identity. TENET everywhere user-facing.
+S10 CONTROL ROOM REDESIGN — SEPARATE LATER ACT. Not in this run. Do not restyle the
+    console page here. (Its requirements are preserved in the archived
+    tenet-controlroom-redesign-contract.txt and are binding for that later ACT.)
+
+ACCEPTANCE CRITERIA
+-------------------
+AC1  One Railway service serves UI + /api/* + /health; verified by an external curl.
+AC2  A real /api/ask creates a real action, run_id and receipt end to end.
+AC3  One real external financial-data call goes THROUGH enforcement and its receipt
+     proves the crossing (S2 fields present, non-empty, consistent).
+AC4  A denied action proves upstream_contacted false AND sent_counter unchanged.
+AC5  A redacted action proves pre-egress transformation and absent original value.
+AC6  A human-held action proves hold-before-request, then approve → real call, and
+     deny → nothing left the box. Hold survives a restart.
+AC7  A revoked agent's next action is refused with the authority state recorded.
+AC8  GET /api/activity?limit=10 returns REAL events on production (not count 0).
+AC9  Every event is correlatable by run_id and action_id across kernel, upstream log
+     and receipt.
+AC10 LLM reasoning is visibly not authority; the kernel's verdict is the only boundary.
+AC11 Baselines green: node 151 · tests/ 38 · console 2/2 · D6 gate OK.
+AC12 /health distinguishes LIVE / DEGRADED / DEMO honestly; production never masks
+     degraded or demo as live.
+AC13 No fake activity, events or receipts anywhere in production.
+
+CONSTRAINTS (binding)
+---------------------
+- The kernel is the ONLY authority and the ONLY taxonomy. No second permission or
+  action taxonomy anywhere, including the UI.
+- Enforcement BEFORE execution, always. A denial is itself a recordable event.
+- The UI is never a source of truth; it only reads kernel state.
+- NEVER fake a live value: no hardcoded rate, no fixture fallback in live mode, no
+  pretend upstream. If the network is down the receipt must say so honestly.
+- Scoped commits only (the tool, the kernel/plumbing delta, tests, proof script).
+  No pushes, no new branches. Never create .railway/ inside the repo, never commit
+  __pycache__ or a venv, never write the provider key into any file in the repo.
+- Do not invent documents claiming the orchestrator authored them.
+
+NON-GOALS
+---------
+- No Control Room visual redesign (S10) in this ACT.
+- No claimed Goldman Sachs integration.
+- No architecture fork. No new connector protocol. No second taxonomy.
+- No change to the kernel mirror pin.
+
+OUTPUT FORMAT (your report, in this order, all output pasted raw)
+-----------------------------------------------------------------
+1. The exact local run command.
+2. curl transcripts against a locally booted instance: /health, /api/activity?limit=10,
+   /api/state, plus the full JSON of ONE allowed fx action (endpoint, http_status,
+   response_sha256, value, upstream_contacted, run_id, action_id, receipt).
+3. The same for one DENIED, one REDACTED, one HUMAN-HOLD-then-APPROVED.
+4. The live proof script JSON line, run TWICE in a row with fresh state, both green.
+   If a check is flaky, fix the check honestly — never weaken it into a tautology and
+   never let it pass by matching a bare substring out of ordinary English.
+5. pytest summaries for node/tests, tests/, check_console.py and the D6 gate script.
+6. Per-AC PASS or NOT VERIFIED, each with the ONE evidence line that proves it.
+7. Known limitations, stated plainly.
+8. The commit hashes, one per stage.
+
+SELF-CHECK (run before reporting; any NO means do not report success)
+---------------------------------------------------------------------
+[ ] Did every AC labelled PASS come with pasted command output, not a description?
+[ ] Did I run the proof script twice, with fresh state, both green?
+[ ] Did I avoid editing node/** or the mirror pin?
+[ ] Did I avoid UI work and the Control Room restyle?
+[ ] Did I avoid pushing and avoid creating any branch?
+[ ] Is the word WARRNT absent from everything user-facing?
+[ ] Is there any hardcoded, fixture or fabricated value left on the live path?
+
+ARCHIVE (move, do not delete, once no run is reading them)
+----------------------------------------------------------
+Move to docs/archive/ with a one-line header pointing at this file:
+  tenet-finish-gate.txt · tenet-f8-controlroom-contract.txt · tenet-live-contract.md ·
+  tenet-t2-controlplane-contract.txt · tenet-real-upstream-contract.txt ·
+  tenet-controlroom-redesign-contract.txt
+END OF CANONICAL CONTRACT
