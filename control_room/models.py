@@ -36,7 +36,15 @@ class Action(BaseModel):
     receipt: str | None = None
 
 class ControlAnswer(BaseModel):
+    """One answer from the assistance surface.
+
+    ``next_action`` is the advisory hint the contract names in TASK.4's ``/api/ask`` shape.
+    It is a suggestion for a person, never an authorization: the kernel's verdict is the only
+    execution boundary. Adding it is additive - no existing consumer loses a field.
+    """
+
     answer: str
     evidence: list[Evidence] = Field(default_factory=list)
     specialists: list[str] = Field(default_factory=list)
     run_id: str | None = None
+    next_action: str | None = None
