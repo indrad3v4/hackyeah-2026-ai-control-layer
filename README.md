@@ -1,17 +1,22 @@
-# ADNOT — the AI control layer
+# TENET — the AI control layer
 
 > **No warrant, no action.**
 
-**Read the two names as one sentence.** *ADNOT* is the name of the **idea** — decided in Stage 3
-of the concept route, with the evidence in
+**Read the two names as one sentence.** *TENET* is the name of the **idea** — set on 2026-10-03,
+with the evidence and the record of what came before it in
 [`docs/concept-form-and-name.md`](docs/concept-form-and-name.md). The node that implements it
 ships here under the repository name **WARRNT**, because the demo, the video and the submission
 were built under it and a rename at this point would be a paper change rather than a code change.
-The name of the idea is ADNOT: *adnotare*, "to note down" — the verdict is noted and shown
-**before** the action runs. Rejected on the way, and recorded: TESTIS (dictionary meaning),
-SURETY / WARDEN / VERDICT / ATTEST (live class 9/42 marks), VOWEN / SIGLUM (live companies);
-PRAES held back as the legal-precise spare. Domains `.dev` / `.io` / `.ai` were free on
-2026-10-03 and are **not registered** — the one open item of the name decision.
+*TENET* is Latin, "it holds": the order holds the action, and the word reads the same forwards and
+backwards — which is what the record must do, because a rewrite has to show. It is the palindrome
+at the centre of the **Sator Square**, the oldest word square known (Pompeii, before AD 79).
+Carried before it and kept on the record: **ADNOT** (*adnotare*, "to note down") was the Stage-3
+name, dropped by the founder's decision on 2026-10-03 although it was the cleanest name on the
+board; TESTIS (dictionary meaning), SURETY / WARDEN / VERDICT / ATTEST (live class 9/42 marks),
+VOWEN / SIGLUM (live companies) were rejected earlier; **ADNOT and PRAES stay as the clearable
+spares**. Honest caveat, measured today: **TENET is not a clearable product mark** (USPTO
+99151322 live, TENET TECHNOLOGIES, Tenet Apps FZCO, the 2020 film), `tenet.ai` and npm / PyPI are
+taken. `tenet.dev` and `tenet.io` resolve to nothing and are **not registered**.
 
 Every action an AI agent takes carries a signed, scoped warrant — or it does not run.
 No warrant, no action. This is the one thing that turns "we deployed agents" into
@@ -263,15 +268,17 @@ recorded in [`docs/concept-form-and-name.md`](docs/concept-form-and-name.md).
 
 - **Form** — *the witness at the boundary*: an in-line judge that answers, for every step,
   whether **this** agent may perform **this** action, on behalf of **this** user, right now.
-- **Name** — **ADNOT** (*adnotare*, "to note down"): the verdict is noted and shown, before
-  the action runs. `.dev` / `.io` / `.ai` free, zero trademarks found, no live product.
+- **Name** — **TENET** (Latin *tenet*, "it holds"): the order holds the action, and the record
+  reads the same both ways. The name of the idea, not a product mark — the register is crowded
+  (see the check table above); `tenet.dev` / `tenet.io` free, `tenet.ai` taken.
 - Fifteen candidate forms were scored against five tests taken from the brief; every
   rejected form is on the record with the test it fails.
 
 ## What's next
 
-- **Register the ADNOT domains** (`.dev` / `.io` / `.ai` were free on 2026-10-03) — the one open
-  item of the name decision; the idea currently has a name and no address.
+- **Settle the idea's address** — `tenet.dev` / `tenet.io` resolve to nothing and are free; the
+  mark under that name is crowded, so if a product or a domain must be defensible, clear one of
+  the spares (ADNOT, PRAES) instead. The idea has a name and still no address.
 - **Break-glass with a term** — the last unbuilt artifact of the Stage 4 table: an emergency
   override that names who used it, for how long, and audits every use.
 - **RFC 3161 external timestamp** for the anchor — deliberately not added inside the 17-hour
