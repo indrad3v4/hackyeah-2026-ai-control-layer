@@ -158,6 +158,18 @@ ffmpeg -y -framerate 10 -start_number 0 -i frames/f_%04d.jpg \
   /root/.hermes/media/video/warrnt-demo-40s.mp4
 ```
 
+## Concept lock
+
+The form and the name are decided, and the decisions — including what was rejected — are
+recorded in [`docs/concept-form-and-name.md`](docs/concept-form-and-name.md).
+
+- **Form** — *the witness at the boundary*: an in-line judge that answers, for every step,
+  whether **this** agent may perform **this** action, on behalf of **this** user, right now.
+- **Name** — **ADNOT** (*adnotare*, "to note down"): the verdict is noted and shown, before
+  the action runs. `.dev` / `.io` / `.ai` free, zero trademarks found, no live product.
+- Fifteen candidate forms were scored against five tests taken from the brief; every
+  rejected form is on the record with the test it fails.
+
 ## What's next
 
 - Wire the MCP proxy and serve `/api/state` — the console goes from demo feed to live.
