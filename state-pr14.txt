@@ -1,0 +1,12 @@
+=== node mirror tests
+........................................................................ [ 56%]
+.......................................................                  [100%]
+=== node mirror console hold check
+PASS  the inspector overlay exists and reads /api/actions
+PASS  chain still verifies after the UI run  [{"ok": true, "length": 4, "head": "dc5a8437f6edaa5a", "history": {"rotations": 0, "archived_rows": 0, "last_closed_head": null, "archives_ok": true, "problems": []}, "anchor": {"an]
+
+CONSOLE HOLD CHECK: 17/17 passed
+=== site check_console
+check_console: index.html script block 1/2 -> OK
+check_console: node/warrnt/console.html script block 2/2 -> OK
+check_console: 2/2 inline blocks parse across 2 surfaces

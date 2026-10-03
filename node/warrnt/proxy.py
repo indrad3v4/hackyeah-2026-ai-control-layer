@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 from . import gates as gate_registry
 from .breakglass import BreakGlassRegistry
+from .controlplane import ActionStore, HoldRefused, params_view
 from .gates import GateContext
 from .actions import listing as class_listing
 from .actors import ACTOR_SEED, ActorProfile, ActorRegistry
@@ -48,6 +49,9 @@ class MCPProxy:
         # The register of actor classes. It answers the question the warrant cannot: may
         # this kind of actor call this tool at all, whatever the user's rights are.
         self.actors = ActorRegistry(actors if actors is not None else list(ACTOR_SEED))
+        # The control plane (PR-14): one canonical Action per intercepted call, plus the one
+        # state the kernel cannot hold by itself - a call paused for a person to decide.
+        self.actions = ActionStore()
         self.counter = ExecutionCounter()
         self.upstream = upstream or build_upstream(self.counter)
         # The kernel loads its gates from the plugin package and never names one itself:
@@ -68,11 +72,15 @@ class MCPProxy:
         self._revoke_t0: dict[str, float] = {}
 
     # ------------------------------------------------------------------- seed
-    def issue_all(self, reset_registry: bool = True) -> None:
+    def issue_all(self, reset_registry: bool = True, reason: str = "",
+                  actor: str = "") -> Optional[dict[str, Any]]:
         self.agents.clear()
         self.warrants.clear()
+        rotation: Optional[dict[str, Any]] = None
         if reset_registry:
-            self.registry.reset()
+            # A reset rotates the chain instead of erasing it: the closed segment is
+            # archived and the rotation is recorded (finding V2).
+            rotation = self.registry.reset(reason=reason, actor=actor)
         for spec in SEED_SPECS:
             warrant = self.issuer.issue(spec)
             self.warrants[warrant.id] = warrant
@@ -86,10 +94,12 @@ class MCPProxy:
         # A reset re-issues the orders; an open bypass must not survive it.
         self.breakglass.grants.clear()
         self.breakglass._seq = 0
+        return rotation
 
     # -------------------------------------------------------------- interception
     def intercept(self, agent_id: str, token: str, tool: str,
-                  params: dict[str, Any] | None) -> tuple[Decision, str, dict[str, Any], dict, bool]:
+                  params: dict[str, Any] | None,
+                  run_id: str = "") -> tuple[Decision, str, dict[str, Any], dict, bool]:
         """Return ``(decision, reason, detail, receipt, executed)``.
 
         ``executed`` is True only when the upstream was actually invoked - the proof that a
@@ -120,13 +130,37 @@ class MCPProxy:
                               breakglass=self.breakglass)
             decision, reason, detail = gate_registry.run(ctx)
             if detail.get("break_glass"):
-                # A grant is single-use: the call it lifted has just spent it. The receipt
-                # below carries the grant id, so the chain shows who opened the door and when.
-                self.breakglass.consume(detail["break_glass"], tool)
+                # A grant is single-use, and the spending is what makes it so: the claim is
+                # atomic, so when two calls race for one grant exactly one of them proceeds
+                # and the other is refused (finding V5). Either way the receipt carries the
+                # grant id, so the chain shows who opened the door and when.
+                if self.breakglass.claim(detail["break_glass"], tool) is None:
+                    decision, reason = Decision.deny, "break-glass grant already spent · single use"
+                    detail = {**detail, "grant_spent": detail.get("break_glass", ""),
+                              "break_glass": "", "break_glass_by": ""}
 
         agent.last = f"{tool} · {DECISION_TEXT.get(decision, decision.value)}"
         receipt = self._receipt(decision, agent_id, tool, agent.warrant, reason, params,
                                 detail=detail)
+
+        # One canonical Action per intercepted call (PR-14). The API, the console and any
+        # answer read THIS object, so a screen can never disagree with the kernel. Values
+        # are not kept - keys and a digest only (finding V3), except inside an explicit hold.
+        profile = self.actors.get(agent_id)
+        action = self.actions.record(
+            run_id=run_id or f"run-{agent_id}",
+            agent=agent_id,
+            actor=(f"{profile.id} ({profile.kind.value})" if profile else ""),
+            tool=tool, action_class=str(detail.get("class") or ""),
+            warrant=agent.warrant,
+            warrant_state=(refresh_state(warrant, self._now()) if warrant else "none"),
+            parameters=params_view(params),
+            policy_result=str(detail.get("policy_result") or detail.get("policy")
+                              or detail.get("rule") or detail.get("guard")
+                              or detail.get("decider_text") or ""),
+            decision=decision.value, reason=reason, receipt=receipt["hash"][:8],
+            ts=self._now(),
+        )
 
         if decision is Decision.revoked:
             # The halted agent just tried to act again: this receipt *is* the observation.
@@ -135,7 +169,16 @@ class MCPProxy:
             self._note_stop(agent_id)
 
         if decision is not Decision.allow and decision is not Decision.redact:
-            return decision, reason, {**detail, "receipt": receipt["hash"][:8],
+            if decision is Decision.human:
+                # A real hold, not a label: the request is kept (in memory only) so a named
+                # person can release it, and nothing is sent upstream until they do. The
+                # class that raised it was a person's act - the machine may not decide it.
+                action.state, action.kept_for_hold = "pending", True
+                action.values = dict(params or {})
+                detail = {**detail, "held": True, "action_id": action.action_id,
+                          "class_decider": str(detail.get("decider_text") or "")}
+            return decision, reason, {**detail, "action_id": action.action_id,
+                                      "receipt": receipt["hash"][:8],
                                       "rows_after": 0}, receipt, False
 
         # Exactly two decisions execute: allow, and redact - where the personal fields the
@@ -146,16 +189,105 @@ class MCPProxy:
             exec_params, removed = strip_pii(params, detail.get("redacted") or [])
             detail = {**detail, "redacted": removed, "upstream_params": exec_params}
 
-        result = self.upstream.call(tool, exec_params)   # executed ONLY here
+        # The upstream is invoked here and nowhere else. If it fails after being invoked, the
+        # attempt is still a thing that happened to the outside world, so it is recorded as a
+        # receipt of its own - a chain that only records successes would go quiet exactly when
+        # the story gets interesting (finding V6).
+        outcome, rows = "ok", 0
+        try:
+            result = self.upstream.call(tool, exec_params)   # executed ONLY here
+            rows = int(result.get("rows", 0))
+        except Exception as exc:                             # noqa: BLE001 - the record survives it
+            result, outcome = None, "error"
+            detail = {**detail, "upstream_error": f"{type(exc).__name__}: {exc}"[:200]}
         receipt2 = self.registry.append(
             t=_clock(), decision=decision.value, agent=agent_id, tool=tool,
             warrant=agent.warrant,
-            reason=reason, params="", rows_after=result["rows"], ts=self._now(),
-            exec_hash=receipt["hash"],
+            reason=reason, params="", rows_after=rows, ts=self._now(),
+            exec_hash=receipt["hash"], outcome=outcome,
         )
+        action.upstream_contacted = True
+        action.receipt = receipt2["hash"][:8]
+        action.execution_result = {"rows": rows, "outcome": outcome}
+        if decision is Decision.redact:
+            action.execution_result["redacted"] = detail.get("redacted", [])
+        if result is None:
+            return (decision, reason,
+                    {**detail, "action_id": action.action_id,
+                     "receipt": receipt2["hash"][:8], "rows_after": 0}, receipt2, True)
         return (decision, reason,
-                {**detail, "receipt": receipt2["hash"][:8], "rows_after": result["rows"],
+                {**detail, "action_id": action.action_id,
+                 "receipt": receipt2["hash"][:8], "rows_after": rows,
                  "result": result}, receipt2, True)
+
+    # --------------------------------------------------------------- human hold
+    def resolve_hold(self, action_id: str, approve: bool, by: str) -> dict[str, Any]:
+        """A named person releases or refuses a held action. WARRNT still runs the call.
+
+        Approve: the upstream is invoked here, with the parameters the hold kept, and the
+        chain records the human decision first and the execution after it. Deny: nothing is
+        invoked, and the receipt says so. Either way the action keeps its ``action_id``, so
+        API, console, receipt and answer all point at the same call.
+        """
+        action = self.actions.get(action_id)
+        if action is None:
+            raise HoldRefused(f"unknown action {action_id}")
+        if action.state != "pending":
+            raise HoldRefused(f"action {action_id} is {action.state}, not pending")
+        if not by.strip():
+            raise HoldRefused("a person's name is required: an anonymous decision is not a decision")
+
+        agent = self.agents.get(action.agent)
+        if agent is None or agent.state == "halted":
+            # A hold cannot outlive its order: the brake wins over the pending decision.
+            action.state, action.decided_by, action.decided_ts = "expired", by, self._now()
+            receipt = self.registry.append(
+                t=_clock(), decision=Decision.revoked.value, agent=action.agent,
+                tool=action.tool, warrant=action.warrant,
+                reason=f"hold {action_id} expired · agent halted before {by} decided",
+                params="", rows_after=0, ts=self._now())
+            action.receipt = receipt["hash"][:8]
+            return {"action": action.public(), "executed": False,
+                    "receipt": action.receipt, "outcome": "expired"}
+
+        if not approve:
+            receipt = self.registry.append(
+                t=_clock(), decision=Decision.deny.value, agent=action.agent,
+                tool=action.tool, warrant=action.warrant,
+                reason=f"human denied by {by} · action {action_id} · upstream never contacted",
+                params="", rows_after=0, ts=self._now())
+            action.state, action.decided_by, action.decided_ts = "denied", by, self._now()
+            action.receipt = receipt["hash"][:8]
+            self.stats["denied"] = self.stats.get("denied", 0) + 1
+            return {"action": action.public(), "executed": False,
+                    "receipt": action.receipt, "outcome": "denied"}
+
+        # The human decision is its own receipt, written before the call it authorises.
+        human_receipt = self.registry.append(
+            t=_clock(), decision=Decision.allow.value, agent=action.agent,
+            tool=action.tool, warrant=action.warrant,
+            reason=f"human approved by {by} · action {action_id} released",
+            params="", rows_after=0, ts=self._now())
+        outcome, rows, result = "ok", 0, None
+        try:
+            result = self.upstream.call(action.tool, action.values)   # the only other call site
+            rows = int(result.get("rows", 0))
+        except Exception as exc:                                      # noqa: BLE001
+            outcome = "error"
+            action.execution_result = {"upstream_error": f"{type(exc).__name__}: {exc}"[:200]}
+        receipt = self.registry.append(
+            t=_clock(), decision=Decision.allow.value, agent=action.agent, tool=action.tool,
+            warrant=action.warrant,
+            reason=f"executed after human approval by {by} · action {action_id}",
+            params="", rows_after=rows, ts=self._now(),
+            exec_hash=human_receipt["hash"], outcome=outcome)
+        action.upstream_contacted = True
+        action.state, action.decided_by, action.decided_ts = "approved", by, self._now()
+        action.receipt = receipt["hash"][:8]
+        action.execution_result = {**action.execution_result, "rows": rows, "outcome": outcome}
+        self.stats["allowed"] = self.stats.get("allowed", 0) + 1
+        return {"action": action.public(), "executed": True, "receipt": action.receipt,
+                "outcome": outcome, "rows": rows, "result": result}
 
     # ------------------------------------------------------------------- brake
     def revoke(self, agent_id: str) -> Optional[float]:
@@ -214,12 +346,19 @@ class MCPProxy:
     def _receipt(self, decision: Decision, agent: str, tool: str, warrant: str,
                  reason: str, params: dict[str, Any] | None,
                  detail: dict[str, Any] | None = None) -> dict:
-        import json
+        import hashlib, json
 
+        # The chain records WHICH request this was, never its values: a receipt that
+        # carried the payload would make the control layer the largest PII store in the
+        # building (finding V3). Keys and a digest are enough to tie the decision to the
+        # request in the source system.
+        raw = json.dumps(params or {}, sort_keys=True, ensure_ascii=False)
         return self.registry.append(
             t=_clock(), decision=decision.value, agent=agent, tool=tool, warrant=warrant,
             reason=reason,
-            params=json.dumps(params or {}, sort_keys=True, ensure_ascii=False)[:400],
+            param_keys=",".join(sorted((params or {}).keys()))[:200],
+            params_sha256=hashlib.sha256(raw.encode()).hexdigest(),
+            params="",
             rows_after=0, ts=self._now(),
         )
 
@@ -247,6 +386,10 @@ class MCPProxy:
             "agents": agents, "warrants": warrants, "receipts": receipts,
             "actors": self.actors.listing(),
             "actions": class_listing(),
+            # The control plane (PR-14): the canonical Action log, and the holds waiting on
+            # a person. Same object the API returns and the console renders.
+            "action_log": self.actions.listing(limit=20),
+            "control": {"counts": self.actions.counts(), "pending": self.actions.pending()},
             "executor_calls": self.counter.snapshot(), "chain": self.registry.verify(),
             "breakglass": self.breakglass.snapshot(),
         }
