@@ -128,9 +128,9 @@ TENET DECIDES BEFORE ANYTHING MOVES
         │
         ├─────────────── ALLOW ───────────────┐
         │  value EUR/USD 1.1225               │  same resource
-        │  upstream HTTP 200, 15.8 ms         │  same request
+        │  upstream HTTP 200, 22.8 ms         │  same request
         │  sha256 f63f64a5…                   │
-        │  receipt ee872944                   │
+        │  receipt 1fbb161d                   │
         ▼                                     ▼
   upstream called 1 → 2              support-copilot → fx.read_rate
                                              │
@@ -138,7 +138,7 @@ TENET DECIDES BEFORE ANYTHING MOVES
                                      DENY — no entitlement to
                                      market_data.fx.read
                                      upstream contacted: NO (still 2 calls)
-                                     receipt c4bfbe40
+                                     receipt bfc7eacc
 ```
 
 Selected timeline (the compact frames in the video):
@@ -148,9 +148,9 @@ Selected timeline (the compact frames in the video):
 | 0–3.5 s | the user's request, in plain words | the request the demo route carries |
 | 3.5–8 s | `fx-trader` wants `fx.read_rate` | the agent action the kernel intercepted |
 | 8–13.5 s | identity, entitlement, warrant, policy — then the verdict | kernel decision path |
-| 13.5–19 s | **ALLOW**: the real value arrives (1.1225, HTTP 200, 15.8 ms, sha256, receipt `ee872944`) | live Frankfurter response, recorded in `evidence.json` |
+| 13.5–19 s | **ALLOW**: the real value arrives (1.1225, HTTP 200, 22.8 ms, sha256, receipt `1fbb161d`) | live Frankfurter response, recorded in `evidence.json` |
 | 19–25 s | `support-copilot` asks for the *same* resource | second agent action |
-| 25–31 s | **DENY**: *Frankfurter was NOT contacted* (upstream calls stay at 2), receipt `c4bfbe40` | kernel denial + upstream call journal |
+| 25–31 s | **DENY**: *Frankfurter was NOT contacted* (upstream calls stay at 2), receipt `bfc7eacc` | kernel denial + upstream call journal |
 | 31–40 s | both outcomes side by side, then the closing line | the two records above |
 
 The property the video is built around:
