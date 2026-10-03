@@ -968,3 +968,14 @@ def test_security_event_chain_is_evidence_not_authority(client):
     # No provider key in the fixture, so the model step is absent and named, never invented.
     assert "model_trace_id" in body["missing"]
     assert body["status"] == "INCOMPLETE"
+
+
+def test_model_usage_is_a_read_only_resource_projection(client):
+    body = client.get("/api/model-usage").json()
+    required = {"provider", "model_requested", "calls_started", "calls_completed",
+                "calls_failed", "input_tokens", "output_tokens", "total_tokens",
+                "max_latency_ms", "latest_trace_id", "latest_status", "evidence", "mode"}
+    assert required <= set(body)
+    assert body["provider"] == "deepseek"
+    assert body["evidence"] == "persisted DeepSeek provider events"
+    assert "DEEPSEEK_API_KEY" not in str(body)
