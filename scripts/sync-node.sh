@@ -3,7 +3,7 @@
 # because a check that only compares the remote head to the pin cannot see an edit made here.
 set -euo pipefail
 REPO="${WARRNT_REPO:-https://github.com/indrad3v4/warrnt}"
-PIN=6279666430a97e670d37fd673e81632a42e15794
+PIN="a3b9921869728e5e899d7d1752dfd9ba007c955d"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 git clone -q --depth 1 "$REPO" "$TMP/src"
