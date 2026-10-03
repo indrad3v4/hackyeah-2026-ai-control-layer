@@ -1,6 +1,17 @@
-# WARRNT — the AI control layer
+# ADNOT — the AI control layer
 
 > **No warrant, no action.**
+
+**Read the two names as one sentence.** *ADNOT* is the name of the **idea** — decided in Stage 3
+of the concept route, with the evidence in
+[`docs/concept-form-and-name.md`](docs/concept-form-and-name.md). The node that implements it
+ships here under the repository name **WARRNT**, because the demo, the video and the submission
+were built under it and a rename at this point would be a paper change rather than a code change.
+The name of the idea is ADNOT: *adnotare*, "to note down" — the verdict is noted and shown
+**before** the action runs. Rejected on the way, and recorded: TESTIS (dictionary meaning),
+SURETY / WARDEN / VERDICT / ATTEST (live class 9/42 marks), VOWEN / SIGLUM (live companies);
+PRAES held back as the legal-precise spare. Domains `.dev` / `.io` / `.ai` were free on
+2026-10-03 and are **not registered** — the one open item of the name decision.
 
 Every action an AI agent takes carries a signed, scoped warrant — or it does not run.
 No warrant, no action. This is the one thing that turns "we deployed agents" into
@@ -76,6 +87,39 @@ and the signature of whoever authorised it.
                                                   │ GET /api/state│  four tiles
                                                   └──────────────┘
 ```
+
+### The shape, against the microkernel canon
+
+The node is drawn and built as a **microkernel**: a small core that coordinates, everything that
+decides living outside it as a control plugin. The canon this is checked against is the
+[microkernel architecture pattern](https://www.geeksforgeeks.org/system-design/microkernel-architecture-pattern-system-design/)
+(minimal kernel · services as separate modules · a defined interface · inter-process
+communication · service management · drivers outside the kernel). Component by component, with
+the file that carries it:
+
+| Canon component | What carries it here | State |
+|---|---|---|
+| Minimal kernel | `warrnt/proxy.py` — 247 of the node's 1 776 lines (14 %); it coordinates and holds no control table | built |
+| Services as separate modules | 12 modules outside the core — `warrnt/plugins/`, `policy.py`, `actions.py`, `actors.py`, `registry.py`, `anchor.py`, `upstream.py` | built |
+| A defined interface | a gate = name · order · `check(ctx) → (decision, reason, detail) \| None`; outward, the seam is HTTP + JSON-RPC (MCP) | built |
+| Inter-process communication | the agent talks MCP over HTTP; the upstream is behind the `upstream.py` adapter, so the transport is not the policy | built |
+| **Service management** | `warrnt/gates.py` — `register(..., replace=True)` swaps a gate and `unregister(name)` pulls one **while the node runs**; discovery is `pkgutil` over `warrnt/plugins/` | built |
+| Drivers outside the kernel | `build_upstream()` — the kernel never names a vendor | built |
+
+**The kernel names no control.** `proxy.py` contains zero decision call sites — no `classify(`,
+no `apply_class(`, no `engine.evaluate(`, no `actors.check(`. Gates are files under
+`warrnt/plugins/` (`act_class` → `actor_scope` → `order_policy`, by `order`); adding one is adding
+a file. `tests/test_gates.py` proves it, including that a gate dropped into the package at test
+time stops the pipeline without a line of the kernel changing, and that the pipeline fails
+**loudly** (a `RuntimeError`) rather than silently allowing when no gate decides.
+
+**What is drawn but not built**, so the diagrams are not read as more than they are: discovery
+through `importlib.metadata.entry_points` (we use `pkgutil` over the package), gate order and
+enable/disable read from the catalog, and `watch()` hot reload.
+
+**The price of the shape**, named rather than hidden: the split costs an indirection at every
+decision and makes a failure harder to trace — which is why the kernel is the only place that
+answers, and why "no gate decided" is an error instead of a default.
 
 The proxy sits between the agent and any MCP server. It sees the tool name and the full
 argument set, evaluates the active warrant's scope against them, and only then forwards —
@@ -213,9 +257,14 @@ recorded in [`docs/concept-form-and-name.md`](docs/concept-form-and-name.md).
 
 ## What's next
 
-- Wire the MCP proxy and serve `/api/state` — the console goes from demo feed to live.
-- Persist the receipt chain and expose verification (recompute the hash chain).
-- Real identity issuance per agent/task, with warrant scope tied to the identity.
+- **Register the ADNOT domains** (`.dev` / `.io` / `.ai` were free on 2026-10-03) — the one open
+  item of the name decision; the idea currently has a name and no address.
+- **Break-glass with a term** — the last unbuilt artifact of the Stage 4 table: an emergency
+  override that names who used it, for how long, and audits every use.
+- **RFC 3161 external timestamp** for the anchor — deliberately not added inside the 17-hour
+  window, because it needs an outside service and could break the demo.
+- Identity issuance per agent/task is real in the node (ephemeral identity per call, warrant scope
+  tied to it); what is not built is a multi-tenant issuer, and it stays that way on purpose.
 
 ---
 
