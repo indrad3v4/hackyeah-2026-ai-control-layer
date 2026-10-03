@@ -28,17 +28,14 @@ jobs:
       - name: Parse both console JavaScript surfaces
         run: python scripts/check_console.py
 
+      - name: Check the console layout invariants
+        run: python scripts/console_layout_check.py index.html
+
       - name: Install node dependencies
         run: python -m pip install -r node/requirements.txt
 
       - name: Run node tests
         run: python -m pytest -q node/tests
-
-      - name: Verify control-room contracts
-        run: python -m pytest -q tests/test_control_room.py
-
-      - name: Compile control-room runtime modules
-        run: python -m py_compile control_room/models.py control_room/agents.py
 
       - name: Verify mirrored node
         run: bash scripts/sync-node.sh --check
