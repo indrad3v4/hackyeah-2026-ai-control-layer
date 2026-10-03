@@ -1,0 +1,33 @@
+TENET — FINISH GATE FOR PR #14 (Indra's ruling, 2026-10-03). No new architectural forks.
+====================================================================================
+RUN ORDER: F2 -> F3 -> F4 -> F5 -> F6 -> F7 -> F8 without stopping.
+1.  Real DeepSeek agent runtime works.
+2.  Real TENET Control Plane works on Railway.
+3.  Real WARRNT/TENET enforcement is used as the authority boundary.
+4.  A real vertical live slice exists:
+    /api/ask -> orchestrator -> specialist -> action -> kernel decision -> receipt -> Control Room.
+5.  LIVE / DEGRADED / DEMO are distinguishable; production never masks degraded/demo as live.
+6.  Fail-closed is proven.
+7.  Human hold / approve / deny / revoke / expired are proven.
+8.  The Control Room is a real Reflex/Python UI, not a fake dashboard.
+9.  All six panels work: COMMAND / ACTIVITY / ACTION INSPECTOR / AUTHORITY / HUMAN CONTROL / PROOF.
+10. Browser/UI QA passed per the F8 contract.
+11. Independent tests and evidence are green (not a Cline self-report).
+12. Railway production verified by an EXTERNAL HTTP/browser smoke test.
+13. Then: final PR #14 review and merge into main.
+14. After merge: wait for the main autoredeploy and verify MAIN production, not the PR branch.
+
+BINDING RULES
+ - Do not change the architecture without need.
+ - control_room != control_plane != kernel != DeepSeek (one container / one URL / one
+   healthcheck is allowed; the logical separation stays).
+ - No fake activity / events / receipts in production.
+ - No new permission or action taxonomies.
+ - A Cline self-report is not evidence; real tests / evidence / live checks are.
+ - Do not merge before the complete F8 gate.
+
+AFTER MERGE + A VERIFIED MAIN
+ STOP. Indra opens the production URL himself and sends screenshots / real browser results.
+ The step-by-step UI roast (TEST 1..6: COMMAND, ACTION, HUMAN HOLD, AUTHORITY, PROOF, UI ROAST)
+ happens afterwards, against real actions through the interface - not against one screenshot.
+END OF FINISH GATE
