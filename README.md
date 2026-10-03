@@ -194,6 +194,31 @@ One scenario, deterministic, run end to end:
 
 **Authorised. Recorded. Revocable.**
 
+## ACT-2 — identity, entitlement, refusal (2026-10-03)
+
+Three questions the screen could not answer, now answered — each with a test that fails if the
+answer is removed.
+
+- **Who acts, and for whom.** A warrant is a delegation, so it carries `principal` and
+  `on_behalf_of` inside the signed payload, and the node serves them on `GET /api/agents`. One
+  builder (`MCPProxy._new_agent`) makes both a seeded and a live-warrant agent, so an order issued
+  later cannot have a different shape than one issued at seed time.
+- **Authority to act is not the right to data.** The entitlement register lives with the operator
+  (`control_plane/kernel.py`): a warrant may allow `equity.read_snapshot` and the register may still
+  withhold `market_data.equity.read`. The gate runs **before the order is priced**, refuses with
+  `gate: "entitlement"` and the named right, and the refusal is recorded — an action, a receipt, a
+  chain entry — exactly like any other decision.
+- **A refusal is an event.** Separation of duties — the requester may not decide their own hold —
+  is filed in the hash-chained registry *before* the caller is told `409`, and the held action is
+  left `pending`.
+- **How far a call got is a number, not a claim.** `Action.boundary_attempts` counts the exits at
+  the two places a call actually leaves the perimeter: a deny and a hold carry `0`, an allow carries
+  `1`. The upstream's own access log is read by one function (`warrnt.api.upstream_log_path`) and
+  digested by one other (`warrnt.api._sha256_of`), so "it never contacted anything" is checked
+  against the far side rather than asserted.
+- **The mirror is pinned to the fixes.** `node/` is `warrnt@274d13a`; the canonical repository's own
+  suite is **160 passed**, this repository's is **229 passed**.
+
 ## What works today
 
 Honest split between what is running and what is designed.
@@ -202,11 +227,11 @@ Honest split between what is running and what is designed.
 
 - **The node itself** — [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt): the MCP
 - **The node's source, inside this package** — [`node/`](node/), a mirror pinned to
-  `warrnt@831b166`, so the code and its 86 tests can be read without leaving the repository.
+  `warrnt@274d13a`, so the code and its 160 tests can be read without leaving the repository.
   The canonical repository is still [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt)
   (`node/MIRROR.md` says so, and `scripts/sync-node.sh --check` proves the mirror still matches).
   proxy, per-parameter policy, signed warrants with TTL, the hash-chained registry with
-  `GET /verify`, `/revoke`, and the console served from the node. `pytest -q` → **60 passed**;
+  `GET /verify`, `/revoke`, and the console served from the node. `pytest -q` → **229 passed**;
   a clean-machine run (`scripts/f2_clean_run.sh`) starts from an empty temp dir, clone, fresh
   venv, deps from PyPI.
 - **The actor register** — `GET /actors`, `warrnt/actors.py`, ten tests, PR
