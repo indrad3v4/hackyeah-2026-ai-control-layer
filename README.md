@@ -139,6 +139,10 @@ Honest split between what is running and what is designed.
 **Working and verified (2026-10-02):**
 
 - **The node itself** — [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt): the MCP
+- **The node's source, inside this package** — [`node/`](node/), a mirror pinned to
+  `warrnt@831b166`, so the code and its 86 tests can be read without leaving the repository.
+  The canonical repository is still [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt)
+  (`node/MIRROR.md` says so, and `scripts/sync-node.sh --check` proves the mirror still matches).
   proxy, per-parameter policy, signed warrants with TTL, the hash-chained registry with
   `GET /verify`, `/revoke`, and the console served from the node. `pytest -q` → **60 passed**;
   a clean-machine run (`scripts/f2_clean_run.sh`) starts from an empty temp dir, clone, fresh
