@@ -27,10 +27,8 @@ the next reader (human or agent) can re-fetch rather than trust this summary.
    `allow | deny | redact | human | revoked` — the frozen `/api/state` contract (README) — so the
    decision space is a record, not a boolean, and the interesting value is `human`. "The agent
    runtime never gets to vote" is the right instinct; "the answer is a boolean" is the part we
-   refuse. Two gaps between that contract and the shipped node are recorded, not papered over:
-   the node emits `expired` for a TTL-elapsed order, while the contract names `expired` only as a
-   *warrant state* (`active|revoked|expired`); and `redact` is in the contract but not yet
-   implemented in code. Both are written up in `docs/stage-4-action-classes.md` §"recorded gaps".
+   refuse. The runtime contract is now aligned: an expired warrant is refused as `deny` with
+   `warrant_state: expired`, while `redact` is implemented and recorded.
 3. **Variant 5 gives us the shape we lack.** A reasoning plane that adjudicates *intent* against
    a composite principal is exactly the gap left after today's work: our node sees calls, not
    campaigns. Recorded as the honest next layer, not claimed as built.
