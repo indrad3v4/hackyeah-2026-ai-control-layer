@@ -32,8 +32,8 @@ for every single step, one question:
 Its five load-bearing parts, each closing one test:
 
 1. **A registry of actors** — humans, autonomous systems, chatbots, MCP suppliers (T1).
-2. **An action taxonomy** — destructive / irreversible / outbound / read, each with a
-   *type*, not a flag (T5).
+2. **An action taxonomy** — six enforceable action classes (`observe`, `read_personal`, `draft`,
+   `write_reversible`, `irreversible`, `authorize`) plus the cross-cutting `boundary` field (T5).
 3. **Proof of delegation** — a short-lived, per-task token, not session trust (T3).
 4. **A separate entitlement gate** — entitlements as the source of truth (T2).
 5. **An append-only decision record** plus a **break-glass** override with automatic
@@ -97,3 +97,16 @@ Rejected finalists, with the reason kept on the record:
 
 Locked: the form (witness at the boundary), the core (Form · Drama · Benefit), the name.
 Not locked: implementation, mechanism and demo subject — that is stage 4.
+
+
+## D13 reconciliation — Stage 4 taxonomy unfreeze
+
+Stage 4 formally changed the action taxonomy named in this locked concept. This is an explicit unfreeze, not a silent reinterpretation of the original lock.
+
+- Previous locked taxonomy: `destructive / irreversible / outbound / read`.
+- Canonical Stage 4 taxonomy: `observe / read_personal / draft / write_reversible / irreversible / authorize`.
+- Cross-cutting field: `boundary = internal | outbound`; `outbound` is not an action class.
+- Migration: `read` → `observe + read_personal`; `destructive` → the harmful subset of `irreversible`; `irreversible` remains `irreversible`; `outbound` → `boundary`.
+- New classes: `draft` and `authorize` represent acts the original four-type list could not express.
+
+The runtime implementation and Stage 4 consumers now use the canonical six-class taxonomy.

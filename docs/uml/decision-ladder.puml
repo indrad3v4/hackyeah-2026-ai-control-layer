@@ -39,8 +39,8 @@ Deny --> [*]
 
 note right of Constrain
   Raise-only: if the class floor is
-  human/destructive, an upstream ALLOW
+  human/irreversible, an upstream ALLOW
   is raised, never lowered.
-  deny > revoked/expired > human > redact > allow
+  deny > revoked > human > redact > allow
 end note
 @enduml

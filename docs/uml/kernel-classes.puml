@@ -40,9 +40,6 @@ enum ActionClass {
   draft
   write_reversible
   irreversible
-  destructive
-  egress
-  outbound
   authorize
 }
 
@@ -153,10 +150,10 @@ note bottom of Outcome
 end note
 note bottom of WarrantState
   TTL has a lifecycle, not a receipt value.
-  The node currently emits `expired` as a sixth
-  receipt decision: that is an extension of the
-  frozen contract and needs a recorded D13
-  unfreeze before it can be drawn here.
+  `expired` is a warrant lifecycle state only.
+  An elapsed TTL is refused as `deny` with
+  `warrant_state: expired`; it is never a
+  receipt decision.
 end note
 note bottom of Decision
   A record, not a boolean.
