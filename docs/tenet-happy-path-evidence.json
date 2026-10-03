@@ -1,0 +1,75 @@
+{
+ "captured_at": "2026-10-03T23:53:53+0000",
+ "allow": {
+  "action_id": "A-0002",
+  "agent": "fx-trader",
+  "tool": "fx.read_rate",
+  "decision": "allow",
+  "upstream_contacted": true,
+  "value": 1.1225,
+  "quote_ccy": "USD",
+  "http_status": 200,
+  "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+  "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+  "latency_ms": 22.78,
+  "receipt": "1fbb161d"
+ },
+ "deny": {
+  "action_id": "A-0003",
+  "agent": "support-copilot",
+  "tool": "fx.read_rate",
+  "decision": "deny",
+  "reason": "no entitlement to market_data.fx.read",
+  "upstream_contacted": false,
+  "receipt": "bfc7eacc"
+ },
+ "upstream": {
+  "sent_before": 1,
+  "sent_after_allow": 2,
+  "sent_after_deny": 2,
+  "sent_after": 2,
+  "journal": "/root/.hermes/hackyeah/video/upstream-calls.jsonl"
+ },
+ "runs": {
+  "allow": {
+   "scenario": "fx.read_rate",
+   "agent": "fx-trader",
+   "run_id": "demo-c6d6c5ac",
+   "action_id": "A-0002",
+   "decision": "allow",
+   "reason": "read-only \u00b7 live reference rate \u00b7 in scope \u00b7 class observe",
+   "executed": true,
+   "upstream_contacted": true,
+   "execution_result": {
+    "rows": 1,
+    "outcome": "ok",
+    "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+    "http_status": 200,
+    "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+    "value": 1.1225,
+    "latency_ms": 22.78,
+    "boundary": "outbound"
+   },
+   "receipt": "1fbb161d",
+   "tool": "fx.read_rate"
+  },
+  "deny": {
+   "scenario": "fx.read_rate",
+   "agent": "support-copilot",
+   "run_id": "demo-c83c6ae1",
+   "action_id": "A-0003",
+   "decision": "deny",
+   "reason": "no entitlement to market_data.fx.read",
+   "executed": false,
+   "upstream_contacted": false,
+   "execution_result": {},
+   "receipt": "bfc7eacc",
+   "tool": "fx.read_rate"
+  }
+ },
+ "selected_render": {
+  "allow": "01 \u00b7 THE ACTION UNDER CONTROL\nAgent fx-trader wants to use fx.read_rate\n\nALLOW \u2014 the call crossed the boundary\n\nLIVE \u00b7 REAL UPSTREAM CONFIGURED\nWHAT IT WANTS TO DO\nfx.read_rate \u00b7 tool fx.read_rate\nDATA INVOLVED\nobserve \u00b7 keys [base, symbols] {\"keys\":[\"base\",\"symbols\"],\"sha256\":\"57f70a63988c61b1d44c3dc0171b64865c88c02dafe9dec2651497d3699df6ff\",\"values_withheld\":true}\nWHO IS ACTING\nfx-trader \u00b7 Treasury\nWHO IT ACTS FOR\nprincipal not recorded \u00b7 on behalf of not recorded\nWHERE THE DATA WOULD GO\nhttps://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD \u00b7 upstream reached: yes\nWHAT TENET DECIDED\nALLOW \u00b7 read-only \u00b7 live reference rate \u00b7 in scope \u00b7 class observe\nDID IT HAPPEN\nCONTACTED\nHTTP 200 \u00b7 https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD \u00b7 value 1.1225 \u00b7 sha f63f64a5\u2026 \u00b7 22.78 ms\nYes \u2014 it happened. The far side answered, so this action really crossed the boundary. Decided by tenet-kernel (the model proposes, it holds no authority).\nProof: receipt 1fbb161d \u00b7 action A-0002. The receipt is the kernel's record of its own decision; inspect the raw fields under Technical details.\nTECHNICAL DETAILS",
+  "deny": "01 \u00b7 THE ACTION UNDER CONTROL\nAgent support-copilot wants to use fx.read_rate\n\nDENY \u2014 the call never reached the far side\n\nLIVE \u00b7 REAL UPSTREAM CONFIGURED\nWHAT IT WANTS TO DO\nfx.read_rate \u00b7 tool fx.read_rate\nDATA INVOLVED\naction class not recorded {}\nWHO IS ACTING\nsupport-copilot \u00b7 Support\nWHO IT ACTS FOR\noperator-001 \u00b7 on behalf of operator-001\nWHERE THE DATA WOULD GO\nupstream not contacted \u2014 no destination in this record \u00b7 upstream reached: no\nWHAT TENET DECIDED\nDENY \u00b7 no entitlement to market_data.fx.read\nDID IT HAPPEN\nNOT CONTACTED\nNOT CONTACTED \u2014 the decision held the boundary: no data left this system.\nNo \u2014 nothing happened. TENET denied the call before execution, so the far side was never reached and no data moved. Decided by tenet-kernel (the model proposes, it holds no authority).\nProof: receipt bfc7eacc \u00b7 action A-0003. The receipt is the kernel's record of its own decision; inspect the raw fields under Technical details.\nTECHNICAL DETAILS",
+  "allow_again": "01 \u00b7 THE ACTION UNDER CONTROL\nAgent fx-trader wants to use fx.read_rate\n\nALLOW \u2014 the call crossed the boundary\n\nLIVE \u00b7 REAL UPSTREAM CONFIGURED\nWHAT IT WANTS TO DO\nfx.read_rate \u00b7 tool fx.read_rate\nDATA INVOLVED\nobserve \u00b7 keys [base, symbols] {\"keys\":[\"base\",\"symbols\"],\"sha256\":\"57f70a63988c61b1d44c3dc0171b64865c88c02dafe9dec2651497d3699df6ff\",\"values_withheld\":true}\nWHO IS ACTING\nfx-trader \u00b7 Treasury\nWHO IT ACTS FOR\nprincipal not recorded \u00b7 on behalf of not recorded\nWHERE THE DATA WOULD GO\nhttps://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD \u00b7 upstream reached: yes\nWHAT TENET DECIDED\nALLOW \u00b7 read-only \u00b7 live reference rate \u00b7 in scope \u00b7 class observe\nDID IT HAPPEN\nCONTACTED\nHTTP 200 \u00b7 https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD \u00b7 value 1.1225 \u00b7 sha f63f64a5\u2026 \u00b7 22.78 ms\nYes \u2014 it happened. The far side answered, so this action really crossed the boundary. Decided by tenet-kernel (the model proposes, it holds no authority).\nProof: receipt 1fbb161d \u00b7 action A-0002. The receipt is the kernel's record of its own decision; inspect the raw fields under Technical details.\nTECHNICAL DETAILS"
+ }
+}

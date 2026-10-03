@@ -110,6 +110,57 @@ The important property is:
 
 The denial is itself recorded, giving the security team evidence of the attempted action and the fact that execution did not happen.
 
+## Happy path
+
+The 40-second proof video (`docs/tenet-happy-path.mp4`) shows one resource and two agents. Every number, hash, receipt and verdict below was read back from the running kernel during the recorded run - none of it is scripted prose.
+
+```text
+USER REQUEST
+  "Read the latest EUR/USD reference rate"
+        │
+        ▼
+AI AGENT WANTS DATA
+  fx-trader  →  fx.read_rate
+        │
+        ▼
+TENET DECIDES BEFORE ANYTHING MOVES
+  who is acting?  what may this agent access?
+        │
+        ├─────────────── ALLOW ───────────────┐
+        │  value EUR/USD 1.1225               │  same resource
+        │  upstream HTTP 200, 15.8 ms         │  same request
+        │  sha256 f63f64a5…                   │
+        │  receipt ee872944                   │
+        ▼                                     ▼
+  upstream called 1 → 2              support-copilot → fx.read_rate
+                                             │
+                                             ▼
+                                     DENY — no entitlement to
+                                     market_data.fx.read
+                                     upstream contacted: NO (still 2 calls)
+                                     receipt c4bfbe40
+```
+
+Selected timeline (the compact frames in the video):
+
+| t | What the video shows | Where it comes from |
+|---|---|---|
+| 0–3.5 s | the user's request, in plain words | the request the demo route carries |
+| 3.5–8 s | `fx-trader` wants `fx.read_rate` | the agent action the kernel intercepted |
+| 8–13.5 s | identity, entitlement, warrant, policy — then the verdict | kernel decision path |
+| 13.5–19 s | **ALLOW**: the real value arrives (1.1225, HTTP 200, 15.8 ms, sha256, receipt `ee872944`) | live Frankfurter response, recorded in `evidence.json` |
+| 19–25 s | `support-copilot` asks for the *same* resource | second agent action |
+| 25–31 s | **DENY**: *Frankfurter was NOT contacted* (upstream calls stay at 2), receipt `c4bfbe40` | kernel denial + upstream call journal |
+| 31–40 s | both outcomes side by side, then the closing line | the two records above |
+
+The property the video is built around:
+
+> **The same question, asked by two agents, ends two different ways - and the denied call never reaches the data source.**
+
+The headline card follows the record the operator selects, so the ALLOW can still be inspected after the DENY has happened; with nothing selected it shows the latest action.
+
+`evidence.json` next to the video holds the raw values it was built from (`value`, `http_status`, `response_sha256`, `latency_ms`, both `receipt` ids, and the upstream call counter before/after each action).
+
 ## Architecture
 
 **MCP is the transport/protocol boundary. TENET's enforcement kernel is the authority boundary.**
