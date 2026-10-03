@@ -1,17 +1,19 @@
-# ADNOT — the AI control layer
+# TENET — the AI control layer
 
 > **No warrant, no action.**
 
-**Read the two names as one sentence.** *ADNOT* is the name of the **idea** — decided in Stage 3
-of the concept route, with the evidence in
-[`docs/concept-form-and-name.md`](docs/concept-form-and-name.md). The node that implements it
-ships here under the repository name **WARRNT**, because the demo, the video and the submission
-were built under it and a rename at this point would be a paper change rather than a code change.
-The name of the idea is ADNOT: *adnotare*, "to note down" — the verdict is noted and shown
-**before** the action runs. Rejected on the way, and recorded: TESTIS (dictionary meaning),
-SURETY / WARDEN / VERDICT / ATTEST (live class 9/42 marks), VOWEN / SIGLUM (live companies);
-PRAES held back as the legal-precise spare. Domains `.dev` / `.io` / `.ai` were free on
-2026-10-03 and are **not registered** — the one open item of the name decision.
+**Read the two names as one sentence.** *TENET* is the name of the **product** — the user-facing
+system in this repository: the console, the story, the submission, the pitch. The node that
+implements it is the **WARRNT kernel**, and that name stays wherever it is a technical identifier:
+the Python package `warrnt`, the import path, the repository `indrad3v4/warrnt` and its API
+namespace. A rename there would change imports and the wire protocol, not wording.
+
+Earlier working names, kept in the record rather than deleted: *ADNOT* (adnotare, "to note down" —
+the name of the idea as it stood in Stage 3), TESTIS (dictionary meaning), SURETY / WARDEN /
+VERDICT / ATTEST (live class 9/42 marks), VOWEN / SIGLUM (live companies); PRAES held back as the
+legal-precise spare. Domains `.dev` / `.io` / `.ai` were free on 2026-10-03 and are **not
+registered** — the one open item of the name decision. The full history is in
+[`docs/concept-form-and-name.md`](docs/concept-form-and-name.md).
 
 Every action an AI agent takes carries a signed, scoped warrant — or it does not run.
 No warrant, no action. This is the one thing that turns "we deployed agents" into
@@ -80,7 +82,7 @@ and the signature of whoever authorised it.
 
 ```
         ┌────────────┐   tool-call (params)   ┌──────────────────────────┐
-        │   agent    │ ─────────────────────▶ │  WARRNT proxy (MCP)       │
+        │   agent    │ ─────────────────────▶ │  TENET kernel (MCP)       │
         │ (scoped    │                        │  intercept BEFORE exec    │
         │  identity) │ ◀──── allow / deny ─── │                           │
         └────────────┘                        └───────────┬──────────────┘
@@ -281,5 +283,5 @@ recorded in [`docs/concept-form-and-name.md`](docs/concept-form-and-name.md).
 
 ---
 
-*WARRNT is a working demo of the AI control layer: authority attached to the action,
+*TENET is a working demo of the AI control layer: authority attached to the action,
 proof attached to the authority.*
