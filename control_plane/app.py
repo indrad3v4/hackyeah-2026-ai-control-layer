@@ -18,6 +18,7 @@ from __future__ import annotations
 import hmac
 import os
 import secrets
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
@@ -33,6 +34,19 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # The Control Room page is the repository's existing dashboard; served here so the boundary
 # from UI -> API is one origin. Reflex (control_room/) stays a separate, optional surface.
 
+# --------------------------------------------------------------- ACT-5: the fixed scenario
+# The one scenario the browser may trigger. These are CONSTANTS: the tool and its arguments
+# are never read from the request body, so a caller cannot steer the crossing (AC3). The same
+# fixed call backs the startup warm trace (AC4).
+SELF_CHECK_AGENT = "fx-trader"
+SELF_CHECK_TOOL = "fx.read_rate"
+SELF_CHECK_ARGS: dict[str, str] = {"base": "EUR", "symbols": "USD"}
+SELF_CHECK_RATE_LIMIT_S = 3.0
+SELF_CHECK_RUN_PREFIX = "selfcheck-"
+STARTUP_RUN_PREFIX = "startup-"
+ORIGIN_SELF_CHECK = "operator self-check"
+ORIGIN_STARTUP = "startup self-check"
+
 
 def _kernel_or_503(app: FastAPI) -> tuple[Optional[Kernel], Optional[JSONResponse]]:
     """Return the kernel, or a 503 refusal when the authority is unavailable.
@@ -47,6 +61,52 @@ def _kernel_or_503(app: FastAPI) -> tuple[Optional[Kernel], Optional[JSONRespons
              "note": "the control plane refuses to decide on its own"},
             status_code=503)
     return kernel, None
+
+
+def _run_fixed_scenario(kernel: Kernel, *, origin: str, run_prefix: str) -> Optional[str]:
+    """Run the ONE fixed scenario through the kernel and return its ``action_id``.
+
+    The agent token is read from the kernel's own registry **inside this process** - exactly
+    as ``/api/demo/run`` does - so no credential ever reaches the browser and the page can
+    never become a second authority. The tool and args are the module constants; the request
+    body is never consulted (AC3). The kernel still makes the decision: this only asks it to
+    intercept the call. The run id carries the caller's prefix, and the origin label (why this
+    action exists) is journaled beside it. Returns ``None`` when there is no live warrant for
+    the agent, so the caller reports that honestly rather than inventing a crossing.
+    """
+    tokens = {str(a.get("id")): str(a.get("token") or "") for a in kernel.agents(dev=True)}
+    agent_token = tokens.get(SELF_CHECK_AGENT, "")
+    if not agent_token:
+        return None
+    run_id = run_prefix + secrets.token_hex(4)
+    _decision, _reason, detail, _receipt, _executed = kernel.intercept(
+        SELF_CHECK_AGENT, agent_token, SELF_CHECK_TOOL, dict(SELF_CHECK_ARGS), run_id=run_id)
+    action_id = str((detail or {}).get("action_id")
+                    or ((detail or {}).get("action") or {}).get("id") or "")
+    if action_id:
+        kernel.record_origin(action_id, origin)
+    return action_id or None
+
+
+async def _warm_trace(app: FastAPI) -> None:
+    """AC4 startup warm trace: fill an empty centre once, never block, never fabricate.
+
+    Only when the kernel holds ZERO actions AND a live upstream is configured does the control
+    plane run its own fixed boundary self-check, so the first screen after any deploy is not
+    blank; the label states plainly that the control plane ran it. Idempotent by construction:
+    an existing action makes this a no-op. A failure logs one line and never blocks startup.
+    """
+    kernel = getattr(app.state, "kernel", None)
+    if kernel is None:
+        return
+    try:
+        if not live_upstream_configured():
+            return
+        if kernel.actions(limit=1):
+            return
+        _run_fixed_scenario(kernel, origin=ORIGIN_STARTUP, run_prefix=STARTUP_RUN_PREFIX)
+    except Exception as exc:  # noqa: BLE001 - warm-up must never block startup
+        print(f"[tenet] startup warm trace skipped: {exc}", flush=True)
 
 
 def _status(kernel: Optional[Kernel], identity: config.Identity) -> tuple[str, str]:
@@ -99,12 +159,17 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             _assist.bind_kernel(app.state.kernel)
         except Exception:  # noqa: BLE001 - the surface degrades to HTTP reads, never to a crash
             pass
+        # AC4: the first screen after any deploy must not be blank. Only an EMPTY kernel with a
+        # live upstream triggers this one-time, plainly-labelled self-check; a failure never
+        # blocks startup (the helper swallows and logs).
+        await _warm_trace(app)
         yield
 
     app = FastAPI(title="TENET Control Plane", version="0.1.0", lifespan=lifespan)
     app.state.kernel = kernel
     app.state.identity = identity
     app.state.runs = {}          # run_id -> {run_id, action_id, question, ts}
+    app.state.self_check_last = 0.0   # ACT-5: monotonic ts of the last operator self-check
 
     # The operator token authorises the human-decision routes. It is the SAME token the kernel
     # uses (WARRNT_ADMIN_TOKEN) - this layer does not invent a second secret. When the operator
@@ -452,6 +517,65 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             return JSONResponse({"error": f"unknown run {run_id}",
                                  "hint": "GET /api/security-events lists the runs"}, status_code=404)
         return JSONResponse({**body, "mode": config.mode()})
+
+    # ---------------------------------------------------------- ACT-5: the live security trace
+    @app.get("/api/live-trace")
+    def live_trace() -> JSONResponse:
+        """The Control Room's centre: the LAST real action composed with its authority evidence.
+
+        Read-only and credential-free - the page polls it, and it exposes no token. ``trace`` is
+        ``null`` when the kernel holds no action at all: the honest empty state, never a
+        fabricated event. Every field is authority-neutral (``authority_source: "tenet-kernel"``,
+        ``llm_authority: false``) and every field whose evidence is missing is ``null`` and named
+        in ``trace.incomplete``. Unavailable kernel -> 503, the same refusal body as every read.
+        """
+        k, unavailable = _kernel_or_503(app)
+        if unavailable:
+            return unavailable
+        assert k is not None
+        return JSONResponse({
+            "trace": k.live_trace(),
+            "authority_source": "tenet-kernel",
+            "llm_authority": False,
+            "mode": config.mode(),
+        })
+
+    @app.post("/api/scenario/self-check")
+    def scenario_self_check() -> JSONResponse:
+        """The browser's ONLY trigger: run the fixed scenario, no credential, return the trace.
+
+        Exactly the AC3 contract: the fixed ``fx-trader`` / ``fx.read_rate`` / EUR->USD call (the
+        tool and args are server constants, never read from the request body), the agent token
+        read in-process from the kernel registry as ``/api/demo/run`` does, a REAL crossing, then
+        the AC1 ``trace`` object. At most one run per ``SELF_CHECK_RATE_LIMIT_S`` -> 429 with
+        ``retry_after_s``; no live upstream -> 503 and NO record written. The run id is prefixed
+        ``selfcheck-`` and the action metadata carries ``origin: "operator self-check"``.
+        """
+        k, unavailable = _kernel_or_503(app)
+        if unavailable:
+            return unavailable
+        assert k is not None
+        if not live_upstream_configured():
+            return JSONResponse({"error": "no upstream configured"}, status_code=503)
+        now = time.monotonic()
+        elapsed = now - float(getattr(app.state, "self_check_last", 0.0) or 0.0)
+        if elapsed < SELF_CHECK_RATE_LIMIT_S:
+            retry_after = max(1, int(round(SELF_CHECK_RATE_LIMIT_S - elapsed)))
+            return JSONResponse({"error": "rate limited", "retry_after_s": retry_after},
+                                status_code=429)
+        # Claim the slot BEFORE the crossing: two concurrent callers must not both run.
+        app.state.self_check_last = now
+        action_id = _run_fixed_scenario(k, origin=ORIGIN_SELF_CHECK,
+                                        run_prefix=SELF_CHECK_RUN_PREFIX)
+        if not action_id:
+            return JSONResponse({"error": "no live warrant for this agent",
+                                 "agent": SELF_CHECK_AGENT, "decision": "deny"}, status_code=409)
+        return JSONResponse({
+            "trace": k.live_trace(),
+            "authority_source": "tenet-kernel",
+            "llm_authority": False,
+            "mode": config.mode(),
+        })
 
     # ------------------------------------------- ACT-2 §4: proof of non-contact (evidence)
     @app.get("/api/upstream/log")
