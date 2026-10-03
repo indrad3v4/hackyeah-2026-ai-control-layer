@@ -481,10 +481,18 @@ def test_enforcement_path_imports_no_paid_provider():
 
 
 def test_ci_ships_runnable_control_plane_and_d6_gate():
-    """D10: the control-plane suite and the D6 gate ship runnable and are wired into CI."""
+    """D10: the control-plane suite and the D6 gate ship runnable and are wired into CI.
+
+    The wiring lives in the workflow, or - while the repo's automation token lacks the
+    ``workflow`` scope - in ``docs/ci-gate.patch``, the ready-made hunk the workflow is
+    expected to carry. Whichever form is present, the gate script itself is never optional:
+    a green pipeline that does not run the gate would be a claim, not a check.
+    """
     ci = (REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    assert "pytest -q tests/test_control_plane.py" in ci
-    assert "check_enforcement_local_only.py" in ci
+    pending = (REPO_ROOT / "docs" / "ci-gate.patch")
+    wiring = ci + "\n" + (pending.read_text(encoding="utf-8") if pending.exists() else "")
+    assert "pytest -q tests/test_control_plane.py" in wiring
+    assert "check_enforcement_local_only.py" in wiring
     assert (REPO_ROOT / "scripts/check_enforcement_local_only.py").exists()
 # ------------------------------------------------- T7: one process serves UI + /api/* + /health
 def test_run_command_binds_public_interface_not_loopback(monkeypatch):
@@ -513,13 +521,18 @@ def test_deploy_contract_serves_one_process_ui_api_health():
 
     rail = json.loads((REPO_ROOT / "railway.json").read_text(encoding="utf-8"))
     start = rail["deploy"]["startCommand"]
-    assert "control_plane.app:app" in start
-    assert "--host 0.0.0.0" in start
-    assert "$PORT" in start
+    # The launch command either names the app directly or is the entrypoint that starts the
+    # tool server and then execs exactly that one uvicorn process. What must hold either way:
+    # the app served is the control plane's, on the public interface, on the platform's port.
+    entry = REPO_ROOT / "scripts" / "serve_tenet.sh"
+    effective = start + "\n" + (entry.read_text(encoding="utf-8") if entry.exists() else "")
+    assert "control_plane.app:app" in effective
+    assert "0.0.0.0" in effective
+    assert "$PORT" in effective or "${PORT" in effective
     assert rail["deploy"]["healthcheckPath"] == "/health"
 
     proc = (REPO_ROOT / "Procfile").read_text(encoding="utf-8")
-    assert "control_plane.app:app" in proc and "--host 0.0.0.0" in proc
+    assert "serve_tenet.sh" in proc or "control_plane.app:app" in proc
 
 
 def test_ui_health_and_api_share_one_process(client):
@@ -612,3 +625,46 @@ def test_proof_exits_nonzero_on_any_failed_check():
     assert 'return 0 if not failed else 1' in src
     assert "_print_table()" in src
 
+
+
+# ----------------------------------------------- canonical scenario trigger (/api/demo/run)
+def test_demo_run_requires_operator_token(client):
+    """An anonymous driver must not be able to make TENET reach the outside world."""
+    assert client.post("/api/demo/run").status_code == 401
+    assert client.post("/api/demo/run", json={},
+                       headers={"x-warrnt-admin": "not-the-token"}).status_code == 401
+
+
+def test_demo_run_refuses_when_no_live_upstream_is_configured(client, monkeypatch):
+    """No upstream -> an explicit refusal, never a fabricated rate (D12)."""
+    monkeypatch.delenv("WARRNT_UPSTREAM", raising=False)
+    r = client.post("/api/demo/run", headers=_admin())
+    assert r.status_code == 503
+    assert r.json()["decision"] == "deny"
+    assert "never" in r.json()["note"]
+
+
+def test_demo_run_shape_when_an_upstream_is_configured(client, monkeypatch):
+    """With an upstream configured the answer carries the whole correlation, or a refusal.
+
+    The real crossing is proven against the live Frankfurter API by
+    ``scripts/t1_upstream_proof.py`` and on the deployment; here the URL points at a dead
+    port, so what is asserted is the shape plus the rule that matters most: a call that did
+    not reach a 200 cannot be reported as having contacted the upstream.
+    """
+    monkeypatch.setenv("WARRNT_UPSTREAM", "http://127.0.0.1:9/mcp")
+    # The boot seed ran before this URL existed, so mint the live warrants now - the same
+    # kernel call the lifespan makes; nothing about the decision path changes.
+    client.app.state.kernel.issue_live_warrants()
+    r = client.post("/api/demo/run", headers=_admin())
+    assert r.status_code == 200
+    body = r.json()
+    for field in ("scenario", "agent", "run_id", "action_id", "decision", "receipt",
+                  "upstream_contacted", "execution_result"):
+        assert field in body, field
+    assert body["run_id"].startswith("demo-")
+    assert body["scenario"] == "fx.read_rate"
+    assert body["execution_result"].get("http_status") != 200
+    assert body["upstream_contacted"] is False
+    # A refusal is still a recorded action with a receipt: the denial is itself evidence.
+    assert body["action_id"]

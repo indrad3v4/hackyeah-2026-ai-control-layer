@@ -290,3 +290,31 @@ recorded in [`docs/concept-form-and-name.md`](docs/concept-form-and-name.md).
 
 *TENET is a working demo of the AI control layer: authority attached to the action,
 proof attached to the authority.*
+
+## Triggering the canonical live scenario (operator)
+
+The Control Room's first screen is a story, not a dashboard, and that story has to be real:
+
+```bash
+curl -sS -X POST -H "x-warrnt-admin: $WARRNT_ADMIN_TOKEN" \
+  https://<host>/api/demo/run
+```
+
+`POST /api/demo/run` runs the one canonical scenario server-side - agent `fx-trader` asks for the
+EUR/USD reference rate through `fx.read_rate` - and returns the whole correlation: `run_id`,
+`action_id`, `decision`, `receipt` and the crossing the kernel recorded (`endpoint`,
+`http_status`, `response_sha256`, `value`). The agent token is read from the kernel's own registry
+inside the serving process, so **no credential ever reaches the browser** and the page cannot
+become a second authority. Without an operator token the route answers 401; with no live upstream
+configured it answers 503 and refuses to invent a rate.
+
+`upstream_contacted` is true only when the upstream answered with an HTTP status - a permitted
+call whose transport failed is reported as exactly that, not as a crossing.
+
+## What the container runs
+
+`bash scripts/serve_tenet.sh` starts both roles as one process tree: the real tool server
+(`python -m upstream.frankfurter_server`, loopback) and the control plane (`uvicorn
+control_plane.app:app` on `$PORT`, one worker). The control plane is pointed at the tool server by
+URL (`WARRNT_UPSTREAM`) and never imports it, so the kernel still decides before a byte leaves.
+If the tool server fails to bind, the control plane comes up DEGRADED and `/api/demo/run` refuses.

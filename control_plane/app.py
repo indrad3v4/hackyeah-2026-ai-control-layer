@@ -362,6 +362,11 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
                         or ((detail or {}).get("action") or {}).get("id") or "")
         record = k.action(action_id) if action_id else None
         record = record if isinstance(record, dict) else {}
+        crossing = record.get("execution_result") or {}
+        # "Contacted" means the upstream answered with an HTTP status. A permitted call whose
+        # transport failed (dead host, refused connection) leaves no status behind, and
+        # reporting that as a crossing would be exactly the kind of claim this product forbids.
+        contacted = bool(crossing.get("http_status")) and word in ("allow", "redact")
         return JSONResponse({
             "scenario": "fx.read_rate",
             "agent": agent_id,
@@ -370,8 +375,8 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             "decision": word,
             "reason": reason,
             "executed": executed,
-            "upstream_contacted": bool(executed and word in ("allow", "redact")),
-            "execution_result": record.get("execution_result") or {},
+            "upstream_contacted": contacted,
+            "execution_result": crossing,
             "receipt": record.get("receipt") or (detail or {}).get("receipt"),
             "tool": "fx.read_rate",
         })
