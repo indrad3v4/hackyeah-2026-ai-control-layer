@@ -1,0 +1,44 @@
+@startuml
+title A destructive tool call — flat deny, no human path
+skinparam shadowing false
+autonumber
+
+actor "Agent" as A
+participant "MCP edge adapter" as AD
+participant "Kernel" as K
+participant "PluginRegistry" as REG
+participant "action_taxonomy" as TAX
+participant "destructive_forbid" as FORBID
+participant "DecisionAlgebra" as ALG
+participant "ReceiptChain" as RCP
+participant "Upstream" as UP
+
+A -> AD : tools/call crm.purge {scope:"all", rows:12000}
+AD -> K : ActionRequest(subject, agent, tool, params)
+
+K -> REG : chain(phase=CLASSIFY)
+REG -> TAX : evaluate(req)
+TAX --> REG : class = destructive (tool + verb + params)
+REG --> K : [ActionTaxonomy]
+
+K -> REG : chain(phase=CONSTRAIN)
+REG -> FORBID : evaluate(req)
+FORBID --> REG : DENY · non-delegable · authority=agent
+REG --> K : [DestructiveForbid]
+
+K -> ALG : combine([verdicts]) + apply_class
+ALG --> K : DENY (floor = deny, human path does not exist)
+
+K -> RCP : append(decision, class="destructive", reason)
+RCP --> K : receipt hash + anchor
+K --> AD : JSON-RPC error -32001 DENY before execution
+AD --> A : refusal + reason
+
+note over UP : never reached — executor_calls unchanged
+note over FORBID
+  Deleting a subject's rights,
+  a break-glass token or an operator
+  toggle does NOT lift this.
+  Only a versioned registry change does.
+end note
+@enduml

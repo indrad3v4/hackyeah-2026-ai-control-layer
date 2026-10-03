@@ -1,0 +1,164 @@
+@startuml
+title WARRNT — Python class model (microkernel + ports)
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class ActionRequest {
+  + subject_id : str
+  + agent_id : str
+  + task_id : str
+  + tool : str
+  + params : dict
+  + on_behalf_of : str | None
+  + correlation_id : str
+}
+
+enum Effect {
+  ALLOW
+  REDACT
+  HOLD
+  DENY
+}
+
+enum Outcome {
+  allow
+  redact
+  human
+  deny
+  revoked
+}
+
+enum WarrantState {
+  active
+  revoked
+  expired
+}
+
+enum ActionClass {
+  observe
+  read_personal
+  draft
+  write_reversible
+  irreversible
+  destructive
+  egress
+  outbound
+  authorize
+}
+
+enum Decider {
+  machine
+  machine_receipt
+  machine_warrant
+  human
+  nobody
+}
+
+class Verdict {
+  + effect : Effect
+  + control : str
+  + reason : str
+  + confidence : float
+}
+
+class Decision {
+  + outcome : Outcome
+  + cls : ActionClass
+  + decider : Decider
+  + reason : str
+  + detail : dict
+  + to_receipt() dict
+}
+
+class Kernel {
+  - registry : PluginRegistry
+  - algebra : DecisionAlgebra
+  + handle(req : ActionRequest) Decision
+  + reload() None
+}
+
+class PluginRegistry {
+  + load(catalog : Catalog) None
+  + chain(phase : Phase) list[Control]
+  + watch() None
+  + register(control : Control) None
+}
+
+class DecisionAlgebra {
+  + PRECEDENCE : dict
+  + combine(verdicts : list[Verdict]) Outcome
+  + apply_class(dec : Outcome, cls : ActionClass) Outcome
+}
+
+class ReceiptChain {
+  + append(rec : dict) str
+  + verify() bool
+  + anchor() None
+}
+
+abstract class Control {
+  <<interface>>
+  + name() str
+  + phase() Phase
+  + timeout_ms() int
+  + evaluate(req : ActionRequest) Verdict
+}
+
+class ActorRegistry
+class WarrantVerify
+class ActionTaxonomy
+class DestructiveForbid
+class EgressVolume
+class BudgetGovernor
+class PatternInspector
+class SignatureFeed
+class SemanticJudge
+class Redactor
+
+Kernel o-- PluginRegistry
+Kernel o-- DecisionAlgebra
+Kernel ..> ActionRequest
+Kernel ..> Decision
+PluginRegistry o-- "0..*" Control
+DecisionAlgebra ..> Verdict
+Control ..> Verdict
+Control ..> ActionRequest
+ActorRegistry --|> Control
+WarrantVerify --|> Control
+WarrantVerify ..> WarrantState
+ActionTaxonomy --|> Control
+DestructiveForbid --|> Control
+EgressVolume --|> Control
+BudgetGovernor --|> Control
+PatternInspector --|> Control
+SignatureFeed --|> Control
+SemanticJudge --|> Control
+Redactor --|> Control
+Decision ..> Outcome
+Decision ..> ActionClass
+Decision ..> Decider
+Verdict ..> Effect
+Kernel --> ReceiptChain
+note bottom of Control
+  Ports are typing.Protocol in Python.
+  Discovery: importlib.metadata.entry_points
+  (group="warrnt.controls").
+  A plugin that raises or times out
+  is treated as DENY (fail-closed).
+end note
+note bottom of Outcome
+  The frozen /api/state receipt vocabulary,
+  verbatim: allow | deny | redact | human | revoked.
+  It is the contract; this diagram does not extend it.
+end note
+note bottom of WarrantState
+  TTL has a lifecycle, not a receipt value.
+  The node currently emits `expired` as a sixth
+  receipt decision: that is an extension of the
+  frozen contract and needs a recorded D13
+  unfreeze before it can be drawn here.
+end note
+note bottom of Decision
+  A record, not a boolean.
+end note
+@enduml
