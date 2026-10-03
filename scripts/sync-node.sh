@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Regenerate node/ from the canonical repository. --check verifies the mirror against the pinned commit.
+# Regenerate node/ from the canonical repository. --check verifies the mirror byte-for-byte,
+# because a check that only compares the remote head to the pin cannot see an edit made here.
 set -euo pipefail
 REPO="${WARRNT_REPO:-https://github.com/indrad3v4/warrnt}"
 PIN="831b1667200e6af25b6be76bbafd95467a7e2ee8"
@@ -7,15 +8,24 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 git clone -q --depth 1 "$REPO" "$TMP/src"
 cd "$TMP/src"
-if [ "${1:-}" = "--check" ]; then
-  have=$(git rev-parse HEAD)
-  if [ "$have" != "$PIN" ]; then echo "MIRROR DRIFT: canonical head $have · pinned $PIN"; exit 1; fi
-  echo "pin ok: $PIN"
+have=$(git rev-parse HEAD)
+if [ "${1:-}" = "--check" ] && [ "$have" != "$PIN" ]; then
+  echo "MIRROR DRIFT: canonical head $have · pinned $PIN"; exit 1
 fi
 git archive "$PIN" | tar -x -C "$TMP"
-rm -rf "$HERE/node"; mkdir "$HERE/node"; cp -r "$TMP/src/." "$HERE/node/"
-rm -rf "$HERE/node/.git"
-find "$HERE/node" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
+rm -rf "$TMP/ref"; mkdir "$TMP/ref"; cp -r "$TMP/src/." "$TMP/ref/"; rm -rf "$TMP/ref/.git"
+find "$TMP/ref" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
+
+if [ "${1:-}" = "--check" ]; then
+  if ! diff -r --exclude=__pycache__ --exclude=MIRROR.md "$TMP/ref" "$HERE/node" > "$TMP/diff.txt" 2>&1; then
+    echo "MIRROR DRIFT: node/ differs from $REPO@${PIN:0:12}"
+    head -30 "$TMP/diff.txt"
+    exit 1
+  fi
+  echo "pin ok: $PIN · content identical to node/"
+  exit 0
+fi
+rm -rf "$HERE/node"; mkdir "$HERE/node"; cp -r "$TMP/ref/." "$HERE/node/"
 cat > "$HERE/node/MIRROR.md" <<'MIRROR'
 # This is a mirror, not the source of truth
 
@@ -25,13 +35,12 @@ site, the documents **and the running code with its tests** — without leaving 
 mirror exists so the Python is in this repository; it does not move the source of truth.
 
 - **Canonical repository:** https://github.com/indrad3v4/warrnt — every change lands there, each
-  through a pull request that the Prelint review app comments on (`AGENTS.md` there carries the
-  frozen decisions D1–D13).
-- **Do not edit `node/` here.** An edit here is invisible to the node's own tests and will be
-  overwritten by the next sync.
+  through a pull request.
+- **Do not edit `node/` here.** An edit here is invisible to the node's own tests, and
+  `scripts/sync-node.sh --check` now compares content, so it will fail the pull request.
 - **Regenerate / verify:** `bash scripts/sync-node.sh` · `bash scripts/sync-node.sh --check`.
 
 Contents: the whole node (`warrnt/` — kernel, registry, plugins, policy, receipts, anchor),
-`tests/` (86 tests), `scripts/` (the four proof runs) and its own README.
+`tests/`, `scripts/` (the proof runs) and its own README.
 MIRROR
 echo "node/ regenerated from $REPO@${PIN:0:12} ($(find "$HERE/node" -name '*.py' | wc -l) python files)"
