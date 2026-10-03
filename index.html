@@ -28,6 +28,7 @@ details.tech{margin-top:10px;border:1px solid var(--line);border-radius:11px;bac
 .flash{animation:flash .7s ease-out}@keyframes flash{0%{box-shadow:0 0 0 0 rgba(69,213,154,.35)}100%{box-shadow:0 0 0 14px rgba(69,213,154,0)}}
 @media(max-width:1080px){.heroStage{grid-template-columns:1fr}.stagePane+.stagePane{border-left:0;border-top:1px solid var(--line)}.resourceBar{grid-template-columns:1.4fr repeat(2,1fr)}}
 @media(max-width:760px){body{background:#06090d}.app{padding:11px 10px calc(18px + env(safe-area-inset-bottom))}header{padding-bottom:12px}.mark{width:32px;height:32px}.brand .sub{font-size:10px;max-width:210px}.status{font-size:10px}.command{grid-template-columns:1fr}.command button{width:100%}.commandMeta{font-size:9px}.heroStage{border-radius:13px}.stagePane{padding:15px}.hero h2{font-size:23px}.request{font-size:16px}.resourceBar{grid-template-columns:1fr 1fr}.resourceBar .resource{grid-column:1/-1}.content{grid-template-columns:1fr}.stream{max-height:none}.event{grid-template-columns:54px 1fr auto;padding:12px 13px}.content aside{order:2}.agentStrip{margin-top:9px}.agent{min-width:170px}.row{grid-template-columns:100px 1fr}footer{display:none}}
+@media(max-height:700px){body{overflow:auto}.app{min-height:100vh}}
 </style>
 </head>
 <body>
@@ -46,7 +47,7 @@ details.tech{margin-top:10px;border:1px solid var(--line);border-radius:11px;bac
 <section class="hero">
  <div class="heroStage" id="heroStage">
   <article class="stagePane">
-   <div class="eyebrow">01 · Live security event</div>
+   <div class="eyebrow">01 · Security decision · Live event</div>
    <h2 id="headline">Waiting for an agent action</h2>
    <p id="summary">When a request arrives, TENET shows the real action lifecycle here — not a simulated feed.</p>
    <div class="request" id="request">No action selected</div>
@@ -81,7 +82,7 @@ details.tech{margin-top:10px;border:1px solid var(--line);border-radius:11px;bac
  </div>
 
  <div class="resourceBar">
-  <div class="metric resource"><div class="model" id="model">DeepSeek · no completed call yet</div><div class="trace" id="trace">No provider trace yet.</div></div>
+  <div class="metric resource"><div class="eyebrow">Model resources</div><div class="model" id="model">DeepSeek · no completed call yet</div><div class="trace" id="trace" title="Full provider trace identifier">No provider trace yet.</div></div>
   <div class="metric"><b id="calls">—</b><span>model calls</span></div>
   <div class="metric"><b id="tokens">—</b><span>total tokens</span></div>
   <div class="metric"><b id="io">—</b><span>input / output</span></div>
@@ -93,12 +94,12 @@ details.tech{margin-top:10px;border:1px solid var(--line);border-radius:11px;bac
 
 <section class="content">
  <article class="card">
-  <div class="head"><h3>04 · Orchestrator stream</h3><span class="liveBadge" id="streamState">● LIVE · 1s</span></div>
+  <div class="head"><h3>03 · Live agent activity · Orchestrator stream</h3><span class="liveBadge" id="streamState">● LIVE · 1s</span></div>
   <div class="stream" id="stream"><div class="empty"><b>Listening to TENET</b>No security events have arrived yet. Start a request above.</div></div>
  </article>
 
  <aside class="card">
-  <div class="head"><h3>05 · Proof & context</h3><span class="sub" id="eventState">—</span></div>
+  <div class="head"><h3>04 · Why this happened · Proof & context</h3><span class="sub" id="eventState">—</span></div>
   <div class="rows" id="details"><div class="empty">Select an action.</div></div>
   <div class="timeline" id="timeline"></div>
   <div class="operator">
