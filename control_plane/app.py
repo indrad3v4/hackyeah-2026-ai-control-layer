@@ -218,11 +218,17 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         The counts come from ``kernel.read`` (the single read implementation the specialist
         tools also use), so the operator's UI and an agent's tool can never see two different
         numbers. With no data the lists are empty, never seeded (contract TASK.6).
+
+        ``upstream_configured`` is a read-only projection of the SAME predicate the demo route
+        uses to refuse (``live_upstream_configured``). The page must label its action card LIVE
+        or SIMULATED from a real deployment fact, never from a constant: it is ``true`` only when
+        this process was pointed at a real MCP upstream, so a crossing it shows is a real one.
         """
         k, denied = _kernel_or_503(app)
         if denied:
             return denied
-        return JSONResponse({**k.read("/api/overview"), "mode": config.mode()})
+        return JSONResponse({**k.read("/api/overview"), "mode": config.mode(),
+                             "upstream_configured": live_upstream_configured()})
 
     @app.get("/api/activity")
     def activity(limit: int = 50) -> JSONResponse:

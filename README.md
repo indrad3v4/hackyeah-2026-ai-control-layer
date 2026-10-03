@@ -170,11 +170,26 @@ The internal Python namespace remains `warrnt` where compatibility with the cano
 - explicit DeepSeek provider integration;
 - provider trace/resource journal;
 - security-event projection and causal evidence graph;
-- operator Control Room with live model-resource display.
+- operator Control Room with live model-resource display;
+- the Control Room classified-data-row honesty rule: a crossing is shown only when the record
+  carries an upstream `http_status`, and an intercept has no destination to show;
+- the AC3/AC4 data-flow proof pair — `scripts/data_flow_demo.py` raises the real upstream and
+  control plane and drives one ALLOW (`fx-trader`) and one DENY (`support-copilot`), reading the
+  upstream's own `sent` counter on both sides of each call. Executed result: allow `sent` +1 with
+  a real `https://api.frankfurter.dev/v1/latest?...` crossing (`value 1.1225`), deny `sent` +0 with
+  `upstream.contacted: false`.
 
 ## Deliberately not claimed
 
 A diagram is not presented as a deployed feature. If evidence is unavailable, TENET shows unknown or incomplete. A future enterprise connector is not presented as installed until it exists and is exercised.
+
+The Control Room's live render is proven by a real headless render (`chromium --dump-dom`, the same
+mechanism as `scripts/check_rendered_trace.py`), and by `tests/test_control_room_experience.py`
+(AC3: JSON-object values never render as `[object Object]`; the action card is the first block,
+before any technical identifier; the empty state explains TENET and offers a way to start; a `429`
+with `retry_after_s` renders `Rate limited · retrying in Ns` with the real N). Where chromium is
+absent the test **skips** with a reason — it never claims a render it did not perform.
+
 
 ## Demo sentence
 
@@ -188,6 +203,16 @@ python -m http.server 8099
 ```
 
 Tests: `python -m pytest tests/ -q`
+
+The paired data-flow proof (raises the real upstream + control plane, prints raw JSON, exits
+non-zero unless the pair is a genuine allow-crossing / deny-non-contact):
+
+```bash
+python scripts/data_flow_demo.py
+```
+
+Console gates: `python scripts/check_console.py` (both inline script blocks parse) and
+`python scripts/console_layout_check.py index.html` (layout invariants).
 
 DeepSeek is configured in the deployment environment with `DEEPSEEK_API_KEY`. Never commit or print the secret.
 

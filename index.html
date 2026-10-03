@@ -1,21 +1,121 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TENET — AI Control Room</title><style>
-:root{--bg:#070a0e;--p:#0d1218;--p2:#111821;--line:#202b37;--muted:#8291a3;--text:#edf3f8;--green:#42d392;--red:#ff5d6c;--amber:#f3bd4f}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 75% 0,#142033 0,#070a0e 38%);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}.app{max-width:1440px;margin:auto;padding:22px}header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:4px 0 22px;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:12px}.mark{width:38px;height:38px;border:1px solid #405064;border-radius:10px;display:grid;place-items:center;font-weight:900;background:#0f1620}h1{font-size:21px;margin:0;letter-spacing:-.03em}.sub{color:var(--muted);font-size:12px}.status{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px #42d392}.card{background:rgba(13,18,24,.95);border:1px solid var(--line);border-radius:14px;overflow:hidden}.pad{padding:18px}.eyebrow{font-size:10px;color:#93a5b8;text-transform:uppercase;letter-spacing:.14em;font-weight:800}.badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.allow{background:rgba(66,211,146,.12);color:var(--green);border:1px solid rgba(66,211,146,.3)}.deny{background:rgba(255,93,108,.1);color:var(--red);border:1px solid rgba(255,93,108,.3)}.human{background:rgba(243,189,79,.1);color:var(--amber);border:1px solid rgba(243,189,79,.3)}.neutral{background:#151d27;color:#aebbc8;border:1px solid var(--line)}.hero{display:grid;grid-template-columns:minmax(0,2.15fr) minmax(280px,.85fr);gap:14px;margin-top:16px}.traceTitle{font-size:26px;line-height:1.1;letter-spacing:-.04em;margin:7px 0 4px}.traceSub{color:#aebbc8;font-size:12.5px;margin:0 0 4px}.traceRow{display:grid;grid-template-columns:132px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid #18212b;align-items:start}.traceRow:last-child{border-bottom:0}.tlabel{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;padding-top:2px}.tval{min-width:0;word-break:break-word;font-size:13px}.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:var(--p2);border:1px solid var(--line);font-size:11.5px}.chip .ok{color:var(--green);font-weight:900}.chip .bad{color:var(--red);font-weight:900}.chip .unk{color:var(--amber);font-weight:900}.decisionBox{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:11px;background:#0a0f15;display:flex;align-items:center;gap:14px}.decisionBadge{font-size:22px;font-weight:900;letter-spacing:.02em;padding:8px 16px;border-radius:11px;text-transform:uppercase}.boundary{margin-top:12px;padding:11px 13px;border-radius:10px;border:1px dashed var(--line);background:#0b1017;font-size:12.5px}.boundary.crossed{border-color:rgba(66,211,146,.4)}.boundary.notcrossed{border-color:rgba(243,189,79,.4)}.boundary.unproven{border-color:rgba(255,93,108,.35)}.incomplete{margin-top:10px;padding:9px 12px;border-radius:9px;background:rgba(243,189,79,.08);border:1px solid rgba(243,189,79,.35);color:var(--amber);font-size:11.5px}.empty{margin-top:6px}.empty h2{font-size:20px;margin:8px 0}.empty p{color:#aebbc8}.resourceStrip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px;padding:11px 15px;border:1px solid var(--line);border-radius:12px;background:rgba(13,18,24,.95);font-size:12px;color:var(--muted)}.resourceStrip b{color:var(--text);font-weight:800}.resourceStrip .sep{color:#39485a}.resourceStrip .mono{font-size:11px;color:#aebbc8}.resourceStrip .side{font-size:11px;margin-left:auto}.content{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(330px,.65fr);gap:14px;margin-top:14px}.head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line)}h3{margin:0;font-size:13px;letter-spacing:.04em}.feed{max-height:480px;overflow:auto}.event{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;padding:14px 18px}.event:hover,.event.sel{background:#111923}.eventTop{display:flex;align-items:center;gap:8px}.eventTool{font-weight:750}.eventMeta{color:var(--muted);font-size:11px;margin-top:4px}.rows{padding:5px 18px 15px}.row{display:grid;grid-template-columns:115px 1fr;gap:14px;padding:10px 0;border-bottom:1px solid #18212b}.row:last-child{border-bottom:0}.label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}.value{min-width:0;word-break:break-word}.mono{font-family:Consolas,monospace;font-size:11px}.timeline{padding:16px 18px 20px}.tl{display:grid;grid-template-columns:18px 1fr;gap:9px;position:relative}.tl:not(:last-child){padding-bottom:15px}.tl .bullet{width:9px;height:9px;border-radius:50%;background:#63758a;margin-top:5px;z-index:1}.tl:not(:last-child):after{content:"";position:absolute;left:4px;top:13px;bottom:0;width:1px;background:#2a3542}.tl b{font-size:12px}.tl span{display:block;color:var(--muted);font-size:11px;margin-top:2px}.actions{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 18px}.btn{border:1px solid var(--line);background:#131b25;color:var(--text);padding:9px 12px;border-radius:8px;font-weight:750}.btn.red{border-color:rgba(255,93,108,.4);color:#ff8a95}.btn:disabled{opacity:.45;cursor:not-allowed}footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-size:10px;padding:14px 2px 0}@media(max-width:950px){.hero,.content{grid-template-columns:1fr}.chain{grid-template-columns:1fr 1fr}}@media(max-width:600px){.app{padding:12px}.hero h2{font-size:22px}.chain{grid-template-columns:1fr}.row{grid-template-columns:1fr;gap:3px}}
+:root{--bg:#070a0e;--p:#0d1218;--p2:#111821;--line:#202b37;--muted:#8291a3;--text:#edf3f8;--green:#42d392;--red:#ff5d6c;--amber:#f3bd4f}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 75% 0,#142033 0,#070a0e 38%);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;display:grid;grid-template-rows:auto auto auto auto auto}
+.app{max-width:1440px;margin:auto;padding:22px}
+header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:4px 0 22px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:38px;height:38px;border:1px solid #405064;border-radius:10px;display:grid;place-items:center;font-weight:900;background:#0f1620}
+h1{font-size:21px;margin:0;letter-spacing:-.03em}
+.sub{color:var(--muted);font-size:12px}
+.status{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px #42d392}
+.card{background:rgba(13,18,24,.95);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.pad{padding:18px}
+.eyebrow{font-size:10px;color:#93a5b8;text-transform:uppercase;letter-spacing:.14em;font-weight:800}
+.badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.allow{background:rgba(66,211,146,.12);color:var(--green);border:1px solid rgba(66,211,146,.3)}
+.deny{background:rgba(255,93,108,.1);color:var(--red);border:1px solid rgba(255,93,108,.3)}
+.human{background:rgba(243,189,79,.1);color:var(--amber);border:1px solid rgba(243,189,79,.3)}
+.neutral{background:#151d27;color:#aebbc8;border:1px solid var(--line)}
+.hero{display:grid;grid-template-columns:minmax(0,2.35fr) minmax(280px,.75fr);gap:14px;margin-top:16px}
+.titleRow{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.actionTitle{font-size:26px;line-height:1.12;letter-spacing:-.04em;margin:7px 0 4px}
+.actionLead{color:#aebbc8;font-size:12.5px;margin:0}
+.modeBadge{margin-top:8px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.modeBadge.live{background:rgba(66,211,146,.12);color:var(--green);border:1px solid rgba(66,211,146,.35)}
+.modeBadge.sim{background:rgba(243,189,79,.1);color:var(--amber);border:1px solid rgba(243,189,79,.35)}
+.modeBadge.unk{background:#151d27;color:#aebbc8;border:1px solid var(--line)}
+.path{margin-top:12px}
+.actRow{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid #18212b;align-items:start}
+.actRow:last-child{border-bottom:0}
+.actLabel{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;padding-top:2px}
+.actVal{min-width:0;word-break:break-word;font-size:13px}
+.actVal .mono{color:#879aab}
+.decisionBadge{display:inline-block;font-size:20px;font-weight:900;letter-spacing:.02em;padding:7px 14px;border-radius:11px;text-transform:uppercase}
+.boundary{padding:11px 13px;border-radius:10px;border:1px dashed var(--line);background:#0b1017;font-size:12.5px;font-weight:700}
+.boundary.crossed{border-color:rgba(66,211,146,.4);color:var(--green)}
+.boundary.notcrossed{border-color:rgba(243,189,79,.45);color:var(--amber)}
+.boundary.unproven{border-color:rgba(255,93,108,.35);color:var(--red)}
+.boundary .bdSub{display:block;color:#aebbc8;font-weight:400;font-size:11.5px;margin-top:4px}
+.outcome{margin-top:12px;padding:12px 14px;border-radius:11px;border:1px solid var(--line);background:#0a0f15;font-size:12.5px;color:#aebbc8}
+.outcome.crossed{border-color:rgba(66,211,146,.35)}
+.outcome.notcrossed{border-color:rgba(243,189,79,.4)}
+.outcome b{color:var(--text)}
+.proof{margin-top:12px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0b1017;font-size:12px;color:#aebbc8}
+.proof b{color:var(--text);font-family:Consolas,monospace}
+.incomplete{margin-top:10px;padding:9px 12px;border-radius:9px;background:rgba(243,189,79,.08);border:1px solid rgba(243,189,79,.35);color:var(--amber);font-size:11.5px}
+.tech{margin-top:14px;border-top:1px solid var(--line)}
+.tech summary{cursor:pointer;list-style:none;padding:11px 0;color:#93a5b8;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.12em}
+.tech summary::-webkit-details-marker{display:none}
+.tech summary:before{content:"\25B8 ";color:#63758a}
+.tech[open] summary:before{content:"\25BE "}
+.techBody{padding:2px 0 12px}
+.techBody .tr{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:7px 0;border-bottom:1px solid #141b24;align-items:start}
+.techBody .tr:last-child{border-bottom:0}
+.techBody .tl2{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;padding-top:1px}
+.techBody .tv{min-width:0;word-break:break-word;font-family:Consolas,monospace;font-size:11.5px;color:#c3cede}
+.techBody .tv .unk{color:var(--amber)}
+.empty{margin-top:6px}
+.empty h2{font-size:20px;margin:8px 0}
+.empty p{color:#aebbc8}
+.empty ol{margin:10px 0;padding-left:20px;color:#aebbc8;font-size:13px}
+.empty ol li{margin:4px 0}
+.resourceStrip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px;padding:11px 15px;border:1px solid var(--line);border-radius:12px;background:rgba(13,18,24,.95);font-size:12px;color:var(--muted)}
+.resourceStrip b{color:var(--text);font-weight:800}
+.resourceStrip .sep{color:#39485a}
+.resourceStrip .mono{font-size:11px;color:#aebbc8}
+.resourceStrip .side{font-size:11px;margin-left:auto}
+.content{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(330px,.65fr);gap:14px;margin-top:14px}
+.head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line)}
+h3{margin:0;font-size:13px;letter-spacing:.04em}
+.feed{max-height:480px;overflow:auto}
+.event{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;padding:14px 18px}
+.event:hover,.event.sel{background:#111923}
+.eventTop{display:flex;align-items:center;gap:8px}
+.eventTool{font-weight:750}
+.eventMeta{color:var(--muted);font-size:11px;margin-top:4px}
+.rows{padding:5px 18px 15px}
+.row{display:grid;grid-template-columns:115px 1fr;gap:14px;padding:10px 0;border-bottom:1px solid #18212b}
+.row:last-child{border-bottom:0}
+.label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.value{min-width:0;word-break:break-word}
+.mono{font-family:Consolas,monospace;font-size:11px}
+.timeline{padding:16px 18px 20px}
+.tl{display:grid;grid-template-columns:18px 1fr;gap:9px;position:relative}
+.tl:not(:last-child){padding-bottom:15px}
+.tl .bullet{width:9px;height:9px;border-radius:50%;background:#63758a;margin-top:5px;z-index:1}
+.tl:not(:last-child):after{content:"";position:absolute;left:4px;top:13px;bottom:0;width:1px;background:#2a3542}
+.tl b{font-size:12px}
+.tl span{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 18px}
+.btn{border:1px solid var(--line);background:#131b25;color:var(--text);padding:9px 12px;border-radius:8px;font-weight:750}
+.btn.red{border-color:rgba(255,93,108,.4);color:#ff8a95}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.killmid{min-height:64px}
+footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-size:10px;padding:14px 2px 0}
+@media(max-width:950px){.hero,.content{grid-template-columns:1fr}.actRow,.row,.techBody .tr{grid-template-columns:1fr;gap:4px}.app{overflow:auto;max-height:none}}
+@media(max-width:600px){.app{padding:12px}.actionTitle{font-size:22px}}
+@media(max-height:900px){.app{overflow:auto;max-height:none}}
 </style></head><body><div class="app">
-<header><div class="brand"><div class="mark">T</div><div><h1>TENET Control Room</h1><div class="sub">AI actions, enforced before execution, with evidence you can inspect.</div></div></div><div class="status"><span class="dot"></span><span id="live">Connecting…</span></div></header>
-<section class="hero"><article class="card pad" id="traceCard"><div class="eyebrow">01 · Live security trace</div><h2 class="traceTitle" id="traceTitle">LIVE SECURITY TRACE</h2><p class="traceSub" id="traceSub">Waiting for the first enforced action…</p><div id="traceBody"></div><div class="empty" id="emptyState" style="display:none"><p>No enforced action recorded yet — the trace appears after the first real call.</p><button class="btn" id="selfCheck">Run boundary self-check</button><div class="mono" id="selfCheckMsg" style="margin-top:9px;color:#718196"></div></div></article>
-<aside class="card pad"><div class="eyebrow">02 · Authority</div><div style="font-size:21px;font-weight:850;margin:7px 0 2px" id="authoritySource">tenet-kernel</div><div class="note" id="authorityNote" style="color:var(--muted);font-size:11px">The decision is the kernel's. The model proposes and holds no authority (llm_authority: false).</div><div class="mono" id="modeLine" style="margin-top:13px;color:#718196">mode —</div></aside></section>
-<div class="resourceStrip" id="resourceStrip"><span class="eyebrow" style="color:#93a5b8">02b · Models &amp; resources</span><span class="sep">·</span><span><b id="calls">—</b> calls</span><span class="sep">·</span><span><b id="tokens">—</b> tokens</span><span class="sep">·</span><span><b id="io">—</b> in/out</span><span class="sep">·</span><span><b id="latency">—</b> ms max</span><span class="mono" id="trace">No DeepSeek trace yet</span><span class="side" id="modelNote">Reasoning is evidence. The TENET kernel remains the authority.</span></div>
-<section class="content"><article class="card"><div class="head"><h3>03 · Live agent activity</h3><span class="sub" id="count">0 events</span></div><div class="feed" id="feed"><div class="pad" style="color:#718196">Reading the kernel…</div></div></article>
-<aside class="card"><div class="head"><h3>04 · Why this happened</h3><span class="sub" id="eventState">—</span></div><div class="rows" id="details"><div class="pad" style="color:#718196">Select an action.</div></div><div class="timeline" id="timeline"></div><div class="actions"><button class="btn" id="refresh">Refresh evidence</button><button class="btn red" id="revoke" disabled>Stop agent</button></div></aside></section>
+<header><div class="brand"><div class="mark">T</div><div><h1>TENET Control Room</h1><div class="sub">One AI action, before it happens: what it wants, whose data it is, who it acts for, where the data would go, what TENET decided, and whether it actually happened.</div></div></div><div class="status"><span class="dot"></span><span id="live">Connecting…</span></div></header>
+<section class="hero"><article class="card pad" id="traceCard"><div class="eyebrow">01 · The action under control</div><div class="titleRow"><div><h2 class="actionTitle" id="actionTitle">Waiting for a real agent action</h2><p class="actionLead" id="actionLead">The last action TENET intercepted, in the order the questions are asked.</p></div><span class="modeBadge unk" id="modeBadge">mode —</span></div><div class="path" id="traceBody"></div><div id="outcome"></div><div id="proof"></div><details class="tech" id="techDetails"><summary>Technical details</summary><div class="techBody" id="techBody"></div></details><div class="empty" id="emptyState" style="display:none"><h2>TENET has enforced nothing yet</h2><p>TENET sits between an AI agent and the tools it wants to use. Before any tool runs it checks identity, entitlement, warrant and policy, reaches a verdict, and writes a receipt. Nothing executes until that verdict allows it, and a denied action never reaches the far side of the boundary.</p><p>To put the first real action on this screen:</p><ol><li>Point TENET at a live tool server (the <span class="mono">WARRNT_UPSTREAM</span> environment variable) so a real crossing is possible.</li><li>Press <b>Run the paired allow / deny scenario</b> below: the same request is made by two agents and the kernel reaches two different verdicts.</li><li>Or let a real agent call the control plane and watch its own action appear here.</li></ol><button class="btn" id="selfCheck">Run the paired allow / deny scenario</button><div class="mono" id="selfCheckMsg" style="margin-top:9px;color:#718196"></div></div></article>
+<aside class="card pad"><div class="eyebrow">02 · Who decides</div><div style="font-size:21px;font-weight:850;margin:7px 0 2px" id="authoritySource">tenet-kernel</div><div class="note" id="authorityNote" style="color:var(--muted);font-size:11px">The kernel decides, before execution. The model proposes and holds no authority (llm_authority: false).</div><div class="mono" id="modeLine" style="margin-top:13px;color:#718196">mode —</div><div class="mono" id="modeNote" style="margin-top:8px;color:#718196;font-size:11px"></div><div class="killmid"><button class="btn red" id="revoke" disabled>Stop agent</button></div></aside></section>
+<div class="resourceStrip" id="resourceStrip"><span class="eyebrow" style="color:#93a5b8">03 · Models &amp; resources</span><span class="sep">·</span><span><b id="calls">—</b> calls</span><span class="sep">·</span><span><b id="tokens">—</b> tokens</span><span class="sep">·</span><span><b id="io">—</b> in/out</span><span class="sep">·</span><span><b id="latency">—</b> ms max</span><span class="mono" id="trace">No DeepSeek trace yet</span><span class="side" id="modelNote">Reasoning is evidence. The TENET kernel remains the authority.</span></div>
+<section class="content"><article class="card"><div class="head"><h3>04 · Actions on the record</h3><span class="sub" id="count">0 events</span></div><div class="feed" id="feed"><div class="pad" style="color:#718196">Reading the kernel…</div></div></article>
+<aside class="card"><div class="head"><h3>05 · Inspect this action</h3><span class="sub" id="eventState">—</span></div><div class="rows" id="details"><div class="pad" style="color:#718196">Select an action.</div></div><div class="timeline" id="timeline"></div><div class="actions"><button class="btn" id="refresh">Refresh evidence</button></div></aside></section>
 <footer><span>TENET · Control Plane → Enforcement Kernel → upstream</span><span id="footer">Evidence only · no credentials exposed</span></footer></div>
 <script>
-const $=id=>document.getElementById(id);let events=[],selected=null,usage=null,trace=null,llm_authority=null,authority_source=null;
+const $=id=>document.getElementById(id);let events=[],selected=null,usage=null,trace=null,llm_authority=null,authority_source=null,upstream_configured=null,live_mode=null;
+/* esc/dash/dashHtml are JSON-aware: a value that is an object is rendered as JSON, never as the
+ * literal "[object Object]" (the latent bug the old String(v) fallback carried). */
 function esc(v){return String(v??"—").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function jsonSafe(v){if(typeof v==="object"&&v!==null)try{return JSON.stringify(v)}catch(e){return String(v)}return v}
 function cls(d){d=String(d||"").toLowerCase();return d==="allow"?"allow":d==="deny"||d==="revoked"?"deny":d==="human"?"human":"neutral"}
 function fmt(n){return n==null?"—":Number(n).toLocaleString()}
 function yn(v){return v===true?"yes":v===false?"no":"unknown"}
-function chip(label,state,value){const mark=state==="ok"?"<span class='ok'>✓</span>":state==="bad"?"<span class='bad'>✗</span>":state==="unk"?"<span class='unk'>?</span>":"<span>•</span>";return `<span class="chip">${mark}${esc(label)}${value?": "+esc(value):""}</span>`}
-/* ---- 01 · LIVE SECURITY TRACE : render the kernel's REAL payload leaves (ACT-5b AC1) ----
+function chip(label,state,value){const mark=state==="ok"?"<span class='ok'>✓</span>":state==="bad"?"<span class='bad'>✗</span>":state==="unk"?"<span class='unk'>?</span>":"<span>•</span>";return `<span class="chip">${mark}${esc(label)}${value?": "+esc(jsonSafe(value)):""}</span>`}
+/* ---- 01 · THE ACTION UNDER CONTROL : render the kernel's REAL payload leaves (ACT-5b AC1) ----
  * TRACE_KEYS is the declared contract: every payload path this page reads. tests/test_live_trace.py
  * (AC4) runs the real projection, flattens its leaves, and asserts each declared path exists and
  * that every path interpolated below is declared. A path absent from the payload renders as
@@ -38,60 +138,95 @@ rootLlmAuthority:"llm_authority",
 authoritySource:"t.decided_by",rootAuthoritySource:"authority_source",
 timestamp:"t.timestamp",origin:"t.origin",incomplete:"t.incomplete[]",
 principal:"t.principal",onBehalfOf:"t.on_behalf_of"};
-function dash(v){return (v===null||v===undefined||v==="")?null:String(v)}
+function dash(v){v=jsonSafe(v);return (v===null||v===undefined||v==="")?null:String(v)}
 function dashHtml(v,fallback){const s=dash(v);return s==null?`<span class='unk'>${esc(fallback||"—")}</span>`:esc(s)}
 function isoTimestamp(ts){if(ts==null||ts==="")return null;const d=new Date(Number(ts)*1000);if(isNaN(d.getTime()))return null;return d.toISOString().replace(".000Z","Z")+" · "+d.toLocaleString()}
 function ynRoot(t){const v=(typeof llm_authority!=="undefined"&&llm_authority!=null)?llm_authority:(t.model&&t.model.llm_authority!=null?t.model.llm_authority:null);return yn(v)}
-/* ---- 01 · LIVE SECURITY TRACE : render the kernel's authority evidence verbatim ---- */
-function renderTrace(){const t=trace,title=$("traceTitle"),sub=$("traceSub"),body=$("traceBody"),empty=$("emptyState");
-if(!t){title.textContent="LIVE SECURITY TRACE";sub.textContent="Waiting for the first enforced action…";body.innerHTML="";empty.style.display="";return}
+/* ---- 01 · THE ACTION UNDER CONTROL : an action-first card, in the order the questions are asked.
+ * The first layer answers: what the AI wants to do -> what data is involved -> who is acting ->
+ * who it acts for -> where the data would go -> what TENET decided -> what actually happened ->
+ * where the proof is. Technical identifiers move to the collapsed Technical details layer.
+ */
+function actRow(label,value,cls){
+  const c=cls?` class="${cls}"`:"";
+  return `<div class="actRow"><div class="actLabel">${esc(label)}</div><div class="actVal"${c}>${value}</div></div>`}
+function techRow(label,value){return `<div class="tr"><div class="tl2">${esc(label)}</div><div class="tv">${value}</div></div>`}
+function setMode(cfg){const el=$("modeBadge"),line=$("modeLine"),note=$("modeNote");
+  if(cfg===true){el.className="modeBadge live";el.textContent="Live · real upstream configured";
+    line.textContent="mode "+(usage?.mode||"—")+" · live upstream configured";
+    note.textContent="This deployment can reach a real tool server, so a crossing shown here is a real one."}
+  else if(cfg===false){el.className="modeBadge sim";el.textContent="Simulated · no upstream configured";
+    line.textContent="mode "+(usage?.mode||"—")+" · no live upstream";
+    note.textContent="No live upstream is configured: TENET will not fake a crossing, so no data can leave."}
+  else{el.className="modeBadge unk";el.textContent="mode —";line.textContent="mode "+(usage?.mode||"—");note.textContent=""}}
+function renderTrace(){const t=trace,title=$("actionTitle"),lead=$("actionLead"),body=$("traceBody"),out=$("outcome"),proof=$("proof"),tech=$("techBody"),empty=$("emptyState");
+setMode(upstream_configured);
+if(!t){title.textContent="Waiting for a real agent action";lead.textContent="Nothing is being enforced yet. The next action TENET intercepts appears here.";body.innerHTML="";out.innerHTML="";proof.innerHTML="";tech.innerHTML="";empty.style.display="";return}
 empty.style.display="none";
-title.textContent="LIVE SECURITY TRACE";
-sub.textContent=`${t.agent||"agent"} → ${(t.action&&t.action.tool)||"tool"} · Agent ${t.agent||"—"}`;
 const ap=t.action||{},c=t.checks||{},w=c.warrant||{},up=t.upstream||{},incomplete=Array.isArray(t.incomplete)?t.incomplete:[];
-/* the four checks — AC2: identity shows "?"/"not recorded" when ok is null */
-const ck=[
-chip("Identity",c.identity?.ok===true?"ok":c.identity?.ok===false?"bad":"unk",c.identity?.ok===true?(c.identity?.detail||"recorded"):"not recorded"),
-chip("Entitlement",c.entitlement?.ok===true?"ok":c.entitlement?.ok===false?"bad":"unk",c.entitlement?.ok===true?(c.entitlement?.right||"granted"):c.entitlement?.ok===false?"not entitled":"not recorded"),
-chip("Warrant",w.state==="active"?"ok":w.state?"bad":"unk",dash(w.id)?dash(w.id)+(w.state?" · "+w.state:""):"not recorded"),
-chip("Policy",c.policy?.ok===true?"ok":c.policy?.ok===false?"bad":"unk",c.policy?.ok===true?(c.policy?.detail||"passed"):"not recorded")].join("");
+const tool=ap.tool||"a tool";
+title.textContent=`Agent ${t.agent||"unknown"} wants to use ${tool}`;
+lead.textContent=`${(t.decision||"decision").toString().toUpperCase()} ${t.decision==="deny"?"— the call never reached the far side":(up.contacted===true?"— the call crossed the boundary":"")}`.trim();
+/* the decision, honest about the boundary three ways */
 const dcls=cls(t.decision);
-/* AC3 — boundary crossing has THREE honest states, derived ONLY from upstream.contacted */
 const bc=up.contacted;
 const bcls=bc===true?"crossed":bc===false?"notcrossed":"unproven";
-const btxt=bc===true?["CONTACTED","HTTP "+dashHtml(up.http_status,"—"),dashHtml(up.endpoint,"endpoint not recorded"),"value "+dashHtml(up.value,"—"),"sha "+(dash(up.response_sha256)?esc(String(up.response_sha256).slice(0,8))+"…":"—"),(up.latency_ms!=null?esc(String(up.latency_ms))+" ms":null)].filter(Boolean).join(" · ")
-:bc===false?"NOT CONTACTED — the decision held the boundary"
-:"NOT PROVEN in the record";
-function row(l,v){return v==null||v===""?"":`<div class="traceRow"><div class="tlabel">${esc(l)}</div><div class="tval">${v}</div></div>`}
+const bhead=bc===true?"CONTACTED":bc===false?"NOT CONTACTED":"NOT PROVEN in the record";
+const bsub=bc===true?["HTTP "+dashHtml(up.http_status,"—"),dashHtml(up.endpoint,"endpoint not recorded"),"value "+dashHtml(up.value,"—"),"sha "+(dash(up.response_sha256)?esc(String(up.response_sha256).slice(0,8))+"…":"—"),(up.latency_ms!=null?esc(String(up.latency_ms))+" ms":null)].filter(Boolean).join(" · ")
+  :bc===false?"NOT CONTACTED — the decision held the boundary"+": no data left this system.":"NOT PROVEN in the record: it does not say whether the far side was reached.";
+/* what it wants, what data, who, for whom, where — meaning first, identifiers a disclosure away */
 const argsKeysHtml=Array.isArray(ap.args?.keys)?`keys [${ap.args.keys.map(esc).join(", ")}]`:"";
-const argsHtml=dash(ap.args)?`<span class="mono" style="color:#879aab">${esc(JSON.stringify(ap.args))}</span>`:"";
+const argsHtml=dash(ap.args)?`<span class="mono">${esc(JSON.stringify(ap.args))}</span>`:"";
 body.innerHTML=
-row("Agent",esc(t.agent??"—")+(t.agent_role?` <span class="mono" style="color:#879aab">· ${esc(t.agent_role)}</span>`:""))+
-row("Requested action",`${esc(ap.tool??"—")}${ap.intent?` <span class="mono" style="color:#879aab">· ${esc(ap.intent)}</span>`:""} ${argsHtml}${argsKeysHtml?` <span class="mono" style="color:#879aab">· ${argsKeysHtml}</span>`:""}`)+
-row("Action class",esc(ap.class??"not recorded"))+
-row("Decision",`<span class="decisionBadge ${dcls}">${esc((t.decision??"recorded").toUpperCase())}</span>`)+
-row("Reason",esc(t.reason??"—"))+
-row("Authority",esc(t.decided_by??"—"))+
-row("Principal",dashHtml(t.principal,"not recorded")+(t.on_behalf_of?` · on behalf of ${esc(t.on_behalf_of)}`:" · on behalf of not recorded"))+
-row("Warrant",dash(w.id)?`<span class="mono">${esc(w.id)}</span> · ${esc(w.state||"state not recorded")} · sig ${w.sig_ok===true?"ok":w.sig_ok===false?"invalid":"not recorded"} · ttl ${w.ttl_remaining!=null?esc(String(w.ttl_remaining))+"s":"not recorded"}`:"<span class='unk'>no warrant in record</span>")+
-row("Data boundary",`<div class="boundary ${bcls}">${esc(btxt)}</div>`)+
-row("Upstream contact",`${bc===true?esc(dash(up.endpoint)||"endpoint not recorded"):dash(up.endpoint)?"Endpoint "+esc(up.endpoint):"Endpoints not recorded"} · ${esc(yn(bc))}`)+
-row("Receipt",esc(t.receipt_id??"—"))+
-row("Checks",`<div class="chips">${ck}</div>`)+
-row("Recorded",dashHtml(isoTimestamp(t.timestamp),"timestamp not recorded"))+
-row("Origin",esc(t.origin??"not recorded"))+
-row("Model (proposes only)",(t.model&&(t.model.model_served||t.model.trace_id))?`${esc(t.model.model_served||"—")} · trace ${esc(t.model.trace_id||"—")} · <span style="color:#93a5b8">llm_authority: ${ynRoot(t)}</span>`:`<span class='unk'>no model on this decision</span> · <span style="color:#93a5b8">llm_authority: ${ynRoot(t)}</span>`)+
-(incomplete.length?`<div class="incomplete">Incomplete evidence — not proven: ${incomplete.map(esc).join(", ")}</div>`:"")}
-/* ---- 02 · Authority side panel ---- */
+  actRow("What it wants to do",`${esc(t.action?.intent||tool)} <span class="mono">· tool ${esc(tool)}</span>`)+
+  actRow("Data involved",`${esc(ap.class||"action class not recorded")}${argsKeysHtml?` <span class="mono">· ${argsKeysHtml}</span>`:""}${argsHtml?` ${argsHtml}`:""}`)+
+  actRow("Who is acting",esc(t.agent??"—")+(t.agent_role?` <span class="mono">· ${esc(t.agent_role)}</span>`:""))+
+  actRow("Who it acts for",dashHtml(t.principal,"principal not recorded")+(t.on_behalf_of?` · on behalf of ${esc(t.on_behalf_of)}`:" · on behalf of not recorded"))+
+  actRow("Where the data would go",`${dash(up.endpoint)?esc(up.endpoint):"upstream not contacted — no destination in this record"} <span class="mono">· upstream reached: ${esc(yn(bc))}</span>`)+
+  actRow("What TENET decided",`<span class="decisionBadge ${dcls}">${esc((t.decision??"recorded").toString().toUpperCase())}</span> <span class="mono">· ${esc(t.reason??"reason not recorded")}</span>`)+
+  actRow("Did it happen",`<div class="boundary ${bcls}">${esc(bhead)}<span class="bdSub">${esc(bsub)}</span></div>`);
+out.className="outcome "+(bc===true?"crossed":bc===false?"notcrossed":"");
+out.innerHTML=(bc===true?`<b>Yes — it happened.</b> The far side answered, so this action really crossed the boundary.`
+  :bc===false?`<b>No — nothing happened.</b> TENET denied the call before execution, so the far side was never reached and no data moved.`
+  :`<b>Not proven.</b> The record carries no confirmed crossing and no confirmed denial.`)+` Decided by <b>${esc(t.decided_by??"—")}</b> (the model proposes, it holds no authority).`;
+proof.innerHTML=`<b>Proof:</b> receipt ${esc(t.receipt_id??"not present")} · action ${esc(t.action_id??"not recorded")}. The receipt is the kernel's record of its own decision; inspect the raw fields under Technical details.`;
+/* technical evidence: identifiers, checks, model — available, one disclosure away, never competing */
+const ck=[chip("Identity",c.identity?.ok===true?"ok":c.identity?.ok===false?"bad":"unk",c.identity?.ok===true?(c.identity?.detail||"recorded"):"not recorded"),
+  chip("Entitlement",c.entitlement?.ok===true?"ok":c.entitlement?.ok===false?"bad":"unk",c.entitlement?.ok===true?(c.entitlement?.right||"granted"):c.entitlement?.ok===false?"not entitled":"not recorded"),
+  chip("Warrant",w.state==="active"?"ok":w.state?"bad":"unk",dash(w.id)?dash(w.id)+(w.state?" · "+w.state:""):"not recorded"),
+  chip("Policy",c.policy?.ok===true?"ok":c.policy?.ok===false?"bad":"unk",c.policy?.ok===true?(c.policy?.detail||"passed"):"not recorded")].join("");
+tech.innerHTML=
+  techRow("Agent",esc(t.agent??"—"))+
+  techRow("Tool",`<span class="mono">${esc(tool)}</span>`)+
+  techRow("Action id",esc(t.action_id??"not recorded"))+
+  techRow("Action class",esc(ap.class??"not recorded"))+
+  techRow("Raw arguments",argsHtml+argsKeysHtml?(argsHtml+(argsHtml&&argsKeysHtml?" ":"")+esc(argsKeysHtml)):"<span class='unk'>not recorded</span>")+
+  techRow("Checks",`<div class="chips">${ck}</div>`)+
+  techRow("Warrant",dash(w.id)?`<span class="mono">${esc(w.id)}</span> · ${esc(w.state||"state not recorded")} · sig ${w.sig_ok===true?"ok":w.sig_ok===false?"invalid":"not recorded"} · ttl ${w.ttl_remaining!=null?esc(String(w.ttl_remaining))+"s":"not recorded"}`:"<span class='unk'>no warrant in record</span>")+
+  techRow("Entitlements",Array.isArray(t.entitlements)&&t.entitlements.length?esc(t.entitlements.join(", ")):"<span class='unk'>not recorded</span>")+
+  techRow("Scope",Array.isArray(t.scope)&&t.scope.length?esc(t.scope.join(", ")):"<span class='unk'>not recorded</span>")+
+  techRow("Upstream contact",`${bc===true?esc(dash(up.endpoint)||"endpoint not recorded"):dash(up.endpoint)?"Endpoint "+esc(up.endpoint):"Endpoint not recorded"} · ${esc(yn(bc))}`)+
+  techRow("Response sha256",dash(up.response_sha256)?`<span class="mono">${esc(up.response_sha256)}</span>`:"<span class='unk'>not recorded</span>")+
+  techRow("Receipt",esc(t.receipt_id??"—"))+
+  techRow("Model (proposes only)",(t.model&&(t.model.model_served||t.model.trace_id))?`${esc(t.model.model_served||"—")} · trace ${esc(t.model.trace_id||"—")} · <span style="color:#93a5b8">llm_authority: ${ynRoot(t)}</span>`:`<span class='unk'>no model on this decision</span> · <span style="color:#93a5b8">llm_authority: ${ynRoot(t)}</span>`)+
+  techRow("Recorded",dashHtml(isoTimestamp(t.timestamp),"timestamp not recorded"))+
+  techRow("Origin",esc(t.origin??"not recorded"))+
+  (incomplete.length?`<div class="incomplete">Incomplete evidence — not proven: ${incomplete.map(esc).join(", ")}</div>`:"");
+}
+/* ---- 02 · Who decides ---- */
 function renderAuthority(){$("authoritySource").textContent=authority_source||"tenet-kernel";$("authorityNote").textContent=(trace&&trace.model&&(trace.model.model_served))?`The model (${trace.model.model_served}) proposed; it holds no authority (llm_authority: ${ynRoot(trace)}).`:"The decision is the kernel's. The model proposes and holds no authority (llm_authority: false).";$("modeLine").textContent="mode "+(usage?.mode||"—")+" · receipt "+((trace&&trace.receipt_id)||"—")}
 function renderResource(){const u=usage||{};$("calls").textContent=u.calls_completed!=null?fmt(u.calls_completed):"—";$("tokens").textContent=u.total_tokens?fmt(u.total_tokens):"—";$("io").textContent=(u.input_tokens!=null||u.output_tokens!=null)?fmt(u.input_tokens||0)+" / "+fmt(u.output_tokens||0):"—";$("latency").textContent=u.max_latency_ms!=null?fmt(u.max_latency_ms):"—";$("trace").textContent=u.latest_trace_id?"DeepSeek trace · "+u.latest_trace_id:"No completed DeepSeek trace yet";$("modelNote").textContent=(u.model_served||u.model_requested)?((u.model_served||u.model_requested)+" · "+(u.mode==="demo"?"demo — no live provider claim":"live provider evidence")):"Reasoning is evidence. The TENET kernel remains the authority."}
 function renderFeed(){$("count").textContent=events.length+" event"+(events.length===1?"":"s");$("feed").innerHTML=events.length?events.map(e=>`<button class="event ${selected===e.event_id?"sel":""}" onclick="selectEvent('${esc(e.event_id)}')"><div class="eventTop"><span class="badge ${cls(e.decision)}">${esc(e.decision||e.state||"recorded")}</span><span class="eventTool">${esc(e.agent||"unknown agent")} · ${esc(e.intent||e.tool||"unknown request")}</span></div><div class="eventMeta">${esc(e.reason||"Kernel decision recorded")} · upstream: ${e.upstream_contacted===true?"contacted":e.upstream_contacted===false?"not contacted":"unknown"}</div></button>`).join(""):"<div class='pad' style='color:#718196'>No kernel events available.</div>"}
 function selectEvent(id){const e=events.find(x=>x.event_id===id);if(!e)return;selected=id;renderFeed();renderSelected(e)}
-function renderSelected(e){$("eventState").textContent=e.state||"recorded";$("details").innerHTML=[["What",e.intent||e.tool],["Agent",e.agent],["Actor",e.actor],["Authority / warrant",e.warrant],["Warrant state",e.warrant_state],["Policy",e.policy],["Decision",e.decision],["Why",e.reason],["Data boundary",e.upstream_contacted===true?"crossed":e.upstream_contacted===false?"not crossed":"not proven"],["Model",e.model_served||e.model_requested],["Model trace",e.model_trace_id],["Receipt",e.receipt_id],["Action",e.event_id],["Upstream call",e.upstream_call_id]].map(r=>`<div class="row"><div class="label">${esc(r[0])}</div><div class="value mono">${esc(r[1])}</div></div>`).join("");$("timeline").innerHTML=[["Agent proposed",e.intent||e.tool||"request"],["TENET checked",e.policy||"policy"],["Decision",e.decision||"recorded"],[e.upstream_contacted===true?"Upstream contacted":"Boundary result",e.upstream_contacted===true?(e.execution_result?.http_status?"HTTP "+e.execution_result.http_status:"contact recorded"):"No contact proven"],["Receipt",e.receipt_id||"not present"]].map(x=>`<div class="tl"><div class="bullet"></div><div><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div></div>`).join("");$("revoke").disabled=!e.agent||e.state==="halted"||e.decision==="deny"||e.decision==="revoked"}async function get(url,opts){const r=await fetch(url,opts);if(!r.ok){const err=new Error(url+" → HTTP "+r.status);err.status=r.status;err.body=await r.json().catch(()=>({}));throw err}return r.json()}
+function cell(v){const s=dash(v);return s==null?"<span class='unk'>not recorded</span>":`<span title="${esc(s)}">${esc(s)}</span>`}
+function renderSelected(e){$("eventState").textContent=e.state||"recorded";$("details").innerHTML=[["What",e.intent||e.tool],["Agent",e.agent],["Actor",e.actor],["Authority / warrant",e.warrant],["Warrant state",e.warrant_state],["Policy",e.policy],["Decision",e.decision],["Why",e.reason],["Data boundary",e.upstream_contacted===true?"crossed":e.upstream_contacted===false?"not crossed":"not proven"],["Model",e.model_served||e.model_requested],["Model trace",e.model_trace_id],["Receipt",e.receipt_id],["Action",e.event_id],["Upstream call",e.upstream_call_id]].map(r=>`<div class="row"><div class="label">${esc(r[0])}</div><div class="value mono">${cell(r[1])}</div></div>`).join("");$("timeline").innerHTML=[["Agent proposed",e.intent||e.tool||"request"],["TENET checked",e.policy||"policy"],["Decision",e.decision||"recorded"],[e.upstream_contacted===true?"Upstream contacted":"Boundary result",e.upstream_contacted===true?(e.execution_result?.http_status?"HTTP "+e.execution_result.http_status:"contact recorded"):"No contact proven"],["Receipt",e.receipt_id||"not present"]].map(x=>`<div class="tl"><div class="bullet"></div><div><b>${esc(x[0])}</b><span>${cell(x[1])}</span></div></div>`).join("");$("revoke").disabled=!e.agent||e.state==="halted"||e.decision==="deny"||e.decision==="revoked";document.body.dataset.revokeOverTarget=$("revoke").disabled?"no":"yes"}
+async function get(url,opts){const r=await fetch(url,opts);if(!r.ok){const err=new Error(url+" → HTTP "+r.status);err.status=r.status;err.body=await r.json().catch(()=>({}));throw err}return r.json()}
 let ready=false;
-async function refresh(){try{const [sec,res,lt]=await Promise.all([get("/api/security-events?limit=20"),get("/api/model-usage"),get("/api/live-trace")]);events=sec.events||[];usage=res;trace=lt.trace||null;llm_authority=lt.llm_authority;authority_source=lt.authority_source;ready=true;$("live").textContent="Live control plane · kernel evidence";$("footer").textContent="Evidence source: TENET kernel · model evidence: DeepSeek journal";renderTrace();renderAuthority();renderResource();renderFeed();if(!selected||!events.some(e=>e.event_id===selected))selected=events[0]?.event_id||null;if(selected){const e=events.find(x=>x.event_id===selected);if(e)renderSelected(e)}}catch(err){$("live").textContent="Control plane unavailable";$("footer").textContent=err.message;if(err.body&&err.body.retry_after_s)$("selfCheckMsg").textContent="Rate limited — retry in "+err.body.retry_after_s+"s"}}
+async function refresh(){try{const [sec,res,lt,ov]=await Promise.all([get("/api/security-events?limit=20"),get("/api/model-usage"),get("/api/live-trace"),get("/api/overview")]);events=sec.events||[];usage=res;trace=lt.trace||null;llm_authority=lt.llm_authority;authority_source=lt.authority_source;upstream_configured=(typeof ov.upstream_configured==="boolean")?ov.upstream_configured:null;live_mode=ov.mode||null;ready=true;$("live").textContent="Live control plane · kernel evidence";$("footer").textContent="Evidence source: TENET kernel · mode: "+(live_mode||"—")+(upstream_configured===true?" · upstream configured":upstream_configured===false?" · no upstream configured":"");setMode(upstream_configured);renderTrace();renderAuthority();renderResource();renderFeed();if(!selected||!events.some(e=>e.event_id===selected))selected=events[0]?.event_id||null;if(selected){const e=events.find(x=>x.event_id===selected);if(e)renderSelected(e)}document.body.dataset.ok="true"}catch(err){$("live").textContent="Control plane unavailable";$("footer").textContent=err.message;setMode(null);if(err.body&&err.body.retry_after_s)$("selfCheckMsg").textContent=rateLimited(err.body.retry_after_s);document.body.dataset.ok="false"}}
+/* The rate-limited state reads as waiting for a slot, never as a TENET failure. */
+function rateLimited(n){return "Rate limited · retrying in "+n+"s — the kernel is still enforcing; this is a wait, not a failure."}
 $("refresh").onclick=refresh;
 $("revoke").onclick=async()=>{if(!selected)return;const e=events.find(x=>x.event_id===selected);if(!e?.agent)return;const token=localStorage.getItem("warrnt_admin")||"";if(!token){$("footer").textContent="Stop agent is protected. Use the authenticated operator console.";return}if(!confirm("Stop "+e.agent+"? This revokes its authority."))return;try{await get("/api/agents/"+encodeURIComponent(e.agent)+"/revoke",{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:"operator"})});await refresh()}catch(err){$("footer").textContent="Revoke failed: "+err.message}};
-$("selfCheck").onclick=async()=>{const b=$("selfCheck");b.disabled=true;$("selfCheckMsg").textContent="Running the fixed boundary scenario…";try{const r=await fetch("/api/scenario/self-check",{method:"POST"});const data=await r.json().catch(()=>({}));if(!r.ok){$("selfCheckMsg").textContent=data.retry_after_s?("Rate limited — retry in "+data.retry_after_s+"s"):(data.error||("HTTP "+r.status));return}llm_authority=data.llm_authority;authority_source=data.authority_source;trace=data.trace||null;renderTrace();renderAuthority();$("authoritySource").textContent=data.authority_source||"tenet-kernel";await refresh();$("selfCheckMsg").textContent="Done — the trace above is the live record."}catch(err){$("selfCheckMsg").textContent="Self-check failed: "+err.message}finally{b.disabled=false}};
+$("selfCheck").onclick=async()=>{const b=$("selfCheck");b.disabled=true;$("selfCheckMsg").textContent="Running the paired allow / deny scenario…";try{const r=await fetch("/api/scenario/self-check",{method:"POST"});const data=await r.json().catch(()=>({}));if(!r.ok){$("selfCheckMsg").textContent=data.retry_after_s?rateLimited(data.retry_after_s):(data.error||("HTTP "+r.status));return}llm_authority=data.llm_authority;authority_source=data.authority_source;trace=data.trace||null;renderTrace();renderAuthority();$("authoritySource").textContent=data.authority_source||"tenet-kernel";await refresh();$("selfCheckMsg").textContent="Done — the action card above is the live record."}catch(err){$("selfCheckMsg").textContent="Scenario failed: "+err.message}finally{b.disabled=false}};
 refresh();setInterval(refresh,2000);
 </script></body></html>
