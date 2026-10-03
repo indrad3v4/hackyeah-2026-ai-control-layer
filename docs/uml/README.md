@@ -88,6 +88,19 @@ Honest split, per rule D12. "Built" means code in the node repository
 Six of eleven are slots. The diagrams are drawn for the shape they go into, not for the
 shape that exists — the difference is this table.
 
+## Known contract drift — and why the diagrams do not draw it
+
+The frozen `/api/state` contract carries **five** receipt decisions:
+`allow | deny | redact | human | revoked`. The node's `Decision` enum currently carries six —
+it adds `expired` — and the contract has not been extended to match.
+
+The diagrams therefore keep the contract at five values. TTL is drawn as `WarrantState`
+(`active` / `revoked` / `expired`), a **lifecycle**, not a receipt value. Emitting `expired`
+into a receipt is an extension of a frozen interface, and per rule D13 that needs its own
+recorded unfreeze — the reason, the exact field, and the matching update in every consumer —
+before it can appear in a diagram of the contract. Fixing the vocabulary first is the rule;
+drawing past it is not an option.
+
 ## Relation to the node as it stands
 
 The node today wires its four controls directly into the proxy: `proxy.py` calls the actor

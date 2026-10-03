@@ -26,6 +26,11 @@ enum Outcome {
   human
   deny
   revoked
+}
+
+enum WarrantState {
+  active
+  revoked
   expired
 }
 
@@ -120,6 +125,7 @@ Control ..> Verdict
 Control ..> ActionRequest
 ActorRegistry --|> Control
 WarrantVerify --|> Control
+WarrantVerify ..> WarrantState
 ActionTaxonomy --|> Control
 DestructiveForbid --|> Control
 EgressVolume --|> Control
@@ -139,6 +145,18 @@ note bottom of Control
   (group="warrnt.controls").
   A plugin that raises or times out
   is treated as DENY (fail-closed).
+end note
+note bottom of Outcome
+  The frozen /api/state receipt vocabulary,
+  verbatim: allow | deny | redact | human | revoked.
+  It is the contract; this diagram does not extend it.
+end note
+note bottom of WarrantState
+  TTL has a lifecycle, not a receipt value.
+  The node currently emits `expired` as a sixth
+  receipt decision: that is an extension of the
+  frozen contract and needs a recorded D13
+  unfreeze before it can be drawn here.
 end note
 note bottom of Decision
   A record, not a boolean.
