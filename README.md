@@ -99,6 +99,20 @@ exists whether the action happened or not.
 }
 ```
 
+Two of the five decisions **execute**, and the `tools/call` result says so:
+
+* `allow` — the payload goes through untouched.
+* `redact` — the call runs, and the personal fields named by the rule are stripped from the
+  payload *before* the upstream is called. The result carries `redacted` (the fields removed)
+  and `upstream_params` (what the upstream was actually allowed to see), so the screen can show
+  the difference between what was asked for and what left the node. This is the vocabulary's
+  fifth value doing real work: `inspect_pii` refuses the act, `redact` lets the act happen
+  without the data.
+* The other three (`deny`, `human`, `revoked`) are refusals and leave the perimeter untouched —
+  `executed: false`, and the executor counter does not move. An order whose TTL elapsed is one
+  of these: a `deny` whose detail carries `warrant_state: expired`, because `expired` is a
+  *warrant state*, not a decision.
+
 ## The demo vector (the 3:47 moment)
 
 One scenario, deterministic, run end to end:
