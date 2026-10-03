@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>TENET — Security Operator Control Room</title>
+<title>TENET — Control what your AI can do</title>
 <style>
 :root{--bg:#06090d;--panel:#0c1219;--panel2:#101821;--line:#22303d;--muted:#8292a5;--text:#edf4f8;--green:#45d59a;--red:#ff6674;--amber:#f2bf55;--blue:#71adff}
 *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:radial-gradient(circle at 72% 0,#17243a 0,#06090d 44%);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
@@ -18,12 +18,12 @@ header{display:flex;align-items:center;justify-content:space-between;gap:20px;pa
 .badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.allow{background:rgba(69,213,154,.12);color:var(--green);border:1px solid rgba(69,213,154,.3)}.deny{background:rgba(255,102,116,.1);color:var(--red);border:1px solid rgba(255,102,116,.3)}.human{background:rgba(242,191,85,.1);color:var(--amber);border:1px solid rgba(242,191,85,.3)}.neutral{background:#151d27;color:#aebbc8;border:1px solid var(--line)}
 .path{display:grid;gap:7px;margin-top:14px}.step{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;padding:8px 9px;border:1px solid #1f2a35;border-radius:9px;background:#0b1118}.step i{width:8px;height:8px;border-radius:50%;background:#526477}.step.done i{background:var(--green);box-shadow:0 0 8px rgba(69,213,154,.5)}.step.stop i{background:var(--red);box-shadow:0 0 8px rgba(255,102,116,.45)}.step.wait i{background:var(--amber)}.step b{font-size:11px}.step span{font-size:10px;color:var(--muted);text-align:right}.gateNote{margin-top:12px;color:var(--muted);font-size:11px}
 .controlBox{display:grid;gap:10px;margin-top:12px}.controlBox .title{font-size:13px;font-weight:850}.controlBox .small{color:var(--muted);font-size:11px}.controls{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#131b24;color:var(--text);padding:9px 11px;border-radius:8px;font-weight:780}.btn.primary{border-color:rgba(113,173,255,.45);color:#a9d0ff}.btn.red{border-color:rgba(255,102,116,.42);color:#ff909b}.btn.amber{border-color:rgba(242,191,85,.42);color:#f6ce77}.btn:disabled{opacity:.42;cursor:not-allowed}
-.resourceBar{margin-top:10px;display:grid;grid-template-columns:1.35fr repeat(4,1fr);gap:7px}.metric{min-width:0;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:9px}.metric b{display:block;font-size:14px}.metric span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-top:2px}.trace{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#718196;font:10px Consolas,monospace;margin-top:4px}.model{font-size:14px;font-weight:850}
+.resourceBar{display:none;margin-top:10px;display:grid;grid-template-columns:1.35fr repeat(4,1fr);gap:7px}.metric{min-width:0;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:9px}.metric b{display:block;font-size:14px}.metric span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-top:2px}.trace{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#718196;font:10px Consolas,monospace;margin-top:4px}.model{font-size:14px;font-weight:850}
 .content{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,.65fr);gap:12px;margin-top:12px}.head{display:flex;align-items:center;justify-content:space-between;padding:14px 17px;border-bottom:1px solid var(--line)}h3{margin:0;font-size:12px;letter-spacing:.05em;text-transform:uppercase}.liveBadge{font-size:10px;color:var(--green);font-weight:800}
 .stream{max-height:470px;overflow:auto}.event{display:grid;grid-template-columns:68px 1fr auto;gap:11px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;padding:13px 17px}.event:hover,.event.sel{background:#111923}.eventTime{color:#6f8195;font:10px Consolas,monospace;padding-top:2px}.eventMain{min-width:0}.eventTop{display:flex;align-items:center;gap:7px;min-width:0}.eventTool{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.eventMeta{color:var(--muted);font-size:10px;margin-top:4px}.eventArrow{color:#6f8195;font-size:16px;padding-top:3px}.empty{padding:35px 18px;color:#718196;text-align:center}.empty b{display:block;color:#c2ced9;margin-bottom:5px}
 .rows{padding:5px 17px 15px}.row{display:grid;grid-template-columns:115px 1fr;gap:13px;padding:8px 0;border-bottom:1px solid #18212b}.row:last-child{border-bottom:0}.label{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.08em}.value{min-width:0;word-break:break-word}.mono{font-family:Consolas,monospace;font-size:10px}.timeline{padding:14px 17px 17px;border-top:1px solid var(--line)}.tl{display:grid;grid-template-columns:16px 1fr;gap:8px;position:relative}.tl:not(:last-child){padding-bottom:12px}.tl .bullet{width:8px;height:8px;border-radius:50%;background:#63758a;margin-top:4px;z-index:1}.tl.done .bullet{background:var(--green)}.tl.stop .bullet{background:var(--red)}.tl:not(:last-child):after{content:"";position:absolute;left:3px;top:12px;bottom:0;width:1px;background:#2a3542}.tl b{font-size:11px}.tl span{display:block;color:var(--muted);font-size:10px;margin-top:2px}
 .operator{padding:13px 17px;border-top:1px solid var(--line);background:#0a1017}.operator .who{font-weight:850;font-size:12px}.operator .hint{color:var(--muted);font-size:10px;margin-top:3px}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
-.agentStrip{margin-top:12px;display:flex;gap:8px;overflow:auto}.agent{min-width:190px;padding:11px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}.agent strong{font-size:11px}.agent small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.agentStrip{display:none;margin-top:12px;display:flex;gap:8px;overflow:auto}.agent{min-width:190px;padding:11px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}.agent strong{font-size:11px}.agent small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
 details.tech{margin-top:10px;border:1px solid var(--line);border-radius:11px;background:rgba(12,18,25,.9)}details.tech summary{cursor:pointer;padding:11px 14px;color:#aebbc8;font-size:10px;font-weight:780;list-style:none}details.tech summary::-webkit-details-marker{display:none}details.tech summary:before{content:"＋";margin-right:7px;color:var(--blue)}details.tech[open] summary:before{content:"−"}footer{display:flex;justify-content:space-between;gap:15px;color:#5f6f80;font-size:9px;padding:12px 2px 0}
 .flash{animation:flash .7s ease-out}@keyframes flash{0%{box-shadow:0 0 0 0 rgba(69,213,154,.35)}100%{box-shadow:0 0 0 14px rgba(69,213,154,0)}}
 @media(max-width:1080px){.heroStage{grid-template-columns:1fr}.stagePane+.stagePane{border-left:0;border-top:1px solid var(--line)}.resourceBar{grid-template-columns:1.4fr repeat(2,1fr)}}
@@ -34,49 +34,49 @@ details.tech{margin-top:10px;border:1px solid var(--line);border-radius:11px;bac
 <body>
 <div class="app">
 <header>
- <div class="brand"><div class="mark">T</div><div><h1>TENET Security Control Room</h1><div class="sub">Watch the agent ask. Decide before data moves. Keep the proof.</div></div></div>
+ <div class="brand"><div class="mark">T</div><div><h1>TENET Control Room</h1><div class="sub">Control what your AI can do. See decisions before data moves.</div></div></div>
  <div class="status"><span id="liveDot" class="dot"></span><span id="live">Orchestrator connecting…</span></div>
 </header>
 
 <section class="command" aria-label="Ask the orchestrator">
- <input id="question" autocomplete="off" placeholder="Ask the orchestrator to investigate or request an action…" value="Read the latest EUR/USD reference rate">
- <button id="ask">Run through TENET</button>
- <div class="commandMeta"><b>Operator view:</b> this sends a real request to the TENET orchestrator. The model may propose; the kernel remains the authority.</div>
+ <input id="question" autocomplete="off" placeholder="Tell your AI what you need…" value="Read the latest EUR/USD reference rate">
+ <button id="ask">Ask TENET</button>
+ <div class="commandMeta"><b>What happens:</b> your request goes to the real agent. TENET checks the action before anything reaches an external service.</div>
 </section>
 
 <section class="hero">
  <div class="heroStage" id="heroStage">
   <article class="stagePane">
-   <div class="eyebrow">01 · Security decision · Live event</div>
-   <h2 id="headline">Waiting for an agent action</h2>
-   <p id="summary">When a request arrives, TENET shows the real action lifecycle here — not a simulated feed.</p>
-   <div class="request" id="request">No action selected</div>
-   <div class="requestMeta" id="requestMeta">Ask the orchestrator above, or select a live event below.</div>
+   <div class="eyebrow">LIVE ACTION</div>
+   <h2 id="headline">Your AI wants to act</h2>
+   <p id="summary">TENET checks what the agent wants to do, who it acts for, and whether it is allowed.</p>
+   <div class="request" id="request">No action yet</div>
+   <div class="requestMeta" id="requestMeta">Ask your AI above to see a real decision.</div>
   </article>
 
   <article class="stagePane center">
-   <div class="eyebrow">02 · Enforcement path</div>
+   <div class="eyebrow">WHAT TENET CHECKS</div>
    <div class="path" id="path">
-    <div class="step wait"><i></i><b>Agent request</b><span>waiting</span></div>
-    <div class="step"><i></i><b>Identity / entitlement</b><span>—</span></div>
-    <div class="step"><i></i><b>Warrant / policy</b><span>—</span></div>
-    <div class="step"><i></i><b>Kernel decision</b><span>—</span></div>
-    <div class="step"><i></i><b>Upstream + receipt</b><span>—</span></div>
+    <div class="step wait"><i></i><b>Agent asks</b><span>waiting</span></div>
+    <div class="step"><i></i><b>Who + what</b><span>—</span></div>
+    <div class="step"><i></i><b>Permission</b><span>—</span></div>
+    <div class="step"><i></i><b>Decision</b><span>—</span></div>
+    <div class="step"><i></i><b>Real-world effect</b><span>—</span></div>
    </div>
-   <div class="gateNote" id="gateNote">The model can propose. It cannot authorize.</div>
+   <div class="gateNote" id="gateNote">The AI can ask. TENET decides.</div>
   </article>
 
   <article class="stagePane">
-   <div class="eyebrow">03 · Operator control</div>
+   <div class="eyebrow">YOUR CONTROL</div>
    <div class="controlBox">
-    <div class="title" id="controlTitle">Nothing selected</div>
-    <div class="small" id="controlHint">Select an action to see what you can control before the boundary is crossed.</div>
+    <div class="title" id="controlTitle">Nothing needs your decision</div>
+    <div class="small" id="controlHint">When an action needs you, TENET will show the choice here.</div>
     <div class="controls">
-     <button class="btn red" id="deny" disabled>Deny action</button>
-     <button class="btn amber" id="human" disabled>Require human</button>
-     <button class="btn red" id="revoke" disabled>Revoke agent</button>
+     <button class="btn red" id="deny" disabled>Block this action</button>
+     <button class="btn amber" id="human" disabled>Ask me first</button>
+     <button class="btn red" id="revoke" disabled>Stop this agent</button>
     </div>
-    <div class="small" id="controlResult">No operator action taken.</div>
+    <div class="small" id="controlResult">No decision needed yet.</div>
    </div>
   </article>
  </div>
@@ -94,18 +94,18 @@ details.tech{margin-top:10px;border:1px solid var(--line);border-radius:11px;bac
 
 <section class="content">
  <article class="card">
-  <div class="head"><h3>03 · Live agent activity · Orchestrator stream</h3><span class="liveBadge" id="streamState">● LIVE · 1s</span></div>
+  <div class="head"><h3>What your agents are doing</h3><span class="liveBadge" id="streamState">● LIVE · 1s</span></div>
   <div class="stream" id="stream"><div class="empty"><b>Listening to TENET</b>No security events have arrived yet. Start a request above.</div></div>
  </article>
 
  <aside class="card">
-  <div class="head"><h3>04 · Why this happened · Proof & context</h3><span class="sub" id="eventState">—</span></div>
+  <div class="head"><h3>Why did TENET decide this?</h3><span class="sub" id="eventState">—</span></div>
   <div class="rows" id="details"><div class="empty">Select an action.</div></div>
   <div class="timeline" id="timeline"></div>
   <div class="operator">
-   <div class="who">Security operator</div>
-   <div class="hint">Controls affect the selected action/agent through TENET's authenticated control path.</div>
-   <div class="actions"><button class="btn primary" id="refresh">Refresh evidence</button><button class="btn" id="proof">Open full proof</button></div>
+   <div class="who">Your decision</div>
+   <div class="hint">If an action needs you, your choice is sent through TENET. The browser never grants permission by itself.</div>
+   <div class="actions"><button class="btn primary" id="refresh">Refresh</button><button class="btn" id="proof">Show proof</button></div>
   </div>
  </aside>
 <details class="tech">
@@ -115,7 +115,7 @@ details.tech{margin-top:10px;border:1px solid var(--line);border-radius:11px;bac
 </section>
 
 
-<footer><span>TENET · agent → enforcement kernel → upstream</span><span id="footer">Evidence only · unknown stays unknown</span></footer>
+<footer><span>TENET · AI proposes → TENET decides → real-world action</span><span id="footer">Proof follows every decision</span></footer>
 </div>
 
 <script>
@@ -175,22 +175,23 @@ async function get(url,opts){const r=await fetch(url,opts);if(!r.ok)throw new Er
 function selectEvent(id){const e=events.find(x=>String(x.event_id)===String(id));if(!e)return;selected=e.event_id;renderStream();renderSelected(e);}
 async function loadAgents(){try{const a=await get("/api/agents");renderAgents(a.agents||a||[]);}catch{}}
 async function renderSelected(e){
- $("headline").textContent=(e.agent||"Agent")+" wants to "+(e.intent||e.tool||"perform an action");
+ $("headline").textContent=(e.agent||"Your AI")+" wants to "+(e.intent||e.tool||"take an action");
  $("summary").textContent=decisionCopy(e);
  $("request").textContent=e.intent||e.tool||"Action request";
- $("requestMeta").textContent=[e.actor,e.action_class,e.warrant?"warrant "+e.warrant:"",e.policy?"policy "+e.policy:""].filter(Boolean).join(" · ")||"Security context recorded";
- $("gateNote").textContent=e.decision?("Kernel decision: "+String(e.decision).toUpperCase()+" · authority source: TENET kernel"):"The model can propose. It cannot authorize.";
- $("controlTitle").textContent=(e.agent||"Agent")+" · "+String(e.decision||"recorded").toUpperCase();
- $("controlHint").textContent=e.upstream_contacted===false?"Boundary has not been crossed for this action. Operator control is still available where the policy path permits it.":"Inspect the proof before intervening.";
+ $("requestMeta").textContent=[e.actor?"For "+e.actor:null,e.purpose||null,(e.upstream||e.destination)?("To "+(e.upstream||e.destination)):null].filter(Boolean).join(" · ")||"TENET security context";
+ $("gateNote").textContent=e.decision?("TENET says: "+String(e.decision).toUpperCase()):"The AI can ask. TENET decides.";
+ $("controlTitle").textContent=e.decision==="human"?"Your approval is needed":e.decision==="deny"||e.decision==="revoked"?"This action is stopped":"No decision needed";
+ $("controlHint").textContent=e.upstream_contacted===false?"Nothing reached the external service.":"Review what happened before taking another action.";
  $("controlResult").textContent=e.reason||"No operator action taken.";
  $("eventState").textContent=e.state||"recorded";
  renderPath(e);
  $("details").innerHTML=[
-  ["What",e.intent||e.tool],["Agent",e.agent],["Actor",e.actor],["Action class",e.action_class],
-  ["Warrant",e.warrant],["Warrant state",e.warrant_state],["Policy",e.policy],["Decision",e.decision],
-  ["Why",e.reason],["Upstream",e.upstream_contacted===true?"CONTACTED":e.upstream_contacted===false?"NOT CONTACTED":"NOT PROVEN"],
-  ["Upstream call",e.upstream_call_id],["Receipt",e.receipt_id],["Run",e.run_id],["Model trace",e.model_trace_id]
- ].map(r=>'<div class="row"><div class="label">'+esc(r[0])+'</div><div class="value mono">'+esc(r[1])+'</div></div>').join("");
+  ["Action",e.intent||e.tool],["Agent",e.agent],["On behalf of",e.actor||"the current user"],
+  ["Data",e.resource||e.data||e.target||"Protected data / tool"],["Purpose",e.purpose||e.reason||"Requested agent action"],
+  ["Where",e.upstream||e.destination||"Protected service"],["Decision",e.decision],["Why",e.reason],
+  ["Did data leave?",e.upstream_contacted===true?"Yes":e.upstream_contacted===false?"No":"Not proven"],
+  ["Result",e.result||e.execution_result||"See proof"]
+ ].map(r=>'<div class="row"><div class="label">'+esc(r[0])+'</div><div class="value">'+esc(r[1])+'</div></div>').join("");
  const contact=e.upstream_contacted===true, denied=e.decision==="deny"||e.decision==="revoked";
  $("timeline").innerHTML=[
   ["Agent proposed",e.intent||e.tool||"request",true,false],
