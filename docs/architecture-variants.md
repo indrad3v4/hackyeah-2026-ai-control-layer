@@ -24,9 +24,13 @@ the next reader (human or agent) can re-fetch rather than trust this summary.
    our check sits at the tool edge (variant 3).
 2. **Variant 4 is where our vocabulary comes from, and where we deliberately differ.** The PDP
    pattern says the engine answers *allowed / not allowed*. Our receipt says
-   `allow | deny | human | revoked | expired` — the decision space is a record, not a boolean,
-   and the interesting value is `human`. "The agent runtime never gets to vote" is the right
-   instinct; "the answer is a boolean" is the part we refuse.
+   `allow | deny | redact | human | revoked` — the frozen `/api/state` contract (README) — so the
+   decision space is a record, not a boolean, and the interesting value is `human`. "The agent
+   runtime never gets to vote" is the right instinct; "the answer is a boolean" is the part we
+   refuse. Two gaps between that contract and the shipped node are recorded, not papered over:
+   the node emits `expired` for a TTL-elapsed order, while the contract names `expired` only as a
+   *warrant state* (`active|revoked|expired`); and `redact` is in the contract but not yet
+   implemented in code. Both are written up in `docs/stage-4-action-classes.md` §"recorded gaps".
 3. **Variant 5 gives us the shape we lack.** A reasoning plane that adjudicates *intent* against
    a composite principal is exactly the gap left after today's work: our node sees calls, not
    campaigns. Recorded as the honest next layer, not claimed as built.

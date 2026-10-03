@@ -92,3 +92,60 @@ make console-check                             # 35 checks, non-zero on failure
 
 This document describes the accept path rule D12 demands: everything above ran; nothing above
 is designed-only except where it says so.
+
+
+## Reconciliation with the locked form (a recorded unfreeze, in the D13 sense)
+
+`docs/concept-form-and-name.md` (the locked concept) names the second load-bearing part as
+"an action taxonomy — **destructive / irreversible / outbound / read**, each with a *type*, not a
+flag". The enforcement taxonomy implemented here has six classes. That is a change to a locked
+part, so it is recorded rather than presented as if the lock always said this:
+
+```json
+{
+  "reason": "the locked four-type list cannot express two acts the fleet actually performs: "
+            "changing the rules themselves (granting a warrant, editing policy) and acting "
+            "without changing anything outside the perimeter (a draft). Nor can it separate "
+            "reads that touch personal fields from reads that do not, which is where the "
+            "receipt's 'redact' vocabulary has to live.",
+  "exact change": "four types -> six classes (observe, read_personal, draft, write_reversible, "
+                  "irreversible, authorize) + one cross-cutting field (boundary: does data leave "
+                  "the perimeter), not a seventh class.",
+  "consumers updated": "warrnt/actions.py (the classes), warrnt/proxy.py (the gate), README chain "
+                       "line, /state['actions'], tests/test_actions.py, and the receipt reason "
+                       "(the receipt now names the class next to the decision)."
+}
+```
+
+Mapping, so nothing from the locked list is silently dropped:
+
+| Locked type | Where it went | Why |
+|---|---|---|
+| `read` | `observe` + `read_personal` | the split is decided by *fields named in the call* (PESEL, email, balances), not by intent — the cheap deterministic half of D4 |
+| `destructive` | the harmful subset of `irreversible` | "destructive" names the harm; "irreversible" names the property that decides who may act (cannot be undone). The class gate keys on the property |
+| `irreversible` | `irreversible` | kept verbatim as a class name |
+| `outbound` | a **field** on the call (`boundary`), not a class | crossing the boundary cuts across `draft`, `write_reversible` and `irreversible`. Recorded honestly: if outbound must gate independently of the class, it becomes a seventh class and this table is updated first |
+| — | `draft` | the locked list had no slot for "produced something, changed nothing outside" |
+| — | `authorize` | the locked list had no slot for "changed the rules themselves"; the machine is refused outright here |
+
+## Recorded gaps found by Prelint (2026-10-03) — the contract, not hidden
+
+Prelint's review of this PR caught two places where the documents and the shipped node disagree
+about the **frozen decision vocabulary**. Both are real; both are recorded here instead of being
+edited away, because D13 says a control that cannot be expressed in the vocabulary means the
+vocabulary is incomplete.
+
+1. **`redact` is in the contract and not in the code.** README's `/api/state` contract lists
+   receipt decisions as `allow|deny|redact|human|revoked`, and the README records that the freeze
+   was lifted exactly once to add `redact`. The shipped `Decision` enum
+   (`warrnt/models.py`) has `allow, deny, human, revoked, expired` — **no `redact`**.
+2. **`expired` is a decision in the code and a warrant state in the contract.** The code returns
+   `Decision.expired` when a TTL has elapsed; the contract names `expired` only in
+   `warrants[].state` (`active|revoked|expired`).
+
+Consequence, stated plainly: a consumer implementing against the contract will not see `redact`
+from this node, and will see `expired` where the contract promised a warrant state. The next
+contract commit is therefore an unfreeze of its own (per D13): either implement `redact` as a
+decision, or remove it from the contract; and either move `expired` out of the decision space
+into the warrant state, or add it to the contract. Until that commit lands, this document states
+the gap rather than the aspiration.
