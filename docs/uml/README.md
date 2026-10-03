@@ -83,16 +83,27 @@ Honest split, per rule D12. "Built" means code in the node repository
 | inspect | `pattern_inspector` | **not built** | the node records *which* personal fields a call names (`warrnt/actions.py`), but there is no content scanner for PII, secrets or injection markers |
 | inspect | `signature_feed` | **not built** | no externally managed feed of known exploits (brief §4.4, rule D8); the only "attack" in the node is the receipt-rewrite red team |
 | judge | `semantic_judge` | **not built** | no local-model control anywhere in the package — the semantic half of the hybrid, brief §4.2 |
-| decide | `redactor` | **not built** | `Decision` has no `redact` value, although the frozen `/api/state` contract carries one and the brief asks for redaction |
+| decide | `redactor` | **built** (node PR #2) | `Decision.redact` + `warrnt/policy.py:strip_pii` — the call is executed with the personal fields stripped before upstream sees them, and the receipt names the fields; live: `crm.read{fields:[subject,email,pesel]}` → `redact`, upstream saw `["subject"]` |
 
-Six of eleven are slots. The diagrams are drawn for the shape they go into, not for the
+Five of eleven are slots. The diagrams are drawn for the shape they go into, not for the
 shape that exists — the difference is this table.
 
-## Known contract drift — and why the diagrams do not draw it
+**The registry itself — as built vs. as drawn.** The core no longer names a gate: `warrnt/gates.py`
+is a registry (name · order · `check(ctx)`), every gate is a file under `warrnt/plugins/`
+(`act_class` → `actor_scope` → `order_policy`, by `order`) that registers itself on import, and the
+first gate that answers decides. `register(..., replace=True)` and `unregister(name)` swap or pull
+one while the node runs, and `tests/test_gates.py` proves a gate dropped into the package stops the
+pipeline without a kernel line changing. Not built, and therefore not implied by the diagrams'
+`PluginRegistry`: discovery through `importlib.metadata.entry_points` (we use `pkgutil` over the
+package), order and enable/disable read from the catalog, and `watch()` hot reload.
+
+## Contract drift — closed
 
 The frozen `/api/state` contract carries **five** receipt decisions:
-`allow | deny | redact | human | revoked`. The node's `Decision` enum currently carries six —
-it adds `expired` — and the contract has not been extended to match.
+`allow | deny | redact | human | revoked`, and the node's `Decision` enum now carries exactly
+those five. The sixth value, `expired`, is gone (node PR #2): a TTL that has elapsed is a
+`deny`, and the receipt keeps `warrant_state: "expired"` as the reason. An expired order is a
+refused order — it does not get a decision of its own.
 
 The diagrams therefore keep the contract at five values. TTL is drawn as `WarrantState`
 (`active` / `revoked` / `expired`), a **lifecycle**, not a receipt value. Emitting `expired`
