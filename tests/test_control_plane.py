@@ -486,6 +486,55 @@ def test_ci_ships_runnable_control_plane_and_d6_gate():
     assert "pytest -q tests/test_control_plane.py" in ci
     assert "check_enforcement_local_only.py" in ci
     assert (REPO_ROOT / "scripts/check_enforcement_local_only.py").exists()
+# ------------------------------------------------- T7: one process serves UI + /api/* + /health
+def test_run_command_binds_public_interface_not_loopback(monkeypatch):
+    """T7 REGRESSION. The production failure was a static site answering ``/`` while
+    ``/api/*`` returned 404 and ``/health`` returned an empty 200 - because the platform
+    never reached the Python process: ``python -m control_plane`` defaulted to
+    ``127.0.0.1`` while a container platform injects ``PORT`` only. The bind default must be
+    ``0.0.0.0``; an explicit ``HOST`` still wins for a local-only run.
+    """
+    from control_plane.__main__ import _host
+
+    monkeypatch.delenv("HOST", raising=False)
+    assert _host() == "0.0.0.0", "a platform-injected PORT without HOST must bind the public iface"
+    monkeypatch.setenv("HOST", "")
+    assert _host() == "0.0.0.0"
+    monkeypatch.setenv("HOST", "127.0.0.1")
+    assert _host() == "127.0.0.1", "an explicit HOST is still honoured"
+
+
+def test_deploy_contract_serves_one_process_ui_api_health():
+    """T7: the shipped deploy config starts ONE uvicorn process on the public interface and
+    health-checks ``/health`` - the Control Room page, ``/api/*`` and ``/health`` all answer
+    from that process, so the API can never 404 while the static page loads.
+    """
+    import json
+
+    rail = json.loads((REPO_ROOT / "railway.json").read_text(encoding="utf-8"))
+    start = rail["deploy"]["startCommand"]
+    assert "control_plane.app:app" in start
+    assert "--host 0.0.0.0" in start
+    assert "$PORT" in start
+    assert rail["deploy"]["healthcheckPath"] == "/health"
+
+    proc = (REPO_ROOT / "Procfile").read_text(encoding="utf-8")
+    assert "control_plane.app:app" in proc and "--host 0.0.0.0" in proc
+
+
+def test_ui_health_and_api_share_one_process(client):
+    """T7: the same app instance answers the UI, the health document and the API - the
+    defect was that ``/`` loaded while ``/api/overview`` 404'd.
+    """
+    assert client.get("/").status_code == 200
+    assert "<title>TENET" in client.get("/").text
+    health = client.get("/health").json()
+    assert health["status"] in ("LIVE", "DEGRADED", "DEMO")
+    assert health["kernel"] == "available"
+    assert client.get("/api/overview").status_code == 200
+    assert client.get("/api/activity?limit=10").status_code == 200
+
+
 
 
 # ------------------------- D10/D12: the live-proof assertions are honest, not a lottery
