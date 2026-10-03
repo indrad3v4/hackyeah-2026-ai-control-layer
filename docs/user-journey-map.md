@@ -1,4 +1,4 @@
-# User journey — ADNOT / WARRNT control layer
+# User journey — TENET / WARRNT control layer
 
 ## Research question
 
