@@ -17,7 +17,9 @@ rm -rf "$TMP/ref"; mkdir "$TMP/ref"; cp -r "$TMP/src/." "$TMP/ref/"; rm -rf "$TM
 find "$TMP/ref" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 
 if [ "${1:-}" = "--check" ]; then
-  if ! diff -r --exclude=__pycache__ --exclude=MIRROR.md "$TMP/ref" "$HERE/node" > "$TMP/diff.txt" 2>&1; then
+  # generated caches are not part of the mirror: pytest writes .pytest_cache into node/
+  # when the CI runs the node tests before this step, and that is not drift.
+  if ! diff -r --exclude=__pycache__ --exclude=.pytest_cache --exclude=MIRROR.md "$TMP/ref" "$HERE/node" > "$TMP/diff.txt" 2>&1; then
     echo "MIRROR DRIFT: node/ differs from $REPO@${PIN:0:12}"
     head -30 "$TMP/diff.txt"
     exit 1
