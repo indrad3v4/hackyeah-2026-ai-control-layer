@@ -128,47 +128,14 @@ Mapping, so nothing from the locked list is silently dropped:
 | — | `draft` | the locked list had no slot for "produced something, changed nothing outside" |
 | — | `authorize` | the locked list had no slot for "changed the rules themselves"; the machine is refused outright here |
 
-## Recorded gaps found by Prelint (2026-10-03) — the contract, not hidden
+## D13 closure — frozen decision vocabulary and live state contract
 
-Prelint's review of this PR caught two places where the documents and the shipped node disagree
-about the **frozen decision vocabulary**. Both are real; both are recorded here instead of being
-edited away, because D13 says a control that cannot be expressed in the vocabulary means the
-vocabulary is incomplete.
+The D13 vocabulary gap identified during Stage 4 is now closed in the runtime dependency `indrad3v4/warrnt`, merged from PR #2 on 2026-10-03.
 
-1. **`redact` was in the contract and not in the code.** README's `/api/state` contract lists
-   receipt decisions as `allow|deny|redact|human|revoked`, and the README records that the freeze
-   was lifted exactly once to add `redact`. The shipped `Decision` enum
-   (`warrnt/models.py`) had `allow, deny, human, revoked, expired` — **no `redact`**.
-2. **`expired` was a decision in the code and a warrant state in the contract.** The code returned
-   `Decision.expired` when a TTL had elapsed; the contract names `expired` only in
-   `warrants[].state` (`active|revoked|expired`).
+- Receipt decisions are exactly: `allow | deny | redact | human | revoked`.
+- Warrant lifecycle states are exactly: `active | revoked | expired`.
+- An expired warrant is refused as `deny` with `warrant_state: expired`; `expired` is never a receipt decision.
+- `redact` is executable: personal fields named by the rule are stripped before the upstream call, and the receipt records the redaction.
+- `GET /api/state` now exposes the Stage 4 `actions` taxonomy consumed by the console. This is an explicit D13 contract extension documented in README and consumed by `index.html`.
 
-### Closed, in one commit of its own (D13: an unfreeze is its own change)
-
-Both are fixed in `warrnt` on `feat/action-classes`, commit **`8df6658`** *"contract: implement
-redact, keep expired out of the decision space (D13 unfreeze)"* — the contract wins over the code,
-because the contract is what a consumer was told:
-
-* **`redact` is implemented, not merely declared.** `Rule.redact` names the params that carry
-  field lists; personal fields found there are **stripped from the payload before the upstream is
-  called** (`policy.strip_pii`), the call still runs, and the receipt records `decision: redact`
-  plus the names removed. `inspect_pii` refuses the act; `redact` lets the act happen without the
-  data. Proof, end to end: `tests/test_api.py::test_a_read_naming_a_personal_field_is_stripped_and_still_runs`
-  asserts the upstream payload is `fields: ["subject"]` while the caller asked for
-  `["subject", "email"]`, and that the executor counter still moved.
-* **`expired` left the decision space.** An elapsed TTL is refused as `deny` (`-32001`) whose
-  detail carries `warrant_state: expired`; the code no longer has a sixth decision, and
-  `tests/test_policy.py::test_an_expired_order_is_refused_as_a_deny_carrying_the_state` asserts
-  `"expired" not in {d.value for d in Decision}`.
-
-The frozen five-value space is now literally true of the node. The suite that says so, on this
-commit: **80 pytest**, `console_check` **35/35**, `upstream_check` **18/18**,
-`security_boundaries` **29/29** (its boundary check was updated to the class truth: exactly at the
-limit the guard holds *and* the class lifts the call to `require-human`), `verify_live` **20/20**.
-
-Consequence, stated plainly: a consumer implementing against the contract will not see `redact`
-from this node, and will see `expired` where the contract promised a warrant state. The next
-contract commit is therefore an unfreeze of its own (per D13): either implement `redact` as a
-decision, or remove it from the contract; and either move `expired` out of the decision space
-into the warrant state, or add it to the contract. Until that commit lands, this document states
-the gap rather than the aspiration.
+The old Pre-Lint findings remain useful as historical review context; they are no longer open implementation gaps.
