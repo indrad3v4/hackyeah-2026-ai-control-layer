@@ -65,43 +65,6 @@ def _status(kernel: Optional[Kernel], identity: config.Identity) -> tuple[str, s
     return config.LIVE, "kernel present · provider key present"
 
 
-def _activity(kernel: Kernel, limit: int) -> list[dict[str, Any]]:
-    """Newest-first events with run_id + action_id correlation.
-
-    Two traces stay separate records that share ids (contract TASK.5): a *security* trace
-    (receipts the kernel wrote) and an *agent* trace (ask runs). Each event carries ``run_id``
-    and ``action_id`` when the record itself carries them - never synthesized.
-    """
-    events: list[dict[str, Any]] = []
-    for entry in kernel.registry_recent(limit):
-        events.append({
-            "kind": "receipt",
-            "ts": entry.get("ts"),
-            "decision": entry.get("decision"),
-            "agent": entry.get("agent"),
-            "tool": entry.get("tool"),
-            "warrant": entry.get("warrant"),
-            "receipt": (entry.get("hash") or "")[:8],
-            "run_id": entry.get("run_id"),
-            "action_id": entry.get("action_id"),
-        })
-    for a in kernel.actions(limit):
-        events.append({
-            "kind": "action",
-            "ts": a.get("ts"),
-            "action_id": a.get("action_id"),
-            "run_id": a.get("run_id"),
-            "agent": a.get("agent"),
-            "tool": a.get("tool"),
-            "state": a.get("state"),
-            "decision": a.get("decision"),
-            "receipt": a.get("receipt"),
-            "upstream_contacted": a.get("upstream_contacted"),
-        })
-    events.sort(key=lambda ev: (ev.get("ts") or 0.0, ev.get("action_id") or ""), reverse=True)
-    return events[:limit]
-
-
 def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI:
     """Build the control-plane app. ``kernel`` is injectable for tests; default builds from the mirror."""
 
@@ -199,7 +162,7 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         k, denied = _kernel_or_503(app)
         if denied:
             return denied
-        events = _activity(k, max(1, min(limit, 200)))
+        events = k.activity(max(1, min(limit, 200)))["events"]
         if config.is_demo():
             # Fixtures are appended AFTER the real events and carry source="fixture", so the
             # demo feed is labelled and separated - it never replaces a live event (TASK.6).
@@ -275,6 +238,11 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         The page reads ``agents``, ``warrants``, ``receipts``, ``actions``, ``revoked`` and
         ``last_stop`` - all of them fields ``state()`` already returns, so the live feed is the
         real one and the demo feed is never what ``/api/*`` answers with.
+
+        For the PROOF panel (F8) this also exposes the receipt chain and the per-action
+        correlation - ``chain`` and ``proof`` - as pure projections of kernel state. Nothing
+        here decides anything and nothing is invented: when the kernel cannot answer, the whole
+        body is a 503 refusal, exactly like every other read.
         """
         k, denied = _kernel_or_503(app)
         if denied:
@@ -282,7 +250,26 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         st = k.state(limit=limit)
         st["mode"] = config.mode()
         st["node"] = "TENET"
+        # PROOF panel: the chain (ok / length / head / archive state) and the
+        # run_id <-> action_id <-> receipt correlation, straight off the kernel.
+        st["chain"] = k.chain()
+        st["proof"] = k.proof(limit=limit)
         return JSONResponse(st)
+
+    @app.get("/api/proof")
+    def proof(limit: int = 60) -> JSONResponse:
+        """The PROOF panel's projection, and nothing else.
+
+        It **projects kernel state**: the receipt chain verdict and the per-action correlation
+        ``run_id <-> action_id <-> receipt`` the UI's PROOF panel renders. It decides nothing and
+        invents nothing - every id comes from a real action/receipt the kernel already holds.
+        Unavailable kernel -> 503, never a synthesized body.
+        """
+        k, denied = _kernel_or_503(app)
+        if denied:
+            return denied
+        return JSONResponse({"chain": k.chain(), **k.proof(limit=max(1, min(limit, 200))),
+                             "mode": config.mode()})
 
     # ------------------------------------------------------- human-decision endpoints
     @app.post("/api/actions/{action_id}/approve")
@@ -296,14 +283,16 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         return await _resolve(app, action_id, approve=False, request=request, token=x_warrnt_admin)
 
     @app.post("/api/agents/{agent_id}/revoke")
-    def revoke(agent_id: str, x_warrnt_admin: str = Header(default="")) -> JSONResponse:
+    def revoke(agent_id: str, body: dict[str, Any] = Body(default={}),
+               x_warrnt_admin: str = Header(default="")) -> JSONResponse:
         """Revoke an agent/authority. A thin wrapper over the one revoke path in the kernel.
 
         Same receipts, same state change - there is no second code path to drift (D3). The
         operator token is the kernel's own (``WARRNT_ADMIN_TOKEN``): an anonymous control plane
-        is a control plane anyone can drive.
+        is a control plane anyone can drive. The optional ``{"by": "name"}`` body names the
+        person pulling the brake for the record; it changes no decision.
         """
-        return _revoke(app, agent_id, x_warrnt_admin)
+        return _revoke(app, agent_id, x_warrnt_admin, str((body or {}).get("by") or "").strip())
 
     @app.post("/revoke", include_in_schema=False)
     def revoke_compat(body: dict[str, Any] = Body(default={}),
@@ -316,7 +305,7 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         agent_id = str(body.get("agent") or "").strip()
         if not agent_id:
             return JSONResponse({"error": "agent is required", "field": "agent"}, status_code=422)
-        return _revoke(app, agent_id, x_warrnt_admin)
+        return _revoke(app, agent_id, x_warrnt_admin, str(body.get("by") or "").strip())
 
     # ------------------------------------------------------------------- interception
     @app.post("/mcp")
@@ -454,8 +443,13 @@ def _require_admin(app: FastAPI, supplied: str) -> Optional[JSONResponse]:
     return None
 
 
-def _revoke(app: FastAPI, agent_id: str, supplied_token: str) -> JSONResponse:
-    """The one revoke path: check the token, then delegate to the kernel. Nothing else."""
+def _revoke(app: FastAPI, agent_id: str, supplied_token: str, by: str = "") -> JSONResponse:
+    """The one revoke path: check the token, then delegate to the kernel. Nothing else.
+
+    ``by`` names the person pulling the brake. It is optional (the kernel already privileges
+    the admin token) and purely auditable: it never decides anything, it is echoed back so an
+    external driver can record a named human, exactly as approve/deny already do.
+    """
     denied = _require_admin(app, supplied_token)
     if denied:
         return denied
@@ -466,7 +460,7 @@ def _revoke(app: FastAPI, agent_id: str, supplied_token: str) -> JSONResponse:
     if t0 is None:
         return JSONResponse({"error": "unknown agent or already halted", "agent": agent_id},
                             status_code=409)
-    return JSONResponse({"agent": agent_id, "state": "halted",
+    return JSONResponse({"agent": agent_id, "state": "halted", "by": by,
                          "warrant": k.proxy.agents[agent_id].warrant, "revoked_at": t0})
 
 
