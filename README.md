@@ -1,339 +1,158 @@
 # TENET — AI Control Layer
 
-> **No warrant, no action.**
+> **The agent proposes. TENET decides. Data moves only after authorization.**
 
-TENET is an enforcement layer for AI agents: an agent may propose an action, but it cannot execute that action unless the control plane and enforcement kernel authorize it first.
-
-Built for **HackYeah 2026 · AI Control Layer / Goldman Sachs challenge**.
+TENET is an enforcement resource for agentic systems. It sits between an AI agent and the tools/data the agent can affect, evaluates identity, entitlement, delegation, warrant and policy **before execution**, and records evidence of the decision and downstream result.
 
 **Live Control Room:** https://hackyeah-2026-ai-control-layer-production.up.railway.app/
 
----
+## The happy path
 
-## The pitch
-
-AI agents are moving from chat into systems that can read data, write records, call APIs and move information across trust boundaries.
-
-The security question is not only **what did the agent do?** It is: **what was it trying to do, who authorized it, what policy was applied, did data actually leave, and where is the proof?**
-
-TENET puts that decision **before the tool call**.
+Watch one real request move through the boundary:
 
 ```text
-USER / SYSTEM → AI AGENT → TENET CONTROL PLANE → ENFORCEMENT KERNEL → UPSTREAM
-                         identity → entitlement → warrant → policy → decision
-                                                            ↓
-                                             receipt + evidence
+User: "Read the latest EUR/USD reference rate"
+        ↓
+AI agent proposes: fx.read_rate
+        ↓
+TENET: identity → entitlement → warrant → policy
+        ↓
+KERNEL: ALLOW
+        ↓
+real upstream request
+        ↓
+result + receipt
 ```
 
-**The model proposes. The kernel decides. The upstream executes. The receipt proves what happened.**
+The Control Room should make five questions obvious:
 
-## What the security operator gets
+**What did the agent ask? Why was it allowed? Did data leave? What happened? Where is the proof?**
 
-### What is happening?
-- Who is acting?
-- What does the agent want?
-- Which resource/tool is involved?
-- Which warrant and policy apply?
-- What did TENET decide?
+The model is reasoning evidence, **not authority**. The browser is a control surface, **not authority**.
 
-### Did anything leave?
-- **not contacted** — the request was stopped before the upstream;
-- **contacted** — the record contains evidence of an upstream response;
-- **not proven** — TENET refuses to invent a crossing it cannot prove.
+## Who uses TENET?
 
-### Why?
+**Target end user: a Goldman Sachs-style Technology Risk / AI governance operator.**
 
-`agent proposal → identity/entitlement → warrant → policy → kernel decision → upstream → receipt`
+TENET is not primarily a dashboard to inspect a kernel. It is a **security resource inside the AI workflow**:
 
-### What can I stop?
+- an agent runtime submits an action to TENET before touching a protected tool or data source;
+- TENET applies the firm's policy and scoped authority;
+- the operator gets an understandable decision and proof;
+- the business function gets the authorized result without giving the model unrestricted power.
 
-A protected **Stop agent** action revokes authority through the same enforcement path. The UI does not create a second security mechanism.
+This maps directly to the current Goldman direction: its 2026 operating model describes AI adoption alongside stronger risk management, data lineage and auditability; Goldman also says institutional AI products need auditable grounding and outputs traceable to verified sources. Goldman’s Client Security Statement describes firmwide AI governance, least-privilege access and intentionally restricted external LLM use.  
+Sources:  
+- https://www.goldmansachs.com/investor-relations/financials/8k/2026/8k-01-15-26.pdf
+- https://www.goldmansachs.com/insights/goldman-sachs-exchanges/building-ai-systems-for-capital-markets
+- https://www.goldmansachs.com/disclosures/client-security-statement.pdf
+- https://developer.gs.com/docs/services/transaction-banking/best-practices-api-connect/
 
----
+**This is a target enterprise use case, not a claim that Goldman Sachs has deployed TENET.**
 
-## Audience Q&A
+## Why now?
 
-The shortest way to understand TENET is to follow the questions a security operator, architect, judge, or enterprise buyer is likely to ask.
+Agentic AI is moving from experiments into business workflows. Goldman Research says enterprise adoption is shifting toward implementation, while its own operating-model work highlights risk management, process automation, data lineage and auditability.
 
-### What is TENET?
+The security gap is specific:
 
-**TENET is the control layer between an AI agent and the systems it can affect.**
+> A human may be entitled to a resource while a particular agent should not be.
 
-The agent can propose an action, but only the enforcement kernel can authorize execution. Every decision is recorded as evidence.
-
-### What problem does it solve?
-
-AI agents can move from answering questions to taking actions: reading data, calling services, changing records, or crossing trust boundaries.
-
-TENET puts a security decision **before execution**, rather than discovering the problem only after an action has happened.
-
-### Is TENET another AI model?
-
-No.
-
-The model can reason, plan and propose an action. **The model is not the authority.**
-
-TENET's enforcement kernel makes the authorization decision independently of the model's recommendation.
-
-### Can an agent give itself permission?
-
-No.
-
-The agent cannot grant itself a warrant, entitlement, or execution authority. The request must pass the control-plane and kernel checks.
-
-### What if the user has permission but the agent does not?
-
-The agent can still be denied.
-
-**User entitlement and agent authority are separate controls.** A human's access does not automatically become unrestricted agent authority.
-
-### How does TENET know the agent is acting for the right person?
-
-The security model keeps delegation explicit:
-
-**agent → principal → on-behalf-of identity → scoped authority**
-
-This makes the question auditable: **which agent acted, for whom, and under which authority?**
-
-### What happens when an action is denied?
-
-The denied action cannot invoke the upstream through TENET's enforced execution path, and the denial is recorded as an event. TENET makes this guarantee at its enforcement boundary; it does not claim control over connections that bypass TENET.
-
-That means the security team can distinguish:
-
-**attempted action → denied → no proven upstream execution**
-
-rather than merely seeing a failed API request afterwards.
-
-### What happens when an action is allowed?
-
-TENET records the decision and the execution evidence. Where an authoritative upstream response exists, the evidence chain can show that the boundary was crossed and what result was returned.
-
-### Can TENET modify data before sending it?
-
-Yes, where the policy decision is **redact**.
-
-Redaction is an executable enforcement decision: protected fields can be removed before the upstream call, and the receipt records that redaction occurred.
-
-### What does “proof” mean here?
-
-Proof is not a sentence generated by the model.
-
-TENET connects evidence across the causal chain:
-
-**request → model trace → proposal/action → kernel decision → upstream call → receipt**
-
-If a link is missing, TENET should show it as missing or incomplete rather than inventing certainty.
-
-### Why do we need receipts?
-
-A receipt gives the security team an inspectable record of what decision was made and what execution evidence followed it.
-
-**Authorization and evidence are separate:** the kernel decides; the receipt records the outcome.
-
-### Is an upstream call guaranteed to have happened when the action succeeded?
-
-No.
-
-TENET treats upstream contact as an evidence question. A process-level success is not enough to claim that data crossed a boundary.
-
-### What is MCP's role?
-
-MCP is the **transport/protocol boundary**.
-
-TENET's enforcement kernel is the **authority boundary**.
-
-The agent may use MCP to request a tool action, but the protocol itself is not the authorization system.
-
-### Where does DeepSeek fit?
-
-DeepSeek is used as a real reasoning/orchestration provider.
-
-Its traces, calls, tokens and latency are useful evidence about the AI layer, but **DeepSeek does not authorize the action**.
-
-### Why not just use a normal API gateway?
-
-A conventional gateway can authenticate requests and enforce access rules.
-
-TENET's focus is the additional agent-specific question:
-
-> **What is this agent allowed to do, for whom, under which warrant and policy, and what evidence proves the decision and execution?**
-
-The distinction is especially important when the human user and the agent have different scopes of authority.
-
-### What can a security operator actually do?
-
-The Control Room is designed to answer:
-
-- **What did the agent want to do?**
-- **Why was it allowed or denied?**
-- **Who did it act for?**
-- **What authority did it have?**
-- **Did anything leave the system?**
-- **What proves that?**
-- **Can I stop the agent?**
-
-### What is the one-sentence pitch?
-
-> **TENET is the control layer between an AI agent and the systems it can affect: the agent can propose an action, but only the enforcement kernel can authorize it — and every decision leaves evidence.**
+TENET makes that distinction enforceable at the action boundary.
 
 ## Security model
 
-| Layer | Question |
-|---|---|
-| Identity | Who is making the request? |
-| Entitlement | Does this actor have the right to the requested data/resource? |
-| Warrant | Is this agent authorized for this action and scope? |
-| Policy | Are these exact parameters allowed? |
-| Decision | allow / deny / redact / human / revoked |
-| Execution | Was the upstream actually contacted? |
-| Receipt | What evidence was recorded? |
-
-### Agent restriction is independent of user rights
-
-A user may have access to a resource while an agent acting on that user's behalf is still forbidden from using it.
-
-### Authority is not entitlement
-
-A valid warrant does not automatically create data entitlement. A missing data entitlement can deny an otherwise warrant-compatible request before the upstream is contacted.
-
-### Delegation is explicit
-
-Agent records carry principal, on-behalf-of identity, entitlements and scoped authority.
-
-## Why the model is not the security boundary
-
-TENET can use DeepSeek for reasoning and orchestration. DeepSeek is **not** authoritative.
-
-`run_id → model_trace_id → action/proposal → kernel decision → upstream call → receipt`
-
-**Authority lives in the kernel decision.**
-
-The Control Room exposes real provider resource evidence: requested model, served model, provider trace ID, calls, input/output/total tokens, latency and response status.
-
-No API credential is returned to the browser.
-
-## Canonical demo
-
-An agent requests a customer-data export that is outside its warrant/policy scope.
-
 ```text
-AGENT
-  │  export customer records
-  ▼
-TENET
-  ├─ identity
-  ├─ entitlement
-  ├─ warrant
-  └─ policy
-  ▼
-DENY
-  ├─ upstream contacted: NO
-  └─ receipt: YES
+User / system
+     ↓
+Agent proposal
+     ↓
+TENET Control Plane
+     ↓
+Enforcement Kernel
+     ├─ identity
+     ├─ entitlement
+     ├─ on-behalf-of / delegation
+     ├─ warrant
+     └─ policy
+     ↓
+ALLOW / DENY / REDACT / HUMAN
+     ↓
+Upstream
+     ↓
+Receipt + evidence
 ```
 
-The important property is:
+**No entitlement, no data.**  
+**No authority, no action.**  
+**Denied means no upstream execution through the enforced path.**  
+**Unknown stays unknown.**
 
-> **The forbidden call never reached the data source.**
+The evidence chain remains distinct:
 
-The denial is itself recorded, giving the security team evidence of the attempted action and the fact that execution did not happen.
+`run_id → model_trace_id → proposal_id → action_id → decision_id → upstream_call_id → receipt_id`
+
+An `upstream_call_id` is never relabelled from an `action_id`.
+
+## Why MCP is not enough
+
+MCP provides a standardized transport and authorization framework, but its own specification says implementers must build robust consent and authorization flows and treat tool behavior with caution.
+
+TENET adds the product-level enforcement boundary:
+
+`Agent → proposed action → TENET decision → gated execution → proof`
+
+This is consistent with current agent-authorization work: Google's AP2 explicitly describes tighter constraints for agents than ordinary human authorization and separates delegation from action authorization.
+
+Sources:
+- https://github.com/modelcontextprotocol/modelcontextprotocol
+- https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/index.mdx
+- https://github.com/google-agentic-commerce/AP2/blob/main/docs/ap2/agent_authorization.md
 
 ## Architecture
 
-**MCP is the transport/protocol boundary. TENET's enforcement kernel is the authority boundary.**
+**MCP = transport/protocol. TENET Enforcement Kernel = authority.**
 
-The agent/runtime can reason, plan and request an action. It cannot bypass the kernel and call the upstream directly.
+The model may reason, plan and propose. It cannot authorize itself or bypass the kernel.
+
+Internal `warrnt/*` names remain only where compatibility requires them. The product surface is **TENET**.
+
+## Evidence discipline
+
+- LLM output is never authorization.
+- A receipt records evidence; it does not create authority.
+- Process success is not proof of upstream contact.
+- A denial is a security event.
+- Secrets never enter the browser, README, video or public evidence.
+- If evidence is missing, TENET says **unknown**.
+
+## Demo
+
+The canonical demo is intentionally one story:
+
+**REQUEST → AGENT → TENET CHECK → ALLOW/DENY → REAL DATA / NO DATA → PROOF**
+
+The final submission video should show the real happy path in ~60 seconds, without terminals, Railway logs, private chats, credentials or development noise.
 
 ## Repository
 
 ```text
-control_plane/       HTTP/API seam and kernel-backed projections
-control_room/        DeepSeek orchestration and provider evidence
-node/                pinned internal implementation mirror
-index.html            pitch / operator Control Room
-tests/                contract and security tests
-docs/                 architecture and implementation contracts
+control_plane/   API seam and kernel-backed projections
+control_room/    orchestration and provider evidence
+node/            pinned internal implementation mirror
+index.html       TENET Control Room
+tests/           security and contract tests
+docs/            architecture and evidence contracts
 ```
 
-The internal Python namespace remains `warrnt` where compatibility with the canonical dependency and mirror requires it. **The product surface is TENET.**
-
-## API surface
-
-`GET /api/security-events?limit=20` — live security-decision feed.
-
-`GET /api/security-events/{run_id}` — causal evidence graph.
-
-`GET /api/model-usage` — read-only DeepSeek resource evidence.
-
-`GET /api/overview` · `/api/state` · `/api/activity` · `/api/actions` · `/api/agents` · `/api/warrants`.
-
-`POST /api/actions/{action_id}/approve` · `/deny`.
-
-`POST /api/agents/{agent_id}/revoke`.
-
-`POST /mcp` — intercepted `tools/call` path.
-
-## Evidence discipline
-
-- LLM output is not authority.
-- A receipt is not authorization; the kernel decision is authority.
-- Process success is not automatically upstream contact.
-- Unknown stays unknown.
-- An action ID is never relabelled as an upstream call ID.
-- A denial is an event and is recorded.
-
-> **The UI cannot manufacture a cleaner story than the evidence supports.**
-
-## Implemented
-
-- pre-execution MCP interception;
-- signed/scoped warrants with TTL;
-- actor-specific restrictions and entitlement checks;
-- explicit on-behalf-of delegation;
-- parameter-aware policy decisions;
-- allow / deny / redact / human / revoked vocabulary;
-- contextual revoke;
-- append-only/hash-chained receipt evidence;
-- upstream access-log evidence;
-- explicit DeepSeek provider integration;
-- provider trace/resource journal;
-- security-event projection and causal evidence graph;
-- operator Control Room with live model-resource display.
-
-## Deliberately not claimed
-
-A diagram is not presented as a deployed feature. If evidence is unavailable, TENET shows unknown or incomplete. A future enterprise connector is not presented as installed until it exists and is exercised.
-
-## Demo sentence
-
-> **Watch the agent ask for data. TENET stops it before the request reaches the data source — then shows you the evidence.**
-
-## Run locally
-
-```bash
-python -m http.server 8099
-# open http://127.0.0.1:8099/index.html
-```
-
-Tests: `python -m pytest tests/ -q`
-
-DeepSeek is configured in the deployment environment with `DEEPSEEK_API_KEY`. Never commit or print the secret.
+**Project:** https://github.com/indrad3v4/hackyeah-2026-ai-control-layer  
+**Enforcement dependency:** https://github.com/indrad3v4/warrnt
 
 ## Principles
 
-1. **No warrant, no action.**
-2. **No entitlement, no data.**
-3. **The agent cannot grant itself authority.**
-4. **The model is not the authority.**
-5. **TENET never permits upstream contact before the kernel decision.**
-6. **A denial is an event.**
-7. **Proof is evidence, not narration.**
-8. **Unknown stays unknown.**
-9. **The product surface speaks TENET; internal compatibility names stay internal.**
-10. **Every security claim should be testable.**
-
-## Links
-
-- Live Control Room: https://hackyeah-2026-ai-control-layer-production.up.railway.app/
-- Project repository: https://github.com/indrad3v4/hackyeah-2026-ai-control-layer
-- Canonical enforcement dependency: https://github.com/indrad3v4/warrnt
+1. The agent proposes; the kernel decides.
+2. User entitlement does not automatically grant agent authority.
+3. TENET decides before the upstream call.
+4. Human approval is explicit where required.
+5. Every decision should leave inspectable evidence.
+6. Privacy and least privilege are part of the product, not an afterthought.
