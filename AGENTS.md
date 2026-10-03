@@ -25,9 +25,13 @@ comment can cite them.
 - **D5 — Enforcement happens before execution, never after.** The decision
   (allow / deny / redact / human / revoked — the full receipt vocabulary) is produced before the intercepted call runs.
   A denial is itself a recordable event.
-- **D6 — Everything runs on local models.** No paid API is available or permitted on the
-  critical path; the semantic layer targets a locally served model (Ollama). A cloud model
-  may never be a requirement for the system to function.
+- **D6 — Everything on the enforcement path runs on local models.** No paid API is available
+  or permitted on the critical path: the layer that classifies the action, scopes the actor,
+  holds warrant state, applies policy and reaches the decision never depends on it. Pattern
+  checks run before any model call, and the semantic layer targets a locally served model
+  (Ollama). A cloud model may never be a requirement for the kernel to function.
+  *Amended 2026-10-03 — see Amendment 1. The agentic assistance surface, which holds no
+  authority, may call a paid provider; the enforcement path may not.*
 
 ## Governance
 
@@ -58,3 +62,18 @@ comment can cite them.
   matching update in every consumer. The unfreeze is a commit of its own. A control that
   cannot be expressed in the receipt vocabulary means the vocabulary is incomplete — fix
   the vocabulary first, then add the control.
+
+## Amendments — recorded unfreezes (D13)
+
+- **Amendment 1 — D6, 2026-10-03. Reason:** the operator brief for the AI Control Layer task
+  requires a real model call on the agentic surface (orchestrator + governance / kernel /
+  control-plane specialists), and no locally served model is reachable from the deployment
+  target. **Exact change:** D6's scope narrowed from "everything" to "the enforcement path" —
+  the decision path keeps the local-only constraint, the assistance surface is explicitly
+  permitted a paid provider (DeepSeek, `https://api.deepseek.com`). **Consumers updated in
+  this commit or the ones that follow it:** `AGENTS.md`, `control_room/agents.py` (provider
+  seam), `control_room/provider.py` (new), `requirements-control-room.txt`, `README.md`,
+  `docs/tenet-live-contract.md`, `ci.yml` (must assert the enforcement path imports no paid
+  provider). **Unchanged by this amendment:** no model output is ever an authorization
+  decision; the kernel's verdict is the only execution boundary; a missing key degrades the
+  assistance surface to DEMO and never the enforcement path.
