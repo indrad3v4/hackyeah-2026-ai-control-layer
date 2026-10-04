@@ -948,6 +948,7 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             "specialists": result.specialists,
             "next_action": result.next_action,
             "action_id": action_id,
+            "ai": result.ai,
             "provider": config.PROVIDER,
             "model": config.MODEL,
             "kernel": "available" if k is not None else "unavailable",
