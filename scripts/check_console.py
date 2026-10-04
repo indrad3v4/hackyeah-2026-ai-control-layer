@@ -17,7 +17,9 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PAGES = [ROOT / "index.html", ROOT / "node" / "warrnt" / "console.html"]
+# Every surface whose inline JavaScript must parse: the console, the mirrored node console, and the
+# observer's read-only room (NEW-AC4) - a syntax error there blanks a page the partner reads.
+PAGES = [ROOT / "index.html", ROOT / "node" / "warrnt" / "console.html", ROOT / "observer.html"]
 
 # ACT-7e: the action card must render BOTH its boundary line and its "what actually happened" line
 # from the EVIDENCE (the composed `upstream.contacted` / `executed` facts), never from the decision

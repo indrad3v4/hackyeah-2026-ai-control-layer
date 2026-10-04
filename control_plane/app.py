@@ -253,6 +253,20 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             return HTMLResponse("<h1>TENET</h1><p>Guided walkthrough page missing</p>", status_code=500)
         return HTMLResponse(ONBOARDING_HTML.read_text(encoding="utf-8"))
 
+    @app.get("/observer", response_class=HTMLResponse, include_in_schema=False)
+    def observer() -> HTMLResponse:
+        """The observer's room: control.pending and the judged stream, read-only.
+
+        The intermediary the partner named: someone who must see what is waiting for a person and
+        what the kernel decided, without being able to decide anything. The page is static and its
+        only request is ``GET /api/stream``; no route, no element and no handler on it can allow,
+        deny, release or revoke. (AGENTS.md D5: the decision is the kernel's, made before
+        execution - this page reads decisions, it never makes one.)
+        """
+        if not OBSERVER_HTML.exists():
+            return HTMLResponse("<h1>TENET</h1><p>Observer page missing</p>", status_code=500)
+        return HTMLResponse(OBSERVER_HTML.read_text(encoding="utf-8"))
+
     @app.get("/voice.js", include_in_schema=False)
     def voice_module() -> Any:
         """The guide's single source of truth: one voice module for every surface."""
@@ -1156,6 +1170,9 @@ app = create_app(seed=True)
 
 INDEX_HTML = REPO_ROOT / "index.html"
 ONBOARDING_HTML = REPO_ROOT / "onboarding.html"
+# The observer's room (NEW-AC4): the read-only surface for someone who must see what is waiting
+# for a person without being able to decide it.
+OBSERVER_HTML = REPO_ROOT / "observer.html"
 # TENET's own voice: the locked studio clips (Grok Ara) the walkthrough plays, served as files
 # so the page stays a page and the voice is one download per line.
 AUDIO_DIR = REPO_ROOT / "audio"
