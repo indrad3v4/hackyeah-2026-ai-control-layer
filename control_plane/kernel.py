@@ -134,6 +134,50 @@ def _class_from_reason(reason: Optional[str]) -> Optional[str]:
     return None
 
 
+# R1, verbatim (``node/warrnt/actions.py``, the taxonomy module): an unclassified act is refused.
+# The stream view quotes this sentence rather than leaving a blank where a class should be, so a
+# row the layer refused to classify cannot read as "no opinion recorded".
+R1_REFUSAL = ("no action class for this tool · the layer refuses what it "
+              "cannot classify")
+
+
+def stream_row(action: dict[str, Any], taxonomy: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """One row of the stream: the action's own facts, its class, and the taxonomy's decider line.
+
+    ``taxonomy`` is the kernel's own table keyed by class name - the same ``actions`` listing
+    ``/api/state`` publishes (``class_listing()``: class, decider, decider_text, meaning, tools).
+    The class is read off the ROW, never inferred from the tool name here, so this view can only
+    repeat a classification the kernel already made. A row carrying no class is reported as
+    unclassified and is given R1's refusal sentence word for word: the closed set is closed, and
+    an act outside it is refused rather than left blank.
+
+    No adjective is added and no field is invented: every key below is either the action row's own
+    value or the taxonomy's own string. (AGENTS.md D3 one source of truth, D12 claim only what ran.)
+    """
+    cls = str(action.get("action_class") or "")
+    entry = taxonomy.get(cls)
+    return {
+        "action_id": action.get("action_id"),
+        "run_id": action.get("run_id"),
+        "ts": action.get("ts"),
+        "agent": action.get("agent"),
+        "tool": action.get("tool"),
+        "class": (entry or {}).get("class"),
+        "decider": (entry or {}).get("decider"),
+        # A classified row names who decides it ("the node decides", "a person decides · the machine
+        # prepares only"). An unclassified one has no decider at all - only R1's refusal.
+        "decider_text": (entry or {}).get("decider_text") or R1_REFUSAL,
+        "meaning": (entry or {}).get("meaning"),
+        "decision": action.get("decision"),
+        "state": action.get("state"),
+        "reason": action.get("reason"),
+        # The lifecycle facts AC5's fourth state needs: when the state was resolved and by whom.
+        "decided_ts": action.get("decided_ts"),
+        "decided_by": action.get("decided_by"),
+        "unclassified": entry is None,
+    }
+
+
 class Kernel:
     """A thin, read-only-plus-decide handle on the enforcement kernel.
 
@@ -154,6 +198,22 @@ class Kernel:
 
     def pending(self, limit: int = 60) -> list[dict[str, Any]]:
         return self.proxy.actions.listing(state="pending", limit=limit)
+
+    def stream(self, limit: int = 20) -> list[dict[str, Any]]:
+        """The last N actions, judged: each row's own class + the taxonomy's decider line.
+
+        This is the one gap the brief names: the kernel HOLDS the classification of every action
+        it decided and the taxonomy says who decides each class, but nothing joined the two on the
+        way out. The join happens here, once, so every surface (the console panel, the observer
+        page, an answer) reads the same judgement instead of re-deriving it and drifting.
+
+        The taxonomy comes from ``self.state()["actions"]`` - the node's own ``class_listing()`` -
+        so the decider lines cannot be re-worded here (D3). ``stream_row`` reads the class off the
+        row the kernel recorded; a row with no class is refused with R1's sentence, never blank.
+        """
+        limit = max(1, min(int(limit or 20), 200))
+        taxonomy = {str(c.get("class")): c for c in (self.state(limit=1).get("actions") or [])}
+        return [stream_row(a, taxonomy) for a in self.actions(limit)]
 
     def action(self, action_id: str) -> Optional[dict[str, Any]]:
         """One action, plus the identity facts from the actor's own agent record.

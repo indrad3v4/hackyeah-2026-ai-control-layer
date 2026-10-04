@@ -28,7 +28,8 @@ from fastapi import Body, FastAPI, Header, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from . import config
-from .kernel import Kernel, KernelUnavailable, build_kernel, live_upstream_configured
+from .kernel import (Kernel, KernelUnavailable, R1_REFUSAL, build_kernel,
+                     live_upstream_configured)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -354,6 +355,49 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             return denied
         rows = k.pending(max(1, min(limit, 200)))
         return JSONResponse({"count": len(rows), "pending": rows})
+
+    @app.get("/api/stream")
+    def stream_view(limit: int = 20) -> JSONResponse:
+        """READ-ONLY. The stream, judged: the last N actions + the class and decider line of each.
+
+        The one thing the node held and never handed out: every action on the record already
+        carries the class the kernel decided it under, and the taxonomy already says who decides
+        that class - but nothing joined the two, so a person reading the ledger had to know the
+        table by heart. ``kernel.stream()`` does the join once and this route publishes it.
+
+        Every class comes from the CLOSED set (``closed_set``, the node's own ladder). A row whose
+        tool was never classified is reported with R1's refusal sentence verbatim
+        (``refusal``) - never a blank and never a class this route invented. ``counts`` and
+        ``pending`` are the SAME projections ``/api/state`` publishes (``control.counts`` /
+        ``control.pending``), so the observer's fourth state and its hold list cannot disagree with
+        the console.
+
+        Nothing here decides anything: no write, no allow, no deny, no approval. An agent reading
+        this route learns nothing it could not read in ``/api/state``, and cannot act on it.
+        """
+        k, denied = _kernel_or_503(app)
+        if denied:
+            return denied
+        limit = max(1, min(limit, 200))
+        rows = k.stream(limit)
+        st = k.state(limit=limit)
+        taxonomy = st.get("actions") or []
+        control = st.get("control") or {}
+        return JSONResponse({
+            "count": len(rows),
+            "stream": rows,
+            # The closed set, in the ladder's own order, straight from the node's listing.
+            "closed_set": [str(c.get("class")) for c in taxonomy],
+            # class -> the taxonomy's decider line, so a consumer never re-words it.
+            "deciders": {str(c.get("class")): c.get("decider_text") for c in taxonomy},
+            "pending": control.get("pending") or [],
+            "counts": control.get("counts") or {},
+            "refusal": R1_REFUSAL,
+            "generated_at": time.time(),
+            "mode": config.mode(),
+            "authority_source": "tenet-kernel",
+            "llm_authority": False,
+        })
 
     @app.get("/api/actions/{action_id}")
     def action_detail(action_id: str) -> JSONResponse:
