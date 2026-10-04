@@ -303,9 +303,15 @@ function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();r
       techRow("Latency",up.latency_ms!=null?esc(String(up.latency_ms))+" ms":"not recorded")+
     `</div></details>`;
   renderControl(t)}
+/* The class comes from the SAME evaluated evidence the why-line renders (the verdict's `reason`,
+ * whose "class <name>" phrase the kernel's evaluation wrote), never from a second source that is
+ * empty at first render while the why-line names one. A token that is not a real rung of the
+ * kernel's ladder is ignored, so the card never invents a class the evaluation did not name. */
+function classFromReason(reason){const m=/\bclass\s+([a-z_]+)/.exec(String(reason||""));
+  return m&&["observe","read_personal","draft","write_reversible","irreversible","authorize"].includes(m[1])?m[1]:null}
 function verdictTrace(v,agent,tool){/* map the propose_action / demo.run verdict into the card shape */
   const dec=(v.decision||"").toLowerCase(),contacted=v.upstream_contacted===true,ex=v.execution_result;
-  return {agent:agent||v.agent,action:{tool:tool||v.tool||v.resource,class:v.action_class||null,args:v.args||null,intent:v.intent},
+  return {agent:agent||v.agent,action:{tool:tool||v.tool||v.resource,class:v.action_class||classFromReason(v.reason),args:v.args||null,intent:v.intent},
     decision:dec,reason:v.reason,receipt_id:v.receipt||v.receipt_id||null,action_id:v.action_id||null,
     executed:v.executed===true||(dec==="allow"&&contacted),trace_id:v.trace_id||null,
     upstream:{contacted:contacted,http_status:ex?ex.http_status:null,endpoint:ex?ex.endpoint:null,

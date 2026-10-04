@@ -612,3 +612,86 @@ def test_act7e_pending_hold_never_claims_an_execution(client):
     # either the proven NEGATIVE or an honest null - never a fabricated True.
     assert trace["executed"] is not True, "a holding action claimed an execution it cannot prove"
 
+
+# ----------------------------------------------------- ACT-7f (the class comes from the decision)
+# One card, one class: the composed ``action.class`` must be the SAME evaluated evidence the
+# why-line renders (the decision's ``reason``), not a second source that is empty while the
+# why-line names a class. Before this change the reach line said "no class recorded" beside a
+# why-line that read ``... · class observe``. These drive the repository's own kernel so the
+# reason is the one a real decision wrote; the row's own field is blanked to stand in for the
+# verdict-fed path, where the class arrives only in the evaluation.
+def _blank_row_class(client, action_id: str) -> None:
+    """Drop the row's own ``action_class``, keeping the evaluated ``reason`` - the first-render case."""
+    kernel = client.app.state.kernel
+    action = kernel.proxy.actions.get(action_id)
+    action.action_class = ""
+    kernel.proxy.actions.save(action)
+
+
+def _reason_class(reason: str) -> str:
+    """The class token the why-line would name, read the way the card reads it (``class <name>``)."""
+    match = re.search(r"\bclass\s+([a-z_]+)", reason or "")
+    assert match, "the evaluated reason carries no 'class <name>' phrase: %r" % reason
+    return match.group(1)
+
+
+def test_act7f_fresh_allow_reads_the_class_from_the_decision(client):
+    """A fresh allow: the reaches line's class is the one the why-line names (from the reason).
+
+    The row's own class field is blanked, so only the evaluated ``reason`` carries the class -
+    exactly the first-render path the recorder measured. The composer must still print the class
+    and must NOT name ``action.class`` incomplete beside a why-line that names one.
+    """
+    token = _agent_tokens(client)["fx-trader"]
+    r = _mcp(client, "fx-trader", token, "fx.read_rate", {"base": "EUR", "symbols": "USD"})
+    assert r.status_code == 200
+    action_id = client.get("/api/live-trace").json()["trace"]["action_id"]
+    _blank_row_class(client, action_id)
+
+    trace = client.get(f"/api/live-trace?action_id={action_id}").json()["trace"]
+    assert trace["decision"] == "allow"
+    expected = _reason_class(trace["reason"])
+    assert trace["action"]["class"] == expected, (
+        "the composed class is not the one the why-line names: reaches=%r why-line=%r"
+        % (trace["action"]["class"], trace["reason"]))
+    assert "action.class" not in trace["incomplete"], (
+        "the reaches line reported no class while the why-line named %r" % expected)
+
+
+def test_act7f_re_read_after_a_human_decision_still_carries_the_class(client):
+    """A person-approved hold: re-reading the trace still carries the class (behaviour unchanged).
+
+    The row and the evaluation both carry the class after the approve; the composer must report
+    the same class the why-line names - the fix must not disturb the resolved case.
+    """
+    action_id = _hold(client)
+    ap = client.post(f"/api/actions/{action_id}/approve", json={"by": "indradev_"},
+                     headers=_admin_headers())
+    assert ap.status_code == 200
+    _file_crossing(client, action_id, _REAL_CROSSING)
+
+    trace = client.get(f"/api/live-trace?action_id={action_id}").json()["trace"]
+    expected = _reason_class(trace["reason"])
+    assert trace["action"]["class"] == expected, (
+        "the re-read class no longer matches the why-line: reaches=%r why-line=%r"
+        % (trace["action"]["class"], trace["reason"]))
+
+
+def test_act7f_no_evidence_carries_a_class_is_null_and_named(client):
+    """No evidence anywhere names a class: the class is null AND named in ``incomplete``.
+
+    A denied action whose evaluation names no class (an entitlement refusal, not a classified
+    act) must not have a class invented for it - the composer reports null and says so, exactly
+    as before. The fix reads a class only where the evaluation named one.
+    """
+    token = _agent_tokens(client)["support-copilot"]
+    r = _mcp(client, "support-copilot", token, "fx.read_rate", {"base": "EUR", "symbols": "USD"})
+    assert r.status_code == 200
+    trace = client.get("/api/live-trace").json()["trace"]
+    assert trace["decision"] in ("deny", "human")
+    # The refusal's reason names no class, so none is composed and the absence is stated.
+    assert "class " not in (trace["reason"] or ""), (
+        "this scenario was expected to refuse without naming a class: %r" % trace["reason"])
+    assert trace["action"]["class"] is None, "a class was invented where no evidence carried one"
+    assert "action.class" in trace["incomplete"], "the absent class was not named in incomplete"
+

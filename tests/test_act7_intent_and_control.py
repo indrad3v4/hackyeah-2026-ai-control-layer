@@ -941,3 +941,35 @@ def test_act7c_no_trace_on_the_reread_is_reported_honestly():
     assert "data leaves tenet" not in card, (
         "the page showed the approved call crossing the boundary from a trace that was never read: %r"
         % card[:400])
+
+
+# =========================================================== ACT-7f (one card, one class)
+def test_act7f_reaches_line_shows_the_class_the_why_line_names():
+    """One card, one class - the fresh verdict card never says "no class recorded" beside a class.
+
+    The recorder measured this on the running console: for the ALLOW frame the card's "What it
+    reaches" line read ``fx.read_rate · no class recorded`` while the very next line, "Why TENET
+    decided this", read ``read-only · live reference rate · in scope · class observe``. The class is
+    only carried in the decision's evaluation (the verdict's ``reason``), which is exactly what the
+    why-line renders - so the reaches line must read the class from that same source.
+
+    This drives the page's real path (choosing who acts posts /api/demo/run, whose verdict carries
+    no ``action_class``), so a card that reads the class from a second, empty source is caught here.
+    """
+    payloads = _base_payloads(events=[_feed_event(_ALLOW_TRACE)], state={})
+    dom, rec = _render(payloads, who="fx-trader")
+
+    runs = [c for c in rec.calls if c["path"] == "/api/demo/run"]
+    assert runs, "choosing who acts never contacted the real /api/demo/run route"
+    card = _text(dom, "actionCard")
+    assert card, "the fresh verdict did not render an action card"
+
+    # The why-line names the class (it renders the verdict's reason) ...
+    assert "class observe" in card, (
+        "the why-line no longer names the class the verdict carried: %r" % card[:500])
+    # ... so the reaches line MUST name the same class, and must NOT contradict it.
+    assert "no class recorded" not in card.lower(), (
+        "one card contradicts itself - the reaches line says no class is recorded beside a "
+        "why-line that names one: %r" % card[:500])
+    assert "observe" in card.lower(), (
+        "the class the decision named was not shown on the card at all: %r" % card[:500])

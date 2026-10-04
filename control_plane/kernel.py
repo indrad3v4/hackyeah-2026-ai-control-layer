@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -104,6 +105,33 @@ def missing_entitlement(agent_id: str, tool: str) -> str:
     if not right:
         return ""
     return "" if right in ENTITLEMENTS.get(agent_id, set()) else right
+
+
+# The six rungs of the kernel's own ladder, mirrored here ONLY to recognise a class the
+# evaluation already named - never to classify an act. The taxonomy itself stays in the
+# kernel (``node/warrnt/actions.py``); this set is how the composer tells a real class name
+# from any other token that happens to follow the word "class". A token not in this set is
+# not accepted, so the fallback can never invent a class the evaluation did not name.
+_ACTION_CLASS_NAMES = ("observe", "read_personal", "draft", "write_reversible",
+                       "irreversible", "authorize")
+
+
+def _class_from_reason(reason: Optional[str]) -> Optional[str]:
+    """The action class the DECISION's own evaluation named, or ``None``.
+
+    The evaluated decision evidence is the kernel's ``reason`` string; its class phrase is
+    ``class <name>`` (e.g. ``... · class observe`` / ``class irreversible · ... · the machine
+    prepares, a person decides``). This reads the SAME fact the why-line renders, so the
+    reaches line and the why-line cannot disagree. Only a token that is a real rung of the
+    kernel's ladder is accepted - a stray "class" with anything else after it is ignored, so
+    nothing is ever invented. (AGENTS.md D3: one source of truth; D12: claim only what ran.)
+    """
+    if not reason:
+        return None
+    for token in re.findall(r"\bclass\s+([a-z_]+)", str(reason)):
+        if token in _ACTION_CLASS_NAMES:
+            return token
+    return None
 
 
 class Kernel:
@@ -678,7 +706,13 @@ class Kernel:
         intent = self._intent(tool, action.get("parameters"))
         if not intent:
             incomplete.append("action.intent")
-        action_class = action.get("action_class") or None
+        # ---- the action's class: one fact, one source. The DECISION's own evaluation is the
+        # ``reason`` string (its ``class <name>`` phrase is exactly what the why-line renders),
+        # so the class is read from there whenever the row does not carry one. Reading the row's
+        # field alone left the reaches line saying "no class recorded" beside a why-line that
+        # named the class; the row's own field, when present, still wins (it is the same fact
+        # the evaluation wrote). Only when NO evidence carries a class is it null and NAMED.
+        action_class = action.get("action_class") or _class_from_reason(action.get("reason"))
         if not action_class:
             incomplete.append("action.class")
         args = dict(action.get("parameters") or {})
