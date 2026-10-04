@@ -2,38 +2,29 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>TENET — Pitch Deck</title>
+<title>TENET — Pitch Deck (OpenVC canon, 12 slides)</title>
 <style>
 @font-face{font-family:Inter;src:url('file:///root/.hermes/fonts/Inter-Regular.ttf');font-weight:400}
 @font-face{font-family:Inter;src:url('file:///root/.hermes/fonts/Inter-Medium.ttf');font-weight:500}
 @font-face{font-family:Inter;src:url('file:///root/.hermes/fonts/Inter-Bold.ttf');font-weight:700}
-:root{
-  --bg:#0b1017; --panel:#12181f; --line:#26303d; --ink:#e6edf3; --muted:#8b98a8;
-  --grn:#3fb950; --amb:#f7b34a; --red:#f85149; --blu:#79c0ff;
-}
+:root{--bg:#0b1017;--panel:#12181f;--line:#26303d;--ink:#e6edf3;--muted:#8b98a8;
+--grn:#3fb950;--amb:#f7b34a;--red:#f85149;--blu:#79c0ff;}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#05080c}
 body{font-family:Inter,"DejaVu Sans",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
-.slide{
-  position:relative;width:1920px;height:1080px;background:var(--bg);
-  padding:74px 96px 66px;display:none;flex-direction:column;overflow:hidden;
-}
+.slide{position:relative;width:1920px;height:1080px;background:var(--bg);padding:74px 96px 66px;
+display:none;flex-direction:column;overflow:hidden}
 .slide.on{display:flex}
-@media print{
-  @page{size:1920px 1080px;margin:0}
-  html,body{background:#0b1017}
-  #qa{display:none !important}
-  .slide{display:flex !important;break-after:page}
-  .slide:last-of-type{break-after:auto}
-}
+@media print{@page{size:1920px 1080px;margin:0}html,body{background:#0b1017}
+#qa{display:none !important}.slide{display:flex !important;break-after:page}.slide:last-of-type{break-after:auto}}
 header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:20px}
 .kicker{font-family:"DejaVu Sans Mono",monospace;font-size:24px;letter-spacing:.12em;color:var(--grn);text-transform:uppercase}
 .crit{font-family:"DejaVu Sans Mono",monospace;font-size:19px;color:var(--muted);letter-spacing:.04em}
 main{flex:1;display:flex;flex-direction:column;justify-content:center;gap:30px;padding:34px 0}
 h1{font-size:86px;font-weight:700;line-height:1.06;letter-spacing:-.02em;max-width:1500px}
-h1 .a{color:var(--grn)} h1 .r{color:var(--red)} h1 .m{color:var(--amb)}
+h1 .a{color:var(--grn)}h1 .r{color:var(--red)}h1 .m{color:var(--amb)}
 .sub{font-size:38px;font-weight:500;color:var(--ink);max-width:1440px;line-height:1.25}
-.note{font-size:27px;color:var(--muted);line-height:1.4;max-width:1440px}
+.note{font-size:27px;color:var(--muted);line-height:1.4;max-width:1500px}
 ul{list-style:none;display:flex;flex-direction:column;gap:20px}
 li{font-size:31px;line-height:1.3;padding-left:44px;position:relative;max-width:1520px;color:#cfd8e3}
 li::before{content:"—";position:absolute;left:0;color:var(--grn);font-weight:700}
@@ -44,159 +35,258 @@ li .v{font-family:"DejaVu Sans Mono",monospace;color:var(--amb)}
 .pil .lab{font-family:"DejaVu Sans Mono",monospace;font-size:20px;letter-spacing:.14em;color:var(--blu);text-transform:uppercase}
 .pil .txt{font-size:25px;line-height:1.3;margin-top:14px;color:#cfd8e3}
 .pil.b .lab{color:var(--grn)}
-.steps{display:grid;grid-template-columns:1.32fr .68fr;gap:34px;align-items:stretch}
 .chain{display:flex;flex-direction:column;gap:13px}
 .step{display:flex;gap:18px;align-items:baseline;font-size:27px;line-height:1.24}
 .step .n{font-family:"DejaVu Sans Mono",monospace;color:var(--muted);min-width:44px}
-.step .t{color:#cfd8e3} .step .t b{color:var(--ink)}
-.deny{color:var(--red);font-weight:700} .ok{color:var(--grn);font-weight:700}
-.shot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
-.shot img{width:100%;display:block;border-radius:8px}
-.shot .cap{font-family:"DejaVu Sans Mono",monospace;font-size:17px;color:var(--muted);letter-spacing:.03em}
+.step .t{color:#cfd8e3}.step .t b{color:var(--ink)}
+.deny{color:var(--red);font-weight:700}.ok{color:var(--grn);font-weight:700}
+.proofwrap{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--panel)}
+.proofwrap img{display:block;margin:0 auto;border-radius:8px;max-height:560px;max-width:100%;width:auto}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.fact{font-family:"DejaVu Sans Mono",monospace;font-size:19px;color:var(--muted);line-height:1.35}
+.fact b{display:block;color:var(--amb);font-size:23px}
 table{width:100%;border-collapse:collapse;font-size:28px}
 th,td{text-align:left;padding:15px 8px;border-bottom:1px solid var(--line);vertical-align:baseline}
 th{font-family:"DejaVu Sans Mono",monospace;font-size:19px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
-td.k{color:#cfd8e3} td.v{font-family:"DejaVu Sans Mono",monospace;color:var(--amb);white-space:nowrap;font-weight:500}
+td.k{color:#cfd8e3}td.v{font-family:"DejaVu Sans Mono",monospace;color:var(--amb);white-space:nowrap;font-weight:500}
 td.s{font-family:"DejaVu Sans Mono",monospace;font-size:21px;color:var(--muted)}
-footer{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:18px;font-family:"DejaVu Sans Mono",monospace;font-size:19px;color:var(--muted)}
+footer{display:flex;justify-content:space-between;align-items:center;gap:20px;border-top:1px solid var(--line);padding-top:18px;
+font-family:"DejaVu Sans Mono",monospace;font-size:17px;color:var(--muted);white-space:nowrap}
 footer .law{color:var(--grn)}
-/* slide 5 is dense — tighten so the whole page fits in 1080 with no clipping */
-#s5 main{gap:20px;padding:22px 0}
-#s5 h1{font-size:74px}
-#s5 table{font-size:26px}
-#s5 th,#s5 td{padding:11px 8px}
-#s5 li{font-size:27px}
-.tagline{position:absolute;left:96px;bottom:112px;font-family:"DejaVu Sans Mono",monospace;font-size:22px;color:var(--muted)}
-.verdict{display:inline-block;font-family:"DejaVu Sans Mono",monospace;font-size:22px;color:var(--grn);border:1px solid var(--grn);border-radius:999px;padding:7px 18px;letter-spacing:.06em}
+.chip{font-family:"DejaVu Sans Mono",monospace;font-size:17px;border-radius:999px;padding:6px 16px;letter-spacing:.06em;white-space:nowrap}
+.chip.m{color:var(--grn);border:1px solid var(--grn)}
+.chip.e{color:var(--amb);border:1px solid var(--amb)}
+.chip.n{color:var(--red);border:1px solid var(--red)}
+.chip.plain{color:var(--muted);border:1px solid var(--line)}
+.foot{display:flex;gap:14px;align-items:center}
+.cover main{gap:34px}
+.cover .name{font-size:184px;font-weight:700;letter-spacing:-.045em;line-height:.94}
+.cover .tag{font-size:52px;font-weight:500;line-height:1.22;max-width:1420px;color:var(--ink)}
+.cover .tag em{font-style:normal;color:var(--grn)}
+.cover .meta{display:flex;gap:16px;align-items:center;margin-top:10px}
+.cover .lawline{font-family:"DejaVu Sans Mono",monospace;font-size:22px;color:var(--muted)}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+.who{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px 26px}
+.who .nm{font-size:34px;font-weight:700}
+.who .rl{font-family:"DejaVu Sans Mono",monospace;font-size:19px;color:var(--blu);letter-spacing:.1em;text-transform:uppercase;margin-top:8px}
+.who ul{margin-top:16px;gap:12px}
+.who li{font-size:24px;padding-left:32px;max-width:none}
+.verdict{display:inline-block;font-family:"DejaVu Sans Mono",monospace;font-size:22px;color:var(--grn);
+border:1px solid var(--grn);border-radius:999px;padding:7px 18px;letter-spacing:.06em}
+.back .big{font-size:74px}
+.mono{font-family:"DejaVu Sans Mono",monospace;font-size:22px;color:var(--ink)}
+.cta{font-size:44px;font-weight:700;color:var(--grn)}
 </style>
 <style>
-#s1 h1,#s3 h1{font-size:78px} #s2 h1{font-size:76px} #s4 h1{font-size:70px} #s6 h1{font-size:78px}
-#s2 ul li{font-size:27px} #s3 .pil .txt{font-size:23px} #s3 ul li{font-size:26px}
-#s4 .chain{gap:12px;max-width:1560px} #s4 .step{font-size:30px}
-#s5 main{gap:14px;padding:6px 0;overflow:visible} .proofwrap{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--panel)}
-.proofwrap img{display:block;margin:0 auto;border-radius:8px;max-height:590px;max-width:100%;width:auto}
-.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
-.fact{font-family:"DejaVu Sans Mono",monospace;font-size:19px;color:var(--muted);line-height:1.35}
-.fact b{display:block;color:var(--a);font-size:23px}
-#s6 ul li{font-size:27px} .mono{font-family:"DejaVu Sans Mono",monospace;font-size:22px;color:var(--ink)}
-#s7 h1{font-size:70px} #s7 table{font-size:24px} #s7 th,#s7 td{padding:9px 8px} #s7 li{font-size:25px}
+#s1 h1{font-size:0}
+#s2 h1,#s3 h1{font-size:78px}#s4 h1{font-size:70px}#s5 h1{font-size:66px}#s6 h1{font-size:70px}
+#s7 h1{font-size:70px}#s8 h1{font-size:68px}#s9 h1{font-size:70px}#s10 h1{font-size:68px}
+#s11 h1{font-size:70px}#s12 h1{font-size:66px}
+#s3 ul li{font-size:27px}#s4 .pil .txt{font-size:23px}#s4 ul li{font-size:26px}
+#s5 .chain{gap:11px;max-width:1560px}#s5 .step{font-size:28px}
+#s6 main{gap:16px;padding:10px 0}
+#s7 table{font-size:26px}#s7 th,#s7 td{padding:11px 8px}#s7 li{font-size:26px}
+#s8 table{font-size:25px}#s8 th,#s8 td{padding:10px 8px}
+#s9 .step{font-size:26px}#s10 .who li{font-size:23px}
+#s12 main{gap:26px}
 </style>
 </head>
 <body>
-<section class="slide" id="s1">
-<header><span class="kicker">01 · The 3:47 problem</span><span class="crit">idea &amp; innovation 30 · relation to category 20</span></header>
+<section class="slide cover" id="s1">
+<header><span class="kicker">TENET · HackYeah 2026 · Goldman Sachs — AI Control Layer</span><span class="crit">idea &amp; innovation 30 · relation to category 20</span></header>
 <main>
-    <h1><span class="r">03:47.</span> The export is already out.</h1>
-    <p class="sub">An AI agent calls <b>crm.bulk_export</b> with <b>{email, pesel}</b>. It holds a password, not an order. Nobody is awake to stop it.</p>
-    <ul>
-      <li>The log proves <b>what</b> happened. It cannot prove <b>who authorized it</b>.</li>
-      <li>The first signal arrives at 09:15 — the data left hours earlier.</li>
-      <li>The regulator asks one question: <b>under whose authority?</b></li>
-    </ul>
-    <span class="verdict">You cannot trust what you cannot stop.</span>
+  <div class="name">TENET</div>
+  <div class="tag">AI actions you can take back — <em>before they leave</em>.</div>
+  <div class="note">One rule, enforced before execution: <b>no approval, no action</b>. Every tool-call carries an order that expires, and a receipt that proves it.</div>
+  <div class="meta"><span class="verdict">live node · walk it yourself</span><span class="lawline">hackyeah-2026-ai-control-layer-production.up.railway.app/onboarding</span></div>
 </main>
-<footer><span>TENET · HackYeah 2026 · Goldman Sachs — AI Control Layer track</span><span class="law">carried: the drama, in one line</span></footer>
+<footer><span>TENET · two builders · one weekend · 152 commits</span><span class="foot"><span class="chip m">MEASURED</span><span class="law">the whole deck is receipts, not a vision</span></span></footer>
 </section>
 <section class="slide" id="s2">
-<header><span class="kicker">02 · The insight</span><span class="crit">idea &amp; innovation 30 · practical applicability 20</span></header>
+<header><span class="kicker">02 · Why now</span><span class="crit">relation to category 20 · idea &amp; innovation 30</span></header>
 <main>
-    <h1>Trust is not a setting.<br>It is the <span class="a">ability to revoke</span>.</h1>
-    <p class="sub">Permission today is granted once and lives forever — a key in production. What is missing is not another view. It is <b>the moment a permission ends</b>.</p>
-    <ul>
-      <li><b>Four barriers, one cause.</b> Culturally an agent is not trusted as a colleague; socially it is “if it happens, it is on me”; product-wise there is nothing to stop with; in the story we tell ourselves, “we see everything already”.</li>
-      <li>The old way: <b>a log you read on Monday</b> — evidence after the fact, never authority before it.</li>
-      <li>So the unit is not visibility. It is <b>authorized action</b> — and the receipt that proves it.</li>
-    </ul>
+  <h1>Agents got hands. <span class="r">Authorization did not change.</span></h1>
+  <ul>
+    <li><b>The tools shipped first.</b> Tool-calling agents moved into production systems, and every one of them arrives holding a credential — a password, not an order. MCP gives transport and a consent *framework*; its own spec tells implementers to build the authorization flows themselves.</li>
+    <li><b>The regulator is already here.</b> DORA has been in force since 17 January 2025 and covers <b>22,000+</b> financial entities and ICT providers in the EU — all of them must now *prove* digital operational resilience, not describe it.</li>
+    <li><b>So the question stopped being technical.</b> It is now: under whose authority did that action happen, and can you show it on demand? Nothing on the shelf answers with a stop, not a log.</li>
+  </ul>
 </main>
-<footer><span>TENET · HackYeah 2026 · Goldman Sachs — AI Control Layer track</span><span class="law">the moment a permission ends</span></footer>
+<footer><span>TENET · HackYeah 2026 · AI Control Layer track</span><span class="foot"><span class="chip m">MEASURED</span><span class="law">sources: MCP spec · DORA in force 17.01.2025 · 22k+ entities</span></span></footer>
 </section>
 <section class="slide" id="s3">
-<header><span class="kicker">03 · The idea</span><span class="crit">idea &amp; innovation 30 · relation to category 20</span></header>
+<header><span class="kicker">03 · The problem</span><span class="crit">idea &amp; innovation 30 · relation to category 20</span></header>
 <main>
-    <h1>No approval, no action. <span class="a">TENET</span> holds that one rule.</h1>
-    <p class="sub">Every tool-call passes the kernel <b>before it executes</b>: scope, TTL, signer. One click takes the authority back — and the agent stops mid-flight, not after the export.</p>
-    <div class="pillars">
-      <div class="pil b"><div class="lab">Authority</div><div class="txt">Identity is bound to one agent and one grant. A grant for one order never authorizes another.</div></div>
-      <div class="pil b"><div class="lab">Grant</div><div class="txt">HMAC-SHA256 over the scope. The signature is verified <b>at the gate</b>, before any rule is read.</div></div>
-      <div class="pil b"><div class="lab">Revoke</div><div class="txt">One call halts the agent mid-flight. The next call returns REVOKED, not “unknown”.</div></div>
-      <div class="pil b"><div class="lab">Receipt</div><div class="txt">Append-only, hash-chained proof: who authorized, under which order, how long it lived.</div></div>
-    </div>
-    <ul>
-      <li>Every call is either <span class="deny">rejected before execution</span> or carries a <b>receipt</b>.</li>
-      <li>Revocable by design — the order exists to be taken back, not to be filed.</li>
-    </ul>
+  <h1><span class="r">03:47.</span> The export is already out.</h1>
+  <p class="sub">An AI agent calls <b>crm.bulk_export</b> with <b>{email, pesel}</b>. It holds a password, not an order. Nobody is awake to stop it.</p>
+  <ul>
+    <li>The log proves <b>what</b> happened. It cannot prove <b>who authorized it</b>.</li>
+    <li>The first signal arrives at 09:15 — the data left hours earlier.</li>
+    <li>The regulator asks one question: <b>under whose authority?</b></li>
+  </ul>
+  <span class="verdict">You cannot trust what you cannot stop.</span>
 </main>
-<footer><span>TENET · HackYeah 2026 · Goldman Sachs — AI Control Layer track</span><span class="law">authority · grant · revoke · reject · receipt · proof</span></footer>
+<footer><span>TENET · HackYeah 2026 · AI Control Layer track</span><span class="foot"><span class="chip m">MEASURED</span><span class="law">the drama, in one line</span></span></footer>
 </section>
 <section class="slide" id="s4">
-<header><span class="kicker">04 · The journey — the control layer people can walk</span><span class="crit">practical applicability 20 · completeness 10</span></header>
+<header><span class="kicker">04 · The solution</span><span class="crit">idea &amp; innovation 30 · relation to category 20</span></header>
 <main>
-    <h1>A control layer with <span class="a">a door</span> — and it opens only for you.</h1>
-    <div class="chain wide">
-      <div class="step"><span class="n">1</span><span class="t">you <b>say</b> what the agent should do — typed or spoken</span></div>
-      <div class="step"><span class="n">2</span><span class="t"><b>your AI proposes</b> one concrete action and says what it will touch</span></div>
-      <div class="step"><span class="n">3</span><span class="t">the <b>kernel decides</b>: allowed, not allowed, or waiting for you</span></div>
-      <div class="step"><span class="n">4</span><span class="t">you <b>decide</b> — and only your decision moves it; nothing runs on its own</span></div>
-      <div class="step"><span class="n">5</span><span class="t">the action is <b>witnessed</b> crossing the line (or <span class="deny">stopped</span> at it)</span></div>
-      <div class="step"><span class="n">6</span><span class="t">you get the <b>receipt</b> — a real record from a real round</span></div>
-      <div class="step"><span class="n">7</span><span class="t"><b>WIN</b>: the agent acted <span class="ok">inside the line you drew</span></span></div>
-    </div>
+  <h1>No approval, no action. <span class="a">TENET</span> holds that one rule.</h1>
+  <p class="sub">Every tool-call passes the kernel <b>before it executes</b>: scope, TTL, signer. One click takes the authority back — and the agent stops mid-flight, not after the export.</p>
+  <div class="pillars">
+    <div class="pil b"><div class="lab">Authority</div><div class="txt">Identity is bound to one agent and one grant. A grant for one order never authorizes another.</div></div>
+    <div class="pil b"><div class="lab">Grant</div><div class="txt">HMAC-SHA256 over the scope. The signature is verified <b>at the gate</b>, before any rule is read.</div></div>
+    <div class="pil b"><div class="lab">Revoke</div><div class="txt">One call halts the agent mid-flight. The next call returns REVOKED, not “unknown”.</div></div>
+    <div class="pil b"><div class="lab">Receipt</div><div class="txt">Append-only, hash-chained proof: who authorized, under which order, how long it lived.</div></div>
+  </div>
+  <ul>
+    <li>Every call is either <span class="deny">rejected before execution</span> or carries a <b>receipt</b>.</li>
+  </ul>
 </main>
-<footer><span>TENET · HackYeah 2026 · Goldman Sachs — AI Control Layer track</span><span class="law">your words · the proposal · the decision · the proof</span></footer>
+<footer><span>TENET · HackYeah 2026 · AI Control Layer track</span><span class="foot"><span class="chip m">MEASURED</span><span class="law">authority · grant · revoke · reject · receipt · proof</span></span></footer>
 </section>
 <section class="slide" id="s5">
-<header><span class="kicker">05 · The live proof — the round that just ran</span><span class="crit">practical applicability 20 · completeness 10</span></header>
+<header><span class="kicker">05 · The product — how it works</span><span class="crit">practical applicability 20 · completeness &amp; implementation 10</span></header>
 <main>
-    <div class="proofwrap"><img src="live-journey.jpg" alt="TENET live product: CONTROL KEPT with a real receipt"></div>
-    <div class="facts">
-      <span class="fact"><b>A-0002</b> the action that crossed the line</span>
-      <span class="fact"><b>HTTP 200 · 19.5 ms</b> the upstream really answered</span>
-      <span class="fact"><b>receipt 4db4d785</b> hash-chained, recomputable</span>
-      <span class="fact">read from the live control plane — not typed into this slide</span>
-    </div>
+  <h1>A control layer with <span class="a">a door</span> — and it opens only for you.</h1>
+  <div class="chain">
+    <div class="step"><span class="n">1</span><span class="t">you <b>say</b> what the agent should do — typed or spoken</span></div>
+    <div class="step"><span class="n">2</span><span class="t"><b>your AI proposes</b> one concrete action and says what it will touch</span></div>
+    <div class="step"><span class="n">3</span><span class="t">the <b>kernel decides</b>: allowed, not allowed, or waiting for you</span></div>
+    <div class="step"><span class="n">4</span><span class="t">you <b>decide</b> — and only your decision moves it; nothing runs on its own</span></div>
+    <div class="step"><span class="n">5</span><span class="t">the action is <b>witnessed</b> crossing the line (or <span class="deny">stopped</span> at it)</span></div>
+    <div class="step"><span class="n">6</span><span class="t">you get the <b>receipt</b> — a real record from a real round</span></div>
+    <div class="step"><span class="n">7</span><span class="t"><b>WIN</b>: the agent acted <span class="ok">inside the line you drew</span></span></div>
+  </div>
+  <p class="note">Embedding it is one hop: <span class="mono">POST /mcp</span> in front of the existing tool server — no rewrite of the agent, no rewrite of the tools.</p>
 </main>
-<footer><span>TENET · HackYeah 2026 · Goldman Sachs — AI Control Layer track</span><span class="law">walk it yourself: the URL is on the next slide</span></footer>
+<footer><span>TENET · HackYeah 2026 · AI Control Layer track</span><span class="foot"><span class="chip m">MEASURED</span><span class="law">your words · the proposal · the decision · the proof</span></span></footer>
 </section>
 <section class="slide" id="s6">
-<header><span class="kicker">06 · The character — and why judges remember it</span><span class="crit">idea &amp; innovation 30 · completeness 10</span></header>
+<header><span class="kicker">06 · The proof — the round that just ran</span><span class="crit">practical applicability 20 · completeness &amp; implementation 10</span></header>
 <main>
-    <h1>One <span class="a">TENET</span>, in the film and in the product.</h1>
-    <ul>
-      <li>One <b>locked studio voice</b> for the whole cycle — eight clips, one per beat, the same woman who narrates the film. Not the visitor’s laptop voice.</li>
-      <li>The device voice survives only as a <b>fallback</b>, and the page says so out loud. Nothing is hidden.</li>
-      <li>The character is a <b>guide, never the authority</b>: she explains, the AI proposes, the kernel decides, the human controls.</li>
-      <li>Why it matters: a control layer is an abstract promise. A face and a voice make the promise <b>walkable</b> — and the same rule, said twice, is the cheapest trust there is.</li>
-      <li>Walk it live: <span class="mono">hackyeah-2026-ai-control-layer-production.up.railway.app/onboarding</span></li>
-    </ul>
+  <div class="proofwrap"><img src="live-journey.jpg" alt="TENET live product: CONTROL KEPT with a real receipt"></div>
+  <div class="facts">
+    <span class="fact"><b>A-0002</b> the action that crossed the line</span>
+    <span class="fact"><b>HTTP 200 · 19.5 ms</b> the upstream really answered</span>
+    <span class="fact"><b>receipt 4db4d785</b> hash-chained, recomputable</span>
+    <span class="fact">read from the live control plane — not typed into this slide</span>
+  </div>
 </main>
-<footer><span>TENET · HackYeah 2026 · Goldman Sachs — AI Control Layer track</span><span class="law">one character · one rule · no exception</span></footer>
+<footer><span>TENET · HackYeah 2026 · AI Control Layer track</span><span class="foot"><span class="chip e">ENGINEERING TRACTION</span><span class="law">a live round — not revenue; we label which is which</span></span></footer>
 </section>
 <section class="slide" id="s7">
-<header><span class="kicker">07 · The metric</span><span class="crit">practical applicability 20 · completeness &amp; implementation 10</span></header>
+<header><span class="kicker">07 · Business model</span><span class="crit">practical applicability 20 · completeness &amp; implementation 10</span></header>
 <main>
-    <h1>What we measured — and what we do <span class="m">not</span> claim.</h1>
-    <table>
-      <tr><th>measured</th><th>value</th><th>source</th></tr>
-      <tr><td class="k">rows past the perimeter</td><td class="v">0</td><td class="s">checkpoint P2.3, fresh node</td></tr>
-      <tr><td class="k">time to stop — live node</td><td class="v">0.116 s</td><td class="s">verify_live.py, 20/20</td></tr>
-      <tr><td class="k">actions under a grant</td><td class="v">100%</td><td class="s">hash-chained receipts, recomputable from genesis</td></tr>
-      <tr><td class="k">the whole suite</td><td class="v">146 passed</td><td class="s">pytest, on the shipped commit</td></tr>
-      <tr><td class="k">this round, on camera</td><td class="v">A-0002 · HTTP 200 · 19.5 ms</td><td class="s">receipt 4db4d785, live node</td></tr>
-      <tr><td class="k">embedding in a bank</td><td class="v">1 endpoint · ~2 weeks</td><td class="s">architecture: POST /mcp in front of the tool server</td></tr>
-    </table>
-    <ul>
-      <li><b>Not claimed:</b> a platform, an admin UI, a multi-tenant issuer. One node, one vector, proven.</li>
-      <li><b>Honest gap:</b> buyer willingness to pay is a hypothesis — no paid customer yet. The price is a hypothesis, not an invoice.</li>
-    </ul>
+  <h1>One node in front of one tool server. Sold by the action it authorizes.</h1>
+  <table>
+    <tr><th>what</th><th>how</th><th>status</th></tr>
+    <tr><td class="k">unit sold</td><td class="v">one node = one tool server</td><td class="s">built — measured</td></tr>
+    <tr><td class="k">metering</td><td class="v">per authorized action + receipt</td><td class="s">built — measured</td></tr>
+    <tr><td class="k">time to embed</td><td class="v">1 endpoint · ~2 weeks</td><td class="s">estimate from the architecture</td></tr>
+    <tr><td class="k">price / ARPA</td><td class="v">hypothesis, not an invoice</td><td class="s">not claimed — no paid customer</td></tr>
+    <tr><td class="k">who signs</td><td class="v">infosec lead / DPO under DORA</td><td class="s">hypothesis</td></tr>
+  </table>
+  <ul>
+    <li><b>Why the meter fits the pain:</b> the thing the firm must prove is exactly the thing we count — an authorized action and its receipt.</li>
+    <li><b>Land and expand:</b> the first node is the pilot; every further tool server is the same hop.</li>
+  </ul>
 </main>
-<footer><span>TENET · HackYeah 2026 · Goldman Sachs — AI Control Layer track</span><span class="law">proof, not a view</span></footer>
+<footer><span>TENET · HackYeah 2026 · AI Control Layer track</span><span class="foot"><span class="chip n">PRICE NOT CLAIMED</span><span class="law">the price is a hypothesis; the meter is real</span></span></footer>
+</section>
+<section class="slide" id="s8">
+<header><span class="kicker">08 · Market — bottom-up, in money</span><span class="crit">practical applicability 20 · relation to category 20</span></header>
+<main>
+  <h1>22,000+ entities must <span class="a">prove</span> resilience. We sell the proof of one action.</h1>
+  <table>
+    <tr><th>layer</th><th>number</th><th>where it comes from</th></tr>
+    <tr><td class="k">in scope of DORA (EU)</td><td class="v">22,000+ entities &amp; ICT providers</td><td class="s">published count, 2026</td></tr>
+    <tr><td class="k">the slice we can reach</td><td class="v">firms whose agents already touch customer data</td><td class="s">not claimed — no survey run</td></tr>
+    <tr><td class="k">unit of sale</td><td class="v">1 node = 1 tool server</td><td class="s">built</td></tr>
+    <tr><td class="k">arithmetic</td><td class="v">nodes × price per node</td><td class="s">conditional — price untested</td></tr>
+  </table>
+  <ul>
+    <li><b>Bottom-up, not “1% of the market”:</b> count the servers that hold the data and the firms that must answer for them.</li>
+    <li><b>Our honest position:</b> the size of the market is a published fact; our share of it is a plan, and we label it as one.</li>
+  </ul>
+</main>
+<footer><span>TENET · HackYeah 2026 · AI Control Layer track</span><span class="foot"><span class="chip e">SIZE: SOURCED · SHARE: NOT CLAIMED</span><span class="law">no invented TAM</span></span></footer>
+</section>
+<section class="slide" id="s9">
+<header><span class="kicker">09 · Competition — and what already exists</span><span class="crit">relation to category 20 · idea &amp; innovation 30</span></header>
+<main>
+  <h1>The status quo is not a rival we mock. <span class="a">It is three good tools that cannot stop anything.</span></h1>
+  <table>
+    <tr><th>what firms use today</th><th>what it does well</th><th>what it cannot do</th></tr>
+    <tr><td class="k">logs / SIEM</td><td class="v">proves what happened</td><td class="s">never authorizes, never stops — evidence after the fact</td></tr>
+    <tr><td class="k">IAM / PAM</td><td class="v">binds identity to systems</td><td class="s">an agent borrowing a human’s identity carries no intent</td></tr>
+    <tr><td class="k">human-in-the-loop chat</td><td class="v">a human double-checks</td><td class="s">approval without expiry or revoke; one click cannot halt the run</td></tr>
+    <tr><td class="k">doing nothing</td><td class="v">cheap today</td><td class="s">the real competitor — and the one the regulator is closing</td></tr>
+  </table>
+  <ul>
+    <li><b>Where we differ in one line:</b> the order expires, the stop is a single call, and the receipt is the audit artifact.</li>
+  </ul>
+</main>
+<footer><span>TENET · HackYeah 2026 · AI Control Layer track</span><span class="foot"><span class="chip m">MEASURED</span><span class="law">keep the incumbent, add the missing moment</span></span></footer>
+</section>
+<section class="slide" id="s10">
+<header><span class="kicker">10 · Team</span><span class="crit">completeness &amp; implementation 10 · idea &amp; innovation 30</span></header>
+<main>
+  <h1>Two builders, one weekend, <span class="a">152 commits</span>.</h1>
+  <div class="duo">
+    <div class="who"><div class="nm">Illia Znachenok</div><div class="rl">the journey &amp; the character</div>
+      <ul>
+        <li>Built the operator journey: SAY · SEE · UNDERSTAND · DECIDE · WITNESS · PROVE · WIN.</li>
+        <li>Carried one voice from the film into the live flow — a locked clip per beat.</li>
+        <li>Fixed the control plane: the action’s class is read from the evaluated decision, not a second source.</li>
+      </ul></div>
+    <div class="who"><div class="nm">Dmytro Poznanskyi</div><div class="rl">the control surface &amp; the record</div>
+      <ul>
+        <li>Built the console — the kill switch with real enabled and disabled states, reaching the node.</li>
+        <li>Wrote the layout guards that fail on the bug, and a sweep that fails on any panel size.</li>
+        <li>Wrote the architecture record in English, with a checker that keeps it honest.</li>
+      </ul></div>
+  </div>
+  <ul>
+    <li><b>Both technical, both in the git log.</b> No advisors, no logos, no borrowed credibility — the commits are dated 3–4 October 2026.</li>
+    <li><b>What one weekend bought:</b> 152 commits, a live node, 306 tests, a film, and this run you can walk yourself.</li>
+  </ul>
+</main>
+<footer><span>TENET · HackYeah 2026 · AI Control Layer track</span><span class="foot"><span class="chip m">MEASURED</span><span class="law">verify us in the log, not in the slide</span></span></footer>
+</section>
+<section class="slide" id="s11">
+<header><span class="kicker">11 · The ask</span><span class="crit">practical applicability 20 · completeness &amp; implementation 10</span></header>
+<main>
+  <h1>What we want is not a cheque. It is <span class="a">one real tool server</span>.</h1>
+  <ul>
+    <li><b>From the jury:</b> walk the live node and try to break the rule — the URL is on the cover and the back. If you find a call that crosses the line, that is the most valuable thing you can hand us.</li>
+    <li><b>From a firm:</b> one business function, one tool server, two weeks. We place the node, you keep the receipts, and a person on your side holds the revoke.</li>
+    <li><b>What we do not ask for:</b> trust in a platform we have not built, or a promise we cannot show as a receipt.</li>
+    <li><b>Momentum, not a wish:</b> the kernel, the console, the voice and the film already exist — what is missing is the first real tool server we do not control.</li>
+  </ul>
+</main>
+<footer><span>TENET · HackYeah 2026 · AI Control Layer track</span><span class="foot"><span class="chip e">THE ASK IS A PILOT, NOT MONEY</span><span class="law">objectives and momentum</span></span></footer>
+</section>
+<section class="slide back" id="s12">
+<header><span class="kicker">12 · Walk it yourself</span><span class="crit">practical applicability 20 · completeness &amp; implementation 10</span></header>
+<main>
+  <h1 class="big">The agent proposes. <span class="a">TENET</span> decides. Data moves only after authorization.</h1>
+  <ul>
+    <li>Live node — the journey you can operate: <span class="mono">hackyeah-2026-ai-control-layer-production.up.railway.app/onboarding</span></li>
+    <li>Source and the honest architecture record: <span class="mono">github.com/indrad3v4/hackyeah-2026-ai-control-layer</span></li>
+    <li>Write to the person who built it: <span class="mono">1ndradev4@proton.me</span></li>
+  </ul>
+  <div class="cta">One rule, one receipt, one stop that actually stops.</div>
+</main>
+<footer><span>TENET · Illia Znachenok &amp; Dmytro Poznanskyi · HackYeah 2026</span><span class="foot"><span class="chip plain">CONTACT ON THIS SLIDE</span><span class="law">37% of decks forget it — never us</span></span></footer>
 </section>
 <script>
-(function(){ var s=[].slice.call(document.querySelectorAll('section.slide'));
- s.forEach(function(x){x.classList.add('on');});
- var rep=s.map(function(x){ var o=[].slice.call(x.querySelectorAll('h1,p,li,td,th,div,span,table,img')).filter(function(e){return e.clientHeight>10 && (e.scrollWidth>e.clientWidth+2||e.scrollHeight>e.clientHeight+2);}).map(function(e){return (e.tagName+'.'+(e.className||'-')).slice(0,26);});
-  return x.id+':h='+x.scrollHeight+',of='+o.join(',');}).join(' | ');
- document.title='QA '+rep; var d=document.createElement('div'); d.id='qa'; d.textContent=rep; d.style.position='fixed'; d.style.left='-9999px'; document.body.appendChild(d);})();
+(function(){var s=[].slice.call(document.querySelectorAll('section.slide'));
+s.forEach(function(x){x.classList.add('on');});
+var rep=s.map(function(x){var o=[].slice.call(x.querySelectorAll('h1,p,li,td,th,div,span,table,img')).filter(function(e){return e.clientHeight>10&&(e.scrollWidth>e.clientWidth+2||e.scrollHeight>e.clientHeight+2);}).map(function(e){return (e.tagName+'.'+(e.className||'-')).slice(0,26);});
+return x.id+':h='+x.scrollHeight+',of='+o.join(',');}).join(' | ');
+document.title='QA '+rep;var d=document.createElement('div');d.id='qa';d.textContent=rep;
+d.style.position='fixed';d.style.left='-9999px';document.body.appendChild(d);})();
 </script>
 </body>
 </html>
