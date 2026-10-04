@@ -169,7 +169,8 @@ def _propose_action(tool: str, base: str = "EUR", symbols: str = "USD",
     # side must be able to answer the user's own question - "what is the rate" ends in a number,
     # not in "the kernel approved the read". Only fields the record itself carries are copied:
     # nothing is derived, completed by hand or invented when the record is silent.
-    proven = ({k: crossing[k] for k in ("outcome", "http_status", "value", "rows", "endpoint",
+    proven = ({k: crossing[k] for k in ("outcome", "http_status", "value", "value_symbol",
+                                        "rates_returned", "rows", "endpoint",
                                         "latency_ms", "response_sha256") if k in crossing}
               if contacted else {})
     return json.dumps({"submitted": True, "proposed_by": "deepseek", "authority": "tenet-kernel",

@@ -1166,6 +1166,13 @@ class Kernel:
                 "http_status": result.get("http_status"),
                 "response_sha256": result.get("response_sha256"),
                 "value": result.get("value"),
+                # When the question asked for a symbol the reply does not carry, the value
+                # is simply absent - and an absent value with no explanation reads as a
+                # broken tool. So the crossing also files which symbol was answered and
+                # which symbols the upstream actually returned; nothing is derived.
+                "value_symbol": result.get("symbol"),
+                "rates_returned": (sorted(str(k) for k in result["rates"])
+                                   if isinstance(result.get("rates"), dict) else None),
                 "latency_ms": result.get("latency_ms"),
                 "boundary": LIVE_BOUNDARY.get(tool, ""),
             }
