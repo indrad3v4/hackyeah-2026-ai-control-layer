@@ -293,6 +293,12 @@ function renderControl(t){const box=$("controlBlock");if(!t||String(t.decision).
   $("approveBtn").onclick=()=>resolve("approve");$("denyBtn").onclick=()=>resolve("deny")}
 function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();return}
   const up=t.upstream||{},dec=String(t.decision||"").toLowerCase(),contacted=up.contacted,state=String(t.state||"").toLowerCase();
+  /* ACT NEW-AC1 — the TWO gates, shown apart. The kernel keeps them separate: the actor's
+   * ENTITLEMENTS (what the person may do, /api/agents entitlements) and the agent's SCOPE (what
+   * the warrant lets this agent do, /api/agents scope — «≤ 50,000 PLN», «read-only»,
+   * «export=false»). Both are read verbatim from the trace, never paraphrased, so a refusal that
+   * lives at the scope gate is never laid at the person's door. */
+  const entitlements=Array.isArray(t.entitlements)?t.entitlements:[],scope=Array.isArray(t.scope)?t.scope:[];
   /* Every line below follows the EVIDENCE, never the decision label: a crossing is proven by
    * upstream.contacted (a real http_status), and an execution by the composer's `executed` fact.
    * `state` is the action row's own resolved lifecycle word, so "still waiting for a person" is
@@ -309,6 +315,8 @@ function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();r
   c.innerHTML=`<h3>Action under control</h3>`+
     acRow("What your AI wants to do",`${esc(toolSentence(t.action&&t.action.tool))} <span class="mono">· tool ${esc((t.action&&t.action.tool)||"—")}</span>`)+
     acRow("Who is asking",esc(t.agent??"—"))+
+    acRow("What this person may do",entitlements.length?esc(entitlements.join(" · ")):"<span class='unk'>no entitlement recorded</span>")+
+    acRow("What this agent may do",scope.length?esc(scope.join(" · ")):"<span class='unk'>no scope recorded</span>")+
     acRow("What it reaches",`<span class="mono">${esc((t.action&&t.action.tool)||"—")}</span> · ${esc((t.action&&t.action.class)||"no class recorded")}`)+
     acRow("Why TENET decided this",esc(t.reason??"reason not recorded"))+
     acRow("What happens outside TENET",`<b>${esc(consequence)}</b>`)+
