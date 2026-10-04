@@ -170,3 +170,36 @@ SELF-CHECK before you report done:
 5. Did the full suite stay green? (tail of pytest)
 If any answer is "no" or "not verified", say so in the report — a false claim here is worse
 than an incomplete task.
+
+---
+
+## AMENDMENT 1 — 2026-10-04 · the journey the page promised (unfreezes AC5(c); additive to AC3)
+
+Why: AC5(c) put one button on the page whose copy said the same request is made by two agents
+and the kernel reaches two different verdicts, while AC3's endpoint ran the allow half only.
+Measured on the live service (2026-10-04): three recorded actions, all `allow`, all `fx-trader`
+— the deny the copy promised existed only in `scripts/tenet_live_proof.py`, not in the product.
+The promise in the copy is the highest-value moment for a reviewer and the app could not show it.
+
+What changed:
+- `POST /api/scenario/journey` (NEW; no credential, the same rules as AC3): four fixed beats in
+  order — allow (`fin-reconcile`/`payments.read`), redact (`support-copilot`/`crm.read`, PII
+  fields), deny (`support-copilot`/`crm.bulk_export`, 9000 rows), hold (`report-bot`/
+  `crm.bulk_export`, 500 rows) — each with its own `run_id` (`journey-<hex>-<beat>`), its own
+  record, `origin: "operator journey"`, the same 3 s rate limit, and the same
+  503-with-no-record rule as AC3. Tool and args are module constants (`JOURNEY_STEPS`), never
+  read from the request body.
+- The payload reports what the kernel decided, never what the page wants: `decision` is the
+  verdict's own value (not an enum repr), `upstream_contacted` is the boundary's counter, and
+  `summary.denied_upstream_calls` / `summary.holds_waiting_for_a_person` are computed from those
+  counters — a beat that stops holding up is visible rather than smoothed over.
+- AC5(c), as amended: the empty state's single button is "Run the journey: allow · redact ·
+  deny · hold" and POSTs the new endpoint; the copy names the four beats instead of promising
+  two verdicts. AC3's endpoint is unchanged and remains the startup path (AC4).
+- Tests: `tests/test_journey_scenario.py` — AC1 four distinct verdicts, each with a record, no
+  credential in the body; AC2 the deny executed nothing and reached nothing; AC3 the hold is
+  `human` and waits for a person; AC4 503 with no record invented, then a real 429.
+
+Unchanged: the trace endpoint and every field AC1/AC1b/AC2 pin; `llm_authority: false`;
+`authority_source: "tenet-kernel"`; the admin-gated `/api/demo/run`; the revoke gate; the
+`warrnt` namespace.

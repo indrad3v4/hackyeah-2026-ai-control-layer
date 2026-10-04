@@ -266,6 +266,27 @@ docs/            architecture and evidence contracts
   from the rendered DOM and from the bytes the page actually sent); all eight fail on the page as it
   stood before this change and pass after it.
 
+### The journey — the browser's own demo (no credential)
+
+`POST /api/scenario/journey` runs four real requests through the kernel in order and returns the
+four verdicts with their own records: `allow` (`fin-reconcile` reading payments), `redact`
+(`support-copilot` reading CRM with PII fields — stripped before the reader saw them), `deny`
+(`support-copilot` attempting a 9000-row export — `executed=False`, `upstream_contacted=False`),
+`hold` (`report-bot` attempting a 500-row export — `decision: human`, waiting for a person).
+Measured against the shipped kernel (2026-10-04, live upstream):
+
+```
+allow  fin-reconcile    allow    exec=True  upstream=True
+redact support-copilot  redact   exec=True  upstream=True
+deny   support-copilot  deny     exec=False upstream=False
+hold   report-bot       human    exec=False upstream=False
+```
+
+Tool and args are constants in the server, never read from the request; the payload carries what
+the kernel decided and the boundary's own counters, so a beat that stops holding up shows up
+instead of being smoothed over. Full contract record: `docs/act-5-live-security-trace-contract.md`
+(Amendment 1); tests: `tests/test_journey_scenario.py`.
+
 ## Deliberately not claimed
 
 A diagram is not presented as a deployed feature. If evidence is unavailable, TENET shows unknown or incomplete. A future enterprise connector is not presented as installed until it exists and is exercised.

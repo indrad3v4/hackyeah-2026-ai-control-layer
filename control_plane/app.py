@@ -48,6 +48,26 @@ STARTUP_RUN_PREFIX = "startup-"
 ORIGIN_SELF_CHECK = "operator self-check"
 ORIGIN_STARTUP = "startup self-check"
 
+# ------------------------------------------------------------ the journey: four real beats
+# The judge-facing demo. Every beat is a real kernel decision on a real request by an agent in
+# the registry, and the tool/arguments are module constants exactly as the scenario above, so a
+# caller can never steer a verdict. The deny and the hold are the beats the product has to be
+# able to show: a denial that leaves the far side untouched, and a hold that waits for a person.
+JOURNEY_RUN_PREFIX = "journey-"
+ORIGIN_JOURNEY = "operator journey"
+JOURNEY_STEPS: tuple[tuple[str, str, str, dict[str, Any]], ...] = (
+    ("allow", "fin-reconcile", "payments.read", {"table": "payments", "limit": 5}),
+    ("redact", "support-copilot", "crm.read", {"fields": ["subject", "email", "pesel"]}),
+    ("deny", "support-copilot", "crm.bulk_export", {"table": "customers", "rows": 9000}),
+    ("hold", "report-bot", "crm.bulk_export", {"table": "customers", "rows": 500}),
+)
+JOURNEY_BEAT_MEANING = {
+    "allow": "the call crossed the boundary",
+    "redact": "PII stripped before the reader saw it",
+    "deny": "nothing reached the far side",
+    "hold": "waiting for a person to decide",
+}
+
 
 def _kernel_or_503(app: FastAPI) -> tuple[Optional[Kernel], Optional[JSONResponse]]:
     """Return the kernel, or a 503 refusal when the authority is unavailable.
@@ -87,6 +107,39 @@ def _run_fixed_scenario(kernel: Kernel, *, origin: str, run_prefix: str) -> Opti
     if action_id:
         kernel.record_origin(action_id, origin)
     return action_id or None
+
+
+def _run_journey_step(kernel: Kernel, beat: str, agent: str, tool: str,
+                      params: dict[str, Any], run_id: str) -> dict[str, Any]:
+    """Run one beat of the journey through the kernel and report exactly what it decided.
+
+    The agent token is read from the kernel's own registry inside this process, exactly as the
+    fixed scenario above does, so no credential ever reaches the browser. Nothing here can turn
+    one verdict into another: if the register withholds the right, the payload says ``deny`` and
+    carries the boundary's own counters (``upstream_contacted: false``), and a held call is
+    reported as a hold that waits for a person - never as an execution.
+    """
+    tokens = {str(a.get("id")): str(a.get("token") or "") for a in kernel.agents(dev=True)}
+    token = tokens.get(agent, "")
+    if not token:
+        return {"beat": beat, "meaning": JOURNEY_BEAT_MEANING.get(beat, ""), "agent": agent,
+                "tool": tool, "run_id": run_id, "decision": "unavailable",
+                "reason": "no live token for this agent in the registry",
+                "action_id": None, "receipt": "", "executed": False,
+                "upstream_contacted": False, "boundary_attempts": None}
+    decision, reason, detail, receipt, executed = kernel.intercept(
+        agent, token, tool, dict(params), run_id=run_id)
+    d = detail or {}
+    action_id = str(d.get("action_id") or (d.get("action") or {}).get("id") or "")
+    verdict = getattr(decision, "value", None) or str(decision)
+    if action_id:
+        kernel.record_origin(action_id, ORIGIN_JOURNEY)
+    return {"beat": beat, "meaning": JOURNEY_BEAT_MEANING.get(beat, ""), "agent": agent,
+            "tool": tool, "run_id": run_id, "decision": verdict, "reason": reason,
+            "executed": bool(executed), "action_id": action_id or None,
+            "receipt": str((receipt or {}).get("hash") or d.get("receipt") or ""),
+            "upstream_contacted": bool(d.get("upstream_contacted", executed)),
+            "boundary_attempts": d.get("boundary_attempts")}
 
 
 async def _warm_trace(app: FastAPI) -> None:
@@ -697,6 +750,49 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         return _revoke(app, agent_id, x_warrnt_admin, str(body.get("by") or "").strip())
 
     # ------------------------------------------- the canonical live scenario (operator only)
+    @app.post("/api/scenario/journey")
+    def scenario_journey() -> JSONResponse:
+        """Run the journey - allow, redact, deny, hold - in order, credential-free.
+
+        This is the demo the page promises: one control plane, four real requests, four
+        verdicts. The deny beat must leave the far side untouched and the hold beat must be
+        waiting for a person; the payload reports what actually happened, so a beat that does
+        not hold up is visible instead of smoothed over. Rate limited like the self-check;
+        503 and no record when no upstream is configured.
+        """
+        kernel, unavailable = _kernel_or_503(app)
+        if unavailable:
+            return unavailable
+        assert kernel is not None
+        if not live_upstream_configured():
+            return JSONResponse({"error": "no upstream configured"}, status_code=503)
+        now = time.monotonic()
+        elapsed = now - float(getattr(app.state, "journey_last", 0.0) or 0.0)
+        if elapsed < SELF_CHECK_RATE_LIMIT_S:
+            retry_after = max(1, int(round(SELF_CHECK_RATE_LIMIT_S - elapsed)))
+            return JSONResponse({"error": "rate limited", "retry_after_s": retry_after},
+                                status_code=429)
+        app.state.journey_last = now
+        run_id = JOURNEY_RUN_PREFIX + secrets.token_hex(4)
+        steps = [_run_journey_step(kernel, beat, agent, tool, args,
+                                   run_id=f"{run_id}-{beat}")
+                 for beat, agent, tool, args in JOURNEY_STEPS]
+        verdicts = [s["decision"] for s in steps]
+        return JSONResponse({
+            "run_id": run_id,
+            "mode": "live",
+            "steps": steps,
+            "summary": {
+                "beats": len(steps),
+                "distinct_verdicts": len(set(verdicts)),
+                "verdicts": verdicts,
+                "denied_upstream_calls": sum(
+                    1 for s in steps if s["decision"] == "deny" and s["upstream_contacted"]),
+                "holds_waiting_for_a_person": sum(
+                    1 for s in steps if s["decision"] == "human" and not s["executed"]),
+            },
+        })
+
     @app.post("/api/demo/run")
     async def demo_run(request: Request,
                        x_warrnt_admin: str = Header(default="")) -> JSONResponse:
