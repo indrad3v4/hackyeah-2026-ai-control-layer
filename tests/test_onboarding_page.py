@@ -80,5 +80,7 @@ def test_it_speaks_every_beat_listens_and_never_scripts_the_answer():
     assert "I heard:" in body, "the transcription is shown to the human"
     assert "/api/ask" in body and "/api/actions" in body
     assert "never a script" in body
+    assert "waiting for TENET" in body, (
+        "the human may not outrun the kernel: while the record is pending, the step says so")
     assert "replace(/[^0-9]/g" in body, (
         "the record named is THIS run's, not the oldest row of a newest-first list")

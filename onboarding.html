@@ -158,7 +158,7 @@ button:disabled{opacity:.45;cursor:default}
 <script>
 const $=id=>document.getElementById(id);
 const B=location.origin;
-let step=0, intent="", soundOn=true, rec=null, resp=null, recRow=null, asked=false;
+let step=0, intent="", soundOn=true, rec=null, resp=null, recRow=null, asked=false, pending=false;
 
 const BEATS=[
  {k:"SAY",t:"Tell me what you want your AI to do.",
@@ -292,8 +292,11 @@ function render(){
   $("said").textContent=b.s;
   setTitle(b.t,b.l);
   $("inputRow").style.display = b.k==="SAY" ? "flex":"none";
-  $("back").disabled = step===0; $("next").disabled = step===BEATS.length-1;
-  $("next").textContent = b.k==="DECIDE" ? "See what happened →" : (step===BEATS.length-1?"Done":"Next →");
+  const waiting = asked && !recRow && step>=2;   // the human may not outrun the kernel
+  $("back").disabled = step===0;
+  $("next").disabled = step===BEATS.length-1 || waiting;
+  $("next").textContent = waiting ? "waiting for TENET…"
+    : (b.k==="DECIDE" ? "See what happened →" : (step===BEATS.length-1?"Done":"Next →"));
   $("stage").innerHTML = stageHTML();
   const c=$("copyRec"); if(c) c.onclick=()=>{ navigator.clipboard&&navigator.clipboard.writeText("TENET "+(recRow&&recRow.action_id)+" · receipt "+(recRow&&recRow.receipt)+" · decided before execution"); c.textContent="Copied ✓"; };
   const w=$("walkAgain"); if(w) w.onclick=()=>{ asked=false; recRow=null; resp=null; step=0; render(); };
@@ -308,8 +311,13 @@ function setTitle(t,l){
     const stage=$("stage"); stage.parentElement.insertBefore(h, stage); stage.parentElement.insertBefore(p, stage); }
   h.textContent=t; $("stepLead").textContent=l;
 }
+function paintStage(){ $("stage").innerHTML=stageHTML(); charState(currentStateName());
+  const waiting=asked&&!recRow&&step>=2;
+  $("next").disabled = step===BEATS.length-1 || waiting;
+  $("next").textContent = waiting ? "waiting for TENET…"
+    : (BEATS[step].k==="DECIDE" ? "See what happened →" : (step===BEATS.length-1?"Done":"Next →")); }
 async function ask(){
-  asked=true; charState("think");
+  asked=true; pending=true; charState("think");
   try{
     const r=await fetch(B+"/api/ask",{method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({q:intent||"check today's EUR/USD rate for me"})});
@@ -323,8 +331,7 @@ async function ask(){
     const own=rows.find(x=>resp&&x.action_id===resp.action_id);
     recRow=own||rows.reduce((m,x)=>num(x)>num(m)?x:m,rows[0]||null);
   }catch(e){ recRow=null; }
-  if(BEATS[step].k!=="UNDERSTAND") return;
-  $("stage").innerHTML=stageHTML(); charState(currentStateName());
+  pending=false; paintStage();
 }
 $("go").onclick=()=>{ intent=$("intent").value.trim(); if(!intent){ $("intent").focus(); return; } step=1; render(); };
 $("next").onclick=()=>{ if(step<BEATS.length-1){ step++; render(); } };
