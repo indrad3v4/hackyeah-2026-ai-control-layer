@@ -115,6 +115,38 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
 .acLabel{min-width:180px;color:#8ea0b4;font-size:12px}.acVal{flex:1;color:#e8eef6;font-size:13px;line-height:1.45}
 .controlBlock{margin:12px 0 0;padding:13px 14px;border-radius:12px;border:1px solid #3a2c12;background:#191307;color:#f0d9a8;font-size:13px}
 .controlBlock .pendingLine{font-weight:750;color:#ffd27a;margin-bottom:9px}.controlBtns{display:flex;gap:9px}
+/* ---- the journey rail: where in the seven-beat loop the operator stands. Every beat's state is
+ * derived from REAL evidence (the action record + the receipt chain), never from a timer or a
+ * client flag, so a beat can be DONE only when the kernel/record proves it (AC1). The vocabulary
+ * is the guide's own: SAY · SEE · UNDERSTAND · DECIDE · WITNESS · PROVE · WIN. ---- */
+.rail{display:flex;gap:6px;flex-wrap:wrap;align-items:stretch;padding:12px 14px;border:1px solid #1d2b3d;background:#0c1421;border-radius:12px}
+.rail .beat{display:flex;flex-direction:column;gap:3px;min-width:96px;padding:8px 10px;border-radius:9px;border:1px solid #1b2534;background:#0e1725;font-size:11px}
+.rail .beat .bk{font-weight:900;letter-spacing:.09em;font-size:10.5px;color:#8ea0b4;text-transform:uppercase}
+.rail .beat .bs{color:#718196;font-size:10px}
+.rail .beat[data-state="done"]{border-color:#2c5a44;background:#0d2019}
+.rail .beat[data-state="done"] .bk{color:var(--green)}
+.rail .beat[data-state="done"] .bs{color:#7fd3ac}
+.rail .beat[data-state="current"]{border-color:#7a6420;background:#1a1508;box-shadow:0 0 0 1px #7a642055}
+.rail .beat[data-state="current"] .bk{color:var(--amber)}
+.rail .beat[data-state="current"] .bs{color:#e6c477}
+.rail .beat[data-state="not_evaluated"] .bk{color:#93a5b8}
+.railNote{margin:9px 0 0;color:#93a5b8;font-size:11.5px}
+/* the ONE named next step; a compass, not an answer: a sentence in the operator's language and a
+ * control that performs it (AC2). No outcome ends without one. */
+.nextStep{margin:12px 0 0;padding:13px 14px;border-radius:12px;border:1px solid #23405c;background:#0c1723}
+.nextStep .nsLabel{font-size:10px;color:#93a5b8;text-transform:uppercase;letter-spacing:.14em;font-weight:800}
+.nextStep .nsText{margin:6px 0 10px;font-size:13.5px;color:#e8eef6;line-height:1.5}
+.nextStep .nsText b{color:#fff}
+.nextStep .nsBtns{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.nextStep .nsWait{color:#c9b98a;font-size:11.5px;margin-top:8px}
+.receiptBox{margin:10px 0 0;padding:11px 13px;border-radius:10px;border:1px dashed #2c4258;background:#0b1622}
+.receiptBox .rbLabel{font-size:10px;color:#93a5b8;text-transform:uppercase;letter-spacing:.14em;font-weight:800}
+.receiptBox .rbVal{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.receiptBox code{font-family:Consolas,monospace;font-size:13px;color:#8ef0c2}
+.chain{margin:12px 0 0;padding:12px 14px;border-radius:12px;border:1px solid #1d2b3d;background:#0c1522}
+.chain .chLine{font-size:12.5px;color:#c9d6e6;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.chain .chLine b{color:#fff}
+.chain .chMeta{color:#93a5b8;font-size:11px;margin-top:7px}
 @media(max-height:900px){body{overflow:auto}.app{overflow:auto;max-height:none}}
 /* ---- the guide: gate, chip, toggle — the onboarding's pattern, on the console ---- */
 #voiceGate{position:fixed;inset:0;background:rgba(4,7,10,.93);display:grid;place-items:center;z-index:60;padding:20px}
@@ -143,6 +175,10 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
 <div id="actionCard" style="display:none"></div>
 <div class="whoRow"><label for="whoActs" class="whoLabel">Who should act?</label><select id="whoActs" class="whoActs"><option value="fx-trader">fx-trader</option><option value="support-copilot">support-copilot</option><option value="fx-auditor">fx-auditor</option></select><button class="btn" id="whoGo">Let them try</button></div>
 <div id="controlBlock"></div>
+<div class="rail" id="journeyRail" data-source="live-trace+chain" aria-label="the journey: where you are"></div>
+<div class="railNote" id="railNote"></div>
+<div class="nextStep" id="nextStep" data-outcome="none"></div>
+<div class="chain" id="chainView" data-source="api/state:chain" style="display:none"></div>
 </section>
 
 <section class="hero"><!-- Security decision: retained as a machine-readable layout contract; visible copy is human-first. --><!-- Model resources: retained as a machine-readable layout contract; visible copy is human-first. --><article class="card pad" id="traceCard"><div class="eyebrow">01 · The action under control</div><div class="titleRow"><div><h2 class="actionTitle" id="actionTitle">Waiting for a real agent action</h2><p class="actionLead" id="actionLead">The last action TENET intercepted, in the order the questions are asked.</p></div><span class="modeBadge unk" id="modeBadge">mode —</span></div><div class="path" id="traceBody"></div><div id="outcome"></div><div id="proof"></div><details class="tech" id="techDetails"><summary>Technical details</summary><div class="techBody" id="techBody"></div></details><div class="empty" id="emptyState" style="display:none"><h2>TENET has enforced nothing yet</h2><p>TENET sits between an AI agent and the tools it wants to use. Before any tool runs it checks identity, entitlement, warrant and policy, reaches a verdict, and writes a receipt. Nothing executes until that verdict allows it, and a denied action never reaches the far side of the boundary.</p><p>To put the first real action on this screen:</p><ol><li>Point TENET at a live tool server (the <span class="mono">WARRNT_UPSTREAM</span> environment variable) so a real crossing is possible.</li><li>Press <b>Run the journey</b> below: one control plane, four real requests, four verdicts — an allow that crosses, a redaction, a denial that never reaches the far side, and a hold that waits for a person.</li><li>Or let a real agent call the control plane and watch its own action appear here.</li></ol><button class="btn" id="selfCheck">Run the journey: allow · redact · deny · hold</button><div class="mono" id="selfCheckMsg" style="margin-top:9px;color:#718196"></div></div></article>
@@ -157,11 +193,18 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
    function alone must not meet a free identifier it was never given. */
 var V=(typeof window!=="undefined"&&window.TENETVoice)?window.TENETVoice:null;
 const $=id=>document.getElementById(id);let events=[],selected=null,usage=null,trace=null,cardTrace=null,cardPinned=false,llm_authority=null,authority_source=null,upstream_configured=null,live_mode=null;
+/* chainData is the kernel's own receipt-chain projection (GET /api/state -> chain), read once per
+ * refresh and never invented. railNotEvaluated is TRUE only when a real transport failure means no
+ * verdict exists (askFailureState.state === "not_evaluated"); the rail then marks NO beat done. */
+let chainData=null,railNotEvaluated=false;
+/* The operator's own opened proof survives a re-render: refresh() re-draws the next step every few
+ * seconds, and a view the person opened must not be slammed shut underneath them (AC2/AC6). */
+let nsOpenReceipt=false,nsOpenChain=false;
 /* cardTrace is the trace the HEADLINE CARD shows: null means "follow the latest action"
  * (the default on load). selectEvent() repoints it at the selected record's own trace, fetched
  * from the same one composer via GET /api/live-trace?action_id=<id>. The card never invents a
  * field: whatever the kernel did not record for that action renders as "not recorded". */
-function shownTrace(){return cardTrace||trace}
+function shownTrace(){if(typeof askFailureState!=="undefined"&&askFailureState&&askFailureState.state==="not_evaluated")return null;return cardTrace||trace}
 /* esc/dash/dashHtml are JSON-aware: a value that is an object is rendered as JSON, never as the
  * literal "[object Object]" (the latent bug the old String(v) fallback carried). */
 function esc(v){return String(v??"—").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
@@ -280,7 +323,7 @@ function selectEvent(id){const e=events.find(x=>x.event_id===id);if(!e)return;se
  * one composer (GET /api/live-trace?action_id=<id>) and paint the card from it. If the fetch
  * fails the card falls back to the latest trace rather than showing a value the kernel did not
  * record for the selected action. */
-async function renderCardFor(id){try{const lt=await get("/api/live-trace?action_id="+encodeURIComponent(id));cardTrace=lt.trace||null}catch(err){cardTrace=null}renderTrace();renderAuthority()}
+async function renderCardFor(id){try{const lt=await get("/api/live-trace?action_id="+encodeURIComponent(id));cardTrace=lt.trace||null}catch(err){cardTrace=null}renderTrace();renderAuthority();renderRail();renderNextStep()}
 function cell(v){const s=dash(v);return s==null?"<span class='unk'>not recorded</span>":`<span title="${esc(s)}">${esc(s)}</span>`}
 function renderSelected(e){$("eventState").textContent=e.state||"recorded";$("details").innerHTML=[["What",e.intent||e.tool],["Agent",e.agent],["Actor",e.actor],["Authority / warrant",e.warrant],["Warrant state",e.warrant_state],["Policy",e.policy],["Decision",e.decision],["Why",e.reason],["Data boundary",e.upstream_contacted===true?"crossed":e.upstream_contacted===false?"not crossed":"not proven"],["Model",e.model_served||e.model_requested],["Model trace",e.model_trace_id],["Receipt",e.receipt_id],["Action",e.event_id],["Upstream call",e.upstream_call_id]].map(r=>`<div class="row"><div class="label">${esc(r[0])}</div><div class="value mono">${cell(r[1])}</div></div>`).join("");$("timeline").innerHTML=[["Agent proposed",e.intent||e.tool||"request"],["TENET checked",e.policy||"policy"],["Decision",e.decision||"recorded"],[e.upstream_contacted===true?"Upstream contacted":"Boundary result",e.upstream_contacted===true?(e.execution_result?.http_status?"HTTP "+e.execution_result.http_status:"contact recorded"):"No contact proven"],["Receipt",e.receipt_id||"not present"]].map(x=>`<div class="tl"><div class="bullet"></div><div><b>${esc(x[0])}</b><span>${cell(x[1])}</span></div></div>`).join("");$("revoke").disabled=!e.agent||e.state==="halted"||e.decision==="deny"||e.decision==="revoked";document.body.dataset.revokeOverTarget=$("revoke").disabled?"no":"yes"}
 /* ACT NEW-AC5 — the four states the kernel counts (control.counts: approved · denied · pending ·
@@ -305,7 +348,7 @@ function renderStates(b){const el=$("states");if(!el)return;
     +cell("expired","expired",c.expired,lastOf("expired"))}
 async function get(url,opts){const r=await fetch(url,opts);if(!r.ok){const err=new Error(url+" → HTTP "+r.status);err.status=r.status;err.body=await r.json().catch(()=>({}));throw err}return r.json()}
 let ready=false;
-async function refresh(){try{const [sec,res,lt,ov,sm]=await Promise.all([get("/api/security-events?limit=20"),get("/api/model-usage"),get("/api/live-trace"),get("/api/overview"),get("/api/stream?limit=20").catch(()=>({}))]);events=sec.events||[];usage=res;trace=lt.trace||null;llm_authority=lt.llm_authority;authority_source=lt.authority_source;upstream_configured=(typeof ov.upstream_configured==="boolean")?ov.upstream_configured:null;live_mode=ov.mode||null;ready=true;$("live").textContent="Live control plane · kernel evidence";$("footer").textContent="Evidence source: TENET kernel · mode: "+(live_mode||"—")+(upstream_configured===true?" · upstream configured":upstream_configured===false?" · no upstream configured":"");setMode(upstream_configured);renderResource();renderFeed();renderStates(sm);if(!selected||!events.some(e=>e.event_id===selected)){selected=events[0]?.event_id||null;cardPinned=false}if(selected){const e=events.find(x=>x.event_id===selected);if(e)renderSelected(e)}/* The card follows the SELECTED record; with no pin it follows the latest action. On load cardPinned is false, so the default is the newest action. */if(cardPinned&&selected){renderCardFor(selected)}else{cardTrace=null;renderTrace();renderAuthority()}document.body.dataset.ok="true"}catch(err){$("live").textContent="Control plane unavailable";$("footer").textContent=err.message;setMode(null);if(err.body&&err.body.retry_after_s)$("selfCheckMsg").textContent=rateLimited(err.body.retry_after_s);document.body.dataset.ok="false"}}
+async function refresh(){try{const [sec,res,lt,ov,sm,st]=await Promise.all([get("/api/security-events?limit=20"),get("/api/model-usage"),get("/api/live-trace"),get("/api/overview"),get("/api/stream?limit=20").catch(()=>({})),get("/api/state").catch(()=>null)]);events=sec.events||[];usage=res;trace=lt.trace||null;chainData=st||null;llm_authority=lt.llm_authority;authority_source=lt.authority_source;upstream_configured=(typeof ov.upstream_configured==="boolean")?ov.upstream_configured:null;live_mode=ov.mode||null;ready=true;if(!askFailureState)railNotEvaluated=false;$("live").textContent="Live control plane · kernel evidence";$("footer").textContent="Evidence source: TENET kernel · mode: "+(live_mode||"—")+(upstream_configured===true?" · upstream configured":upstream_configured===false?" · no upstream configured":"");setMode(upstream_configured);renderResource();renderFeed();renderStates(sm);if(!selected||!events.some(e=>e.event_id===selected)){selected=events[0]?.event_id||null;cardPinned=false}if(selected){const e=events.find(x=>x.event_id===selected);if(e)renderSelected(e)}/* The card follows the SELECTED record; with no pin it follows the latest action. On load cardPinned is false, so the default is the newest action. */if(cardPinned&&selected){renderCardFor(selected)}else{cardTrace=null;renderTrace();renderAuthority()}renderRail();renderNextStep();document.body.dataset.ok="true"}catch(err){$("live").textContent="Control plane unavailable";$("footer").textContent=err.message;setMode(null);if(err.body&&err.body.retry_after_s)$("selfCheckMsg").textContent=rateLimited(err.body.retry_after_s);document.body.dataset.ok="false";railNotEvaluated=true;renderRail();renderNextStep()}}
 /* The rate-limited state reads as waiting for a slot, never as a TENET failure. */
 function rateLimited(n){return "Rate limited · retrying in "+n+"s — the kernel is still enforcing; this is a wait, not a failure."}
 $("refresh").onclick=refresh;
@@ -340,7 +383,153 @@ function renderControl(t){const box=$("controlBlock");if(!t||String(t.decision).
     return}
   box.style.display="";box.innerHTML=`<div class="pendingLine">The request has NOT been sent yet. This action is waiting for you.</div><div class="controlBtns"><button class="btn" id="approveBtn">Approve</button><button class="btn red" id="denyBtn">Deny</button></div><div class="mono" id="controlMsg" style="margin-top:8px;color:#c9b98a"></div>`;
   $("approveBtn").onclick=()=>resolve("approve");$("denyBtn").onclick=()=>resolve("deny")}
-function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();return}
+/* ---- THE JOURNEY RAIL ---------------------------------------------------------------------------
+ * The guide's seven beats, in the guide's own vocabulary, on the console. Each beat's state is
+ * derived from REAL evidence and nothing else: the action record the kernel composed
+ * (GET /api/live-trace) and the receipt chain (GET /api/state -> chain). No beat is ever marked
+ * "done" from a client-side flag or a timer, and none is inferred from a HTTP status (AC1/AC3).
+ *
+ *   SAY        done  the operator's words became a recorded action (the record carries an action_id)
+ *   SEE        done  the record carries the action the AI proposed (a tool)
+ *   UNDERSTAND done  one concrete action is named (a tool, and the intent if the record has one)
+ *   DECIDE     done  the record carries BOTH a decision and who decided it
+ *   WITNESS    done  the record carries a receipt id (the crossing/refusal is witnessed)
+ *   PROVE      done  that receipt appears in the chain (/api/state -> chain.ok)
+ *   WIN        done  the whole loop is proven (PROVE, and the execution is proven in the record)
+ *
+ * CURRENT = the latest beat with proof; NOT YET = no proof; and when the trace cannot be re-read
+ * the whole rail reads "not evaluated" and marks NO beat done. */
+const BEAT_ORDER=["SAY","SEE","UNDERSTAND","DECIDE","WITNESS","PROVE","WIN"];
+const BEAT_WORD={SAY:"your words",SEE:"what I heard",UNDERSTAND:"what your AI wants",
+  DECIDE:"the kernel decided",WITNESS:"it happened",PROVE:"the receipt",WIN:"you stayed in control"};
+function chainHead(){return (chainData&&chainData.chain)||null}
+function receiptInChain(receipt){const ch=chainHead();if(!ch||!receipt)return false;
+  if(ch.head&&String(ch.head)===String(receipt))return true;
+  /* the chain is a projection of the kernel's own receipts; a non-zero length with ok true and
+   * this receipt present in the correlation is proof. When the chain says nothing, it is NOT_ */
+  if(ch.ok===true&&Number(ch.length||0)>0){
+    const re=String(receipt);
+    const corr=(chainData&&chainData.proof&&chainData.proof.correlation)||chainData&&chainData.correlation;
+    if(Array.isArray(corr))return corr.some(r=>String(r&&r.receipt_id||"")===re);
+    return ch.head!=null?String(ch.head)===re:true;
+  }
+  return false}
+function journeyBeats(t,notEvaluated){const r={SAY:"not_yet",SEE:"not_yet",UNDERSTAND:"not_yet",
+  DECIDE:"not_yet",WITNESS:"not_yet",PROVE:"not_yet",WIN:"not_yet"};
+  if(notEvaluated){const o={};BEAT_ORDER.forEach(k=>o[k]="not_evaluated");return o}
+  if(!t)return r;
+  const hasAction=!!(t.action_id);
+  const tool=t.action&&t.action.tool;
+  const hasDecision=!!(t.decision&&t.decided_by);
+  const receipt=t.receipt_id;
+  const proven=receiptInChain(receipt);
+  /* WIN means the call actually CROSSED, proven by the record. A proven NON-crossing (a deny) is an
+   * honest ending, not a win: it must stop short of WIN (AC4). Only a real execution proves the
+   * crossing — never the decision label (Amendment 2). */
+  const execProven=t.executed===true||(t.upstream&&t.upstream.contacted===true);
+  if(hasAction)r.SAY="done";
+  if(hasAction&&tool)r.SEE="done";
+  if(hasAction&&tool)r.UNDERSTAND="done";
+  if(hasDecision)r.DECIDE="done";
+  if(receipt)r.WITNESS="done";
+  if(receipt&&proven)r.PROVE="done";
+  if(receipt&&proven&&execProven)r.WIN="done";
+  /* CURRENT = the latest beat that has proof, and never more than one. */
+  let current=null;for(const k of BEAT_ORDER){if(r[k]==="done")current=k}
+  if(current)r[current]="current";
+  return r}
+function renderRail(){const el=$("journeyRail"),note=$("railNote");if(!el)return;
+  const t=shownTrace();
+  const beats=journeyBeats(t,railNotEvaluated);
+  el.innerHTML=BEAT_ORDER.map(k=>{const st=beats[k];
+    const word=st==="done"?"done":st==="current"?"you are here":st==="not_evaluated"?"not evaluated":"not yet";
+    return `<div class="beat" data-beat="${k}" data-state="${st}"><span class="bk">${k}</span><span class="bs">${esc(BEAT_WORD[k])} · ${word}</span></div>`}).join("");
+  if(!note)return;
+  if(railNotEvaluated){note.textContent="The action record could not be re-read, so the rail shows not evaluated and no step is marked done. A transport failure is not a verdict."}
+  else if(!t){note.textContent="The loop has not started: say what your AI should do, and TENET answers before anything runs."}
+  else{const c=BEAT_ORDER.find(k=>beats[k]==="current");note.textContent=c?("You are at "+c+" — "+BEAT_WORD[c]+"."):"No step is proven done yet."}}
+/* ---- ONE NAMED NEXT STEP, EVERY OUTCOME (AC2) ---------------------------------------------------
+ * Exactly one sentence in the operator's language and one control that performs it, for each of the
+ * four terminal outcomes. The evidence is the ONE place the card, the rail and this line all read
+ * (the live-trace record + the chain), so they cannot disagree (AC3). A transport failure gets the
+ * not-evaluated step; nothing here invents a verdict. */
+function outcomeOf(t){if(railNotEvaluated)return "not_evaluated";if(!t)return "none";
+  const dec=String(t.decision||"").toLowerCase(),st=String(t.state||"").toLowerCase();
+  if(st==="pending"||dec==="human")return "hold";
+  if(st==="denied"||st==="expired")return st==="expired"?"not_evaluated":"deny";
+  if(st==="approved")return (t.upstream&&t.upstream.contacted===true)?"allow":"deny";
+  if(dec==="deny"||dec==="revoked")return "deny";
+  if(dec==="allow"||dec==="redact")return (t.upstream&&t.upstream.contacted===true)?"allow":"deny";
+  return "none"}
+function renderNextStep(){const el=$("nextStep");if(!el)return;
+  const t=shownTrace(),outcome=outcomeOf(t),receipt=t&&t.receipt_id;
+  el.dataset.outcome=outcome;
+  const label=`<div class="nsLabel">Your next step</div>`;
+  if(outcome==="none"){el.innerHTML=label+`<div class="nsText">Ask your AI to do something — I will name the next step once the kernel has answered.</div>`;return}
+  if(outcome==="not_evaluated"){el.innerHTML=label+
+    `<div class="nsText"><b>Nothing was decided</b> — the decision path did not answer, so no verdict exists. Retry, or check the transport.</div>`+
+    `<div class="nsBtns"><button class="btn" id="nsRetry">Ask again</button><a class="door" href="/observer">check the transport →</a></div>`+
+    `<div class="nsWait" id="nextMsg"></div>`;
+    const b=$("nsRetry");if(b)b.onclick=()=>{const i=$("intentInput");if(i&&i.value){$("intentGo").click()}else{const m=$("nextMsg");if(m)m.textContent="Type what your AI should do in the box, then press Ask TENET."}};
+    return}
+  if(outcome==="allow"){el.innerHTML=label+
+    `<div class="nsText"><b>Read the receipt.</b> The call crossed and the kernel recorded it — open the proof, then see the whole chain.</div>`+
+    `<div class="nsBtns"><button class="btn" id="nsReadReceipt">Read the receipt</button></div>`+
+    `<div class="receiptBox" id="nsReceiptBox" style="display:none"><div class="rbLabel">Receipt</div><div class="rbVal"><code id="nsReceipt"></code>`+
+      `<button class="btn" id="nsCopy"${receipt?"":" disabled"}>Copy</button>`+
+      `<button class="btn" id="nsChain">See the whole chain</button></div></div>`+
+    `<div class="chain" id="nsChainView" style="display:none"></div><div class="nsWait" id="nextMsg"></div>`;
+    /* The receipt id is written into the page only when the operator asks for the proof — the first
+     * render carries no raw technical identifier, exactly as the card keeps ids under its
+     * disclosure. The value is the record's own receipt_id, never synthesised. A proof the operator
+     * already opened is re-opened on the next render, so refresh() cannot shut it under them. */
+    const rb=$("nsReadReceipt");
+    const openReceipt=()=>{const b=$("nsReceiptBox"),v=$("nsReceipt");if(v)v.textContent=receipt||"not recorded";if(b)b.style.display="";
+      const m=$("nextMsg");if(m)m.textContent="Proof opened. Copy the receipt, or see the whole chain below."};
+    if(rb)rb.onclick=()=>{nsOpenReceipt=true;openReceipt()};
+    if(nsOpenReceipt)openReceipt();
+    const cp=$("nsCopy");if(cp)cp.onclick=()=>copyReceipt(receipt);
+    const ch=$("nsChain");if(ch)ch.onclick=()=>toggleChain();
+    if(nsOpenChain)toggleChain(true);return}
+  if(outcome==="deny"){const execProven=t.executed===false;
+    el.innerHTML=label+
+    `<div class="nsText"><b>Nothing crossed — see why.</b> The kernel refused before execution, so the far side was never reached.</div>`+
+    `<div class="receiptBox"><div class="rbLabel">Why TENET refused</div><div class="rbVal"><span>${esc(t.reason||"reason not recorded")}</span></div>`+
+      `<div class="chMeta">Proof no upstream call was made: ${execProven?"the record proves it did not run":"the record does not say — not proven"}.${receipt?" A receipt was recorded for this refusal — open the chain to see it.":""}</div></div>`+
+    `<div class="nsBtns"><button class="btn" id="nsChain">See the whole chain</button></div>`+
+    `<div class="chain" id="nsChainView" style="display:none"></div>`;
+    const ch=$("nsChain");if(ch)ch.onclick=()=>toggleChain();return}
+  if(outcome==="hold"){const st=String(t.state||"").toLowerCase();
+    if(st&&st!=="pending"){el.innerHTML=label+
+      `<div class="nsText"><b>This hold is closed (${esc(st)})</b> — there is nothing left to decide. See the chain for the record.</div>`+
+      `<div class="nsBtns"><button class="btn" id="nsChain">See the whole chain</button></div>`+
+      `<div class="chain" id="nsChainView" style="display:none"></div>`;
+      const ch=$("nsChain");if(ch)ch.onclick=()=>toggleChain();return}
+    el.innerHTML=label+
+    `<div class="nsText"><b>Your decision: approve or deny.</b> The request has NOT been sent. Approve to let it cross, or deny to hold the boundary.</div>`+
+    `<div class="nsBtns"><button class="btn" id="nsApprove">Approve</button><button class="btn red" id="nsDeny">Deny</button></div>`+
+    `<div class="nsWait">If you do nothing, the hold stays open — no call is made until a person decides.</div>`+
+    `<div class="nsWait" id="nextMsg"></div>`;
+    const a=$("nsApprove"),d=$("nsDeny");
+    if(a)a.onclick=()=>resolve("approve");if(d)d.onclick=()=>resolve("deny");return}
+  el.innerHTML=label+`<div class="nsText">Nothing to act on yet.</div>`}
+/* The chain view is the receipt's destination: the kernel's own projection of the chain
+ * (/api/state -> chain, proof.correlation) plus this action's own run_id -> action_id -> receipt.
+ * Every id is read verbatim; a field the record does not carry renders "not recorded" (AC2/AC3). */
+function renderChain(box){if(!box)return;const ch=chainHead(),t=shownTrace();
+  const ok=ch?ch.ok:null,length=ch?ch.length:null,head=ch?ch.head:null;
+  const num=(v)=>v===null||v===undefined?"not recorded":String(v);
+  box.innerHTML=`<div class="chLine"><b>Chain</b> `+
+    (ch?`${ok===true?"verified":"not verified"} · ${esc(num(length))} receipt(s) · head ${esc(num(head))}`:"the chain was not read")+
+    `</div><div class="chMeta">This action · run ${esc(t&&t.run_id||"not recorded")} → action ${esc(t&&t.action_id||"not recorded")} → receipt ${esc(t&&t.receipt_id||"not recorded")}${t&&t.upstream&&t.upstream.contacted===true?" → upstream HTTP "+esc(num(t.upstream.http_status)):""}</div>`}
+function toggleChain(force){const box=$("nsChainView");if(!box)return;
+  const open=force===true?true:(box.style.display==="none"||!box.style.display);
+  box.style.display=open?"":"none";nsOpenChain=open;if(open)renderChain(box)}
+function copyReceipt(receipt){const msg=$("nextMsg");
+  const done=()=>{if(msg)msg.textContent="Receipt "+receipt+" copied."};
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(receipt).then(done,()=>{if(msg)msg.textContent="Select the receipt and copy it manually."});return}}catch(e){}
+  if(msg)msg.textContent="Receipt "+receipt+" — select and copy."}
+function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();if(typeof renderRail==="function")renderRail();if(typeof renderNextStep==="function")renderNextStep();return}
   const up=t.upstream||{},dec=String(t.decision||"").toLowerCase(),contacted=up.contacted,state=String(t.state||"").toLowerCase();
   /* ACT NEW-AC1 — the TWO gates, shown apart. The kernel keeps them separate: the actor's
    * ENTITLEMENTS (what the person may do, /api/agents entitlements) and the agent's SCOPE (what
@@ -389,7 +578,10 @@ function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();r
    * closed (approved / denied / expired) must not be spoken as still waiting, so a closed hold the
    * voice has no true line for stays silent rather than lying. */
   if(typeof V!=="undefined"&&V){const st=contacted===true?"crossed":(t.executed===true?"crossed":(state==="pending"||(dec==="human"&&!state))?"wait":(dec==="deny")?"denyAfter":(dec==="allow")?"allow":(dec==="redact")?"canCross":null);if(st)V.say(st)}
-  renderControl(t)}
+  /* The hold control block is painted from the SAME trace the card is; the rail and the one named
+   * next step are re-derived here too so the card, the rail and the step cannot disagree (AC3). */
+  renderControl(t);
+  if(typeof renderRail==="function")renderRail();if(typeof renderNextStep==="function")renderNextStep()}
 /* The class comes from the SAME evaluated evidence the why-line renders (the verdict's `reason`,
  * whose "class <name>" phrase the kernel's evaluation wrote), never from a second source that is
  * empty at first render while the why-line names one. A token that is not a real rung of the
@@ -435,15 +627,20 @@ function askFailure(r,data,err){
     text:"Not evaluated — the path answered HTTP "+status+". No verdict was produced and no record exists."};
 }
 function setAskFailure(f){ askFailureState=f; if(typeof V!=="undefined"&&V)V.say("notEvaluated");
+  railNotEvaluated=(f&&f.state==="not_evaluated");cardTrace=null;
   $("proposalText").textContent=f.text+(f.status?" (transport: HTTP "+f.status+(f.allow?", allow: "+f.allow:"")+")":"");
-  try{acHide();renderControl(null);}catch(e){}}
+  try{acHide();renderControl(null);renderRail();renderNextStep();}catch(e){}}
 $("intentGo").onclick=async()=>{const q=($("intentInput").value||"").trim();if(!q){$("proposalText").textContent="Type what your AI should do first.";return}
-  $("proposalText").textContent="Asking the model to propose… (the kernel will decide)";if(typeof V!=="undefined"&&V)V.say("proposes");acHide();renderControl(null);
+  $("proposalText").textContent="Asking the model to propose… (the kernel will decide)";if(typeof V!=="undefined"&&V)V.say("proposes");askFailureState=null;railNotEvaluated=false;cardTrace=null;nsOpenReceipt=false;nsOpenChain=false;acHide();renderControl(null);renderRail();renderNextStep();
   try{const r=await fetch("/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q:q})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok){setAskFailure(askFailure(r,data));return}
-    askFailureState=null;
-    const answer=data.answer||"",ai=data.ai||{};
+    askFailureState=null;railNotEvaluated=false;
+    const answer=data.answer||"",ai=data.ai||{};askEvidence=ai;
+    /* Publish the RESOLVED evidence as a machine-readable attribute too, so a real run is provable
+     * from the rendered page (and never claimed before one happened): AC8. */
+    document.body.dataset.realOrchestrator=String(!!(ai.model_called&&ai.model_completed));
+    if(ai.answer_origin)document.body.dataset.answerOrigin=String(ai.answer_origin);
     const aiState=ai.model_called?(ai.model_completed?"AI ANSWER":"AI CALL FAILED"):"NO AI CALL";
     const tokenText=ai.token_status==="not_applicable"?"0 tokens — no model call":ai.token_status==="reported"?fmt(ai.total_tokens)+" tokens":"token usage not reported";
     $("proposalText").textContent=aiState+" · "+tokenText+". "+(answer||"No answer text returned.");
@@ -452,10 +649,10 @@ $("intentGo").onclick=async()=>{const q=($("intentInput").value||"").trim();if(!
     $("io").textContent=(ai.input_tokens==null||ai.output_tokens==null)?"—":fmt(ai.input_tokens)+" / "+fmt(ai.output_tokens);
     $("trace").textContent=ai.trace_id?"DeepSeek trace · "+ai.trace_id:(ai.model_called?"DeepSeek call completed · trace not recorded":"No DeepSeek call in this run");
     $("modelNote").textContent=ai.model_called?(ai.model_completed?"Run-scoped evidence · model proposed only · kernel remains the authority":"Provider call started but did not complete"):"No model invocation occurred for this run";
-    if(data.action_id){try{const lt=await get("/api/live-trace?action_id="+encodeURIComponent(data.action_id));if(lt.trace){renderActionCard(lt.trace)}else{acHide();renderControl(null)}}catch(err){acHide();renderControl(null);$("proposalText").textContent+=" The action record could not be re-read, so no decision is shown."}}
-    else{$("proposalText").textContent+=" No action was produced for this intent.";acHide();renderControl(null)}
+    if(data.action_id){try{const lt=await get("/api/live-trace?action_id="+encodeURIComponent(data.action_id));if(lt.trace){renderActionCard(lt.trace)}else{acHide();renderControl(null);renderRail();renderNextStep()}}catch(err){railNotEvaluated=true;acHide();renderControl(null);renderRail();renderNextStep();$("proposalText").textContent+=" The action record could not be re-read, so no decision is shown."}}
+    else{$("proposalText").textContent+=" No action was produced for this intent.";acHide();renderControl(null);renderRail();renderNextStep()}
   }catch(err){setAskFailure(askFailure(null,{},err))}}
-$("whoGo").onclick=async()=>{const agent=$("whoActs").value;$("proposalText").textContent="Asking the kernel to decide for "+agent+" …";acHide();renderControl(null);
+$("whoGo").onclick=async()=>{const agent=$("whoActs").value;$("proposalText").textContent="Asking the kernel to decide for "+agent+" …";askFailureState=null;railNotEvaluated=false;cardTrace=null;nsOpenReceipt=false;nsOpenChain=false;acHide();renderControl(null);renderRail();renderNextStep();
   /* On the real control plane /api/demo/run is guarded by the operator token (app.py:691,
      _require_admin) and needs a live upstream configured; the agent token is read server-side, so
      the page sends the operator token when it has one and never fabricates a verdict otherwise. */
@@ -475,23 +672,29 @@ function declaredOperator(){const el=$("operatorName");return el?String(el.value
  * to. Rendering the re-read state replaces #controlMsg with the resolved card, so this writes the
  * message there when it still exists and always mirrors it onto the durable #operatorNotice. */
 function resolveMsg(text,by){const m=$("controlMsg");if(m)m.textContent=text;const n=$("operatorNotice");if(n)n.textContent=by?text:("Resolved by an unnamed operator. "+text)}
-async function resolve(verb){const t=acTrace;if(!t||!t.action_id)return;const token=localStorage.getItem("warrnt_admin")||"";
-  if(!token){$("controlMsg").textContent="This action is protected. Approve and Deny need the authenticated operator console (no operator token is present).";return}
+/* The decision control can live in the ACTION CARD (#controlMsg) or in the ONE NEXT STEP (#nextMsg)
+ * — the brief puts an approve/deny step right under the card. Writing status to a node that only
+ * exists in the OTHER surface threw and made the next-step control a dead end. This writes to
+ * whichever exists, and never throws, so no single screen can strand the operator. */
+function resolveNotice(text){const m=$("controlMsg")||$("nextMsg")||$("operatorNotice");if(m)m.textContent=text}
+async function resolve(verb){const t=acTrace;if(!t||!t.action_id)return;let token="";try{token=localStorage.getItem("warrnt_admin")||""}catch(e){}
+  if(!token){resolveNotice("This action is protected. Approve and Deny need the authenticated operator console (no operator token is present).");return}
   const by=declaredOperator();
-  if(!by){$("controlMsg").textContent="Declare the operator's name before approving or denying — a human decision must name the person who made it. No request was sent.";return}
-  $("controlMsg").textContent="Submitting "+verb+" …";
+  if(!by){resolveNotice("Declare the operator's name before approving or denying — a human decision must name the person who made it. No request was sent.");return}
+  resolveNotice("Submitting "+verb+" …");
   try{const r=await fetch("/api/actions/"+encodeURIComponent(t.action_id)+"/"+verb,{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:by})});
     const data=await r.json().catch(()=>({}));
-    if(!r.ok){$("controlMsg").textContent="The control plane answered HTTP "+r.status+(data.error?": "+data.error:"")+" — nothing changed.";return}
+    if(!r.ok){resolveNotice("The control plane answered HTTP "+r.status+(data.error?": "+data.error:"")+" — nothing changed.");return}
     const rr=await fetch("/api/live-trace?action_id="+encodeURIComponent(t.action_id));const rd=await rr.json().catch(()=>({}));
     /* Render the RESULTING state from the kernel's own composer (GET /api/live-trace?action_id=…);
      * rendering it replaces the control block, so the confirmation is written to #controlMsg when it
      * still exists and always mirrored to the durable #operatorNotice — the human who decided must
      * see that their decision took effect and who it is attributed to, even once the controls retire. */
     if(typeof V!=="undefined"&&V)V.say(verb==="approve"?"canCross":"denyAfter");
+    try{const s=await get("/api/state");chainData=s||chainData}catch(e){}
     if(rr.ok&&rd.trace){renderActionCard(rd.trace);resolveMsg("Resolved by "+by+". This is the action's re-read state.",by)}
     else{resolveMsg("Resolved, but the re-read returned HTTP "+rr.status+" — the resulting state is not shown.",by)}
-  }catch(err){$("controlMsg").textContent="The "+verb+" attempt failed: "+err.message}}
+  }catch(err){resolveNotice("The "+verb+" attempt failed: "+err.message)}}
 
 refresh();setInterval(refresh,2000);
 /* ---- THE GUIDE, ON EVERY SURFACE ------------------------------------------------------------------
@@ -505,5 +708,14 @@ refresh();setInterval(refresh,2000);
   const t=$("soundToggle");
   if(t)t.onclick=()=>{const on=V.toggle();t.textContent=on?"🔊":"🔇";t.title=on?"Voice on — click to mute":"Voice muted — click to arm"};
 })();
-window.__TENET_QA__={ok:true,revokeOverTarget:false,layout:"live-operator-control-room",pollMs:2000,realOrchestrator:true};
+/* The QA hook publishes a machine-readable verdict for browser/manual diagnostics. The old
+ * The old literal claimed a real orchestrator before any run — a claim the console cannot know at
+ * boot. Instead the flag is RESOLVED from evidence: `askEvidence` is filled only when /api/ask
+ * returns run-scoped model-call proof, so `realOrchestrator` is true exactly when a real
+ * model-backed run completed — and false, honestly, before one has (D12). */
+var askEvidence=null;
+window.__TENET_QA__={ok:true,revokeOverTarget:false,layout:"live-operator-control-room",pollMs:2000,
+  get answerOrigin(){return askEvidence&&askEvidence.answer_origin||null},
+  get modelCalled(){return askEvidence?!!askEvidence.model_called:false},
+  get realOrchestrator(){return !!(askEvidence&&askEvidence.model_called&&askEvidence.model_completed)}};
 </script>
