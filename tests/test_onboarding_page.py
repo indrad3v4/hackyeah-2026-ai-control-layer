@@ -45,7 +45,11 @@ def test_there_is_one_character_from_the_film_to_the_journey():
         "the live journey answers the film's last line and ties the character to the idea")
     assert "I'll stay with you while your AI acts" in body
     assert "🔈 TENET, again" in body
-    assert "the same character direction as the film" in body
+    # NEW-AC7 — the claim: which voice speaks is no longer a sentence about a producer's approval
+    # (a person cannot check it, and no repository can evidence it). It is the chip, and the chip
+    # reports what ACTUALLY played.
+    assert 'id="voiceChip"' in body, "the journey carries the sound chip that reports what played"
+    assert 'playedOrigin==="locked-clip"' in body, "the chip reads the real playback origin"
 
 
 def test_the_character_speaks_the_state_not_a_script():

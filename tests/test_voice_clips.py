@@ -51,4 +51,7 @@ def test_the_page_plays_tenet_first_and_keeps_the_device_voice_as_a_fallback():
     assert "greeting=true" in body, "the door line must be spoken before the first beat"
     assert "function speakDevice(" in body, "the device voice must survive as the fallback"
     assert "u.rate=0.94" in body and "u.pitch=0.85" in body, "the fallback keeps the character direction"
-    assert "the same character direction as the film" in body, "the page must not hide which voice speaks"
+    # NEW-AC7 — the claim: "which voice speaks" is the chip that reports what actually PLAYED, not a
+    # sentence at the foot of the page (see tests/test_new_ac7_the_claim.py for the choice recorded).
+    assert 'id="voiceChip"' in body, "the page must not hide which voice speaks — the chip says so"
+    assert 'playedOrigin==="locked-clip"' in body, "the chip reads the real playback origin"

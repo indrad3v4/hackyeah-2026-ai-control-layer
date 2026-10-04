@@ -138,10 +138,7 @@ button:disabled{opacity:.45;cursor:default}
     <button id="next">Next →</button>
     <button id="replay" class="ghost">🔈 TENET, again</button>
   </div>
-  <div class="note" id="note"></div>
 </section>
-
-<footer class="sub">TENET speaks with her own locked studio voice — one clip per beat, the same character direction as the film (Grok Ara), approved by the producer. If your browser blocks playback, the device voice takes over as the fallback: slower, lower, calm.</footer>
 </div>
 
 <div class="gate" id="gate">
@@ -415,5 +412,4 @@ $("startSound").onclick=()=>{ soundOn=true; $("gate").style.display="none"; gree
 $("startSilent").onclick=()=>{ soundOn=false; $("gate").style.display="none"; render(); };
 if("speechSynthesis" in window) speechSynthesis.onvoiceschanged=soundChip;
 buildMap(); soundChip(); render();
-$("note").textContent="Every step reads the live control plane at "+B+" — the proposal, the verdict, the call and the receipt are real records, never a script.";
 </script></body></html>
