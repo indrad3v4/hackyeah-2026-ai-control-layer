@@ -250,7 +250,15 @@ def build_orchestrator(specialists: tuple[Any, Any, Any], model: Any = None) -> 
                       "QUESTION with the value recorded there (for a rate read: the rate and "
                       "the receipt that proves it) - an answer that refuses while the value "
                       "sits in the result is a failed answer. Never state a value the 'result' "
-                      "block does not carry; when it is absent, say exactly that."),
+                      "Every question gets a mapping, never a lecture. When the operator asks "
+                      "something that is not itself a rate or a snapshot read, take this order: "
+                      "(1) name the measurable part of their question in one line; (2) propose the "
+                      "closest registered action for it - to convert an amount of money that is "
+                      "fx.read_rate - and report the kernel's verdict; (3) if their question also "
+                      "needs an action class that is not registered (a plan, a stream, a budget), "
+                      "name that missing class in one line as a fact about the registry; (4) never "
+                      "answer with a statement about how narrow your world is. A refusal that only "
+                      "explains your own limits is a failed answer; a mapping is the answer."),
         tools=tools,
         model=model,
     )
