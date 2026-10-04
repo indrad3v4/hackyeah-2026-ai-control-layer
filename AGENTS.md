@@ -135,3 +135,18 @@ comment can cite them.
   `tests/test_missing_symbol_is_named.py` (positive and negative), recorded here as their own
   commit per D13. **Unchanged by this amendment:** the kernel remains the only authority; the
   assistant may still quote only what the record carries.
+
+- **Amendment 6 — D13, `execution_result` field `rates`, 2026-10-04. Reason:** measured live on
+  `A-0002` (a two-symbol read, `PLN` → `EUR,USD`): the record carried `rates_returned ["EUR","USD"]`
+  and no `value`, because a multi-symbol reply has no single value field. So the numbers the
+  upstream actually returned existed only inside the model's arithmetic — quotable, unauditable,
+  and impossible to re-check from the receipt. The record summarised the table instead of keeping
+  it. **Exact change:** one field added to the action's `execution_result` — `rates`, the upstream
+  reply's own rates map, verbatim and unrounded, filed only when the reply carries a mapping (a
+  reply without one stays silent, never `{}`-invented). No field removed or renamed; `value` and
+  `value_symbol` keep their single-symbol meaning. **Consumers updated:** `control_plane/kernel.py`
+  (`_record_crossing`), `control_room/agents.py` (the assistant's proven-field list), and
+  `tests/test_missing_symbol_is_named.py`, recorded here as their own commit per D13. **Unchanged
+  by this amendment:** no verdict, gate, entitlement, policy, warrant, SoD, budget or API-shape
+  change; the kernel remains the only authority, and the assistant may still quote only what the
+  record carries.
