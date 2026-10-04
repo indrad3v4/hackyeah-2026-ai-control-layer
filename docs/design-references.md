@@ -71,3 +71,23 @@ of the artifact.
 The live feed needs the node. Opened as a plain static file — as on GitHub Pages — the console
 falls back to its scripted scenario and says `demo feed`. The seam is one HTTP call wide:
 `GET /api/state`.
+
+## Decision / approval interfaces (added for Act 7)
+
+Read against the Act-7 minimum slice (see `docs/act-7-product-diagnosis.md`,
+`docs/act-7-current-to-target.md`): the primary object is the **action**, and the screen is 80% human
+decision / 20% technical proof. Two were opened and read in full; the rest were captured from search
+listings (title + URL + summary). No URL here is invented.
+
+| Reference | What it is | What we take |
+|---|---|---|
+| [aiuxplayground — Human-in-the-Loop UX](https://aiuxplayground.com/guides/how-to-design-human-in-the-loop) *(opened)* | HITL build playbook | "Empty confirm dialogs do not count"; Cancel and Send as co-equal choices |
+| [aidrivendev — Progressive disclosure in AI UX](https://aidrivendev.org/articles/progressive-disclosure-ai) *(opened)* | Three-layer disclosure (result → rationale → full trace) | Show the result first; over-disclosure cancels the benefit of explanation |
+| [aiuxplayground — Progressive Disclosure](https://aiuxplayground.com/pattern/progressive-disclosure) | Pattern page | "Anything authorizing a side effect belongs above the fold" |
+| [uicoach — Progressive disclosure](https://uicoach.io/ux-laws/progressive-disclosure) | Usability law | "Disclosure must never demote consent or consequence" |
+| [agentscamp — HITL approval gates](https://agentscamp.com/guides/workflow/human-in-the-loop-ai-workflows) | Approval-gate guide | Gate by blast radius; default-deny on timeout |
+| [agentic-patterns — HITL approval framework](https://agentic-patterns.com/patterns/human-in-loop-approval-framework) | Pattern | Risk class → context-rich request → approve/reject/modify → audit |
+| [promptic.us — HITL patterns](https://promptic.us/articles/human-in-the-loop-patterns-for-ai-agents) | Pattern essay | "Approval is a budget"; triage by reversibility; ask at the moment of judgement |
+| [arifmughal — HITL approvals and audit](https://arifmughal.com/blog/human-in-the-loop-patterns-ai-agents) | Five-pattern matrix | "Show the payload, not the pitch"; OWASP ASI09 approval fatigue |
+| [aydesign — HITL design guide 2026](https://aydesign.ai/blog/human-in-the-loop-ai-design-guide-2026) | Pattern scoring | Approval queue over per-action modals; diff/dry-run first |
+| [prxhub — Citation UX and evidence navigation](https://prxhub.com/justin/citation-ux-and-evidence-navigation) | Evidence-UX synthesis | Marker → preview → full detail; keep lightweight provenance visible |

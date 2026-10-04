@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -104,6 +105,33 @@ def missing_entitlement(agent_id: str, tool: str) -> str:
     if not right:
         return ""
     return "" if right in ENTITLEMENTS.get(agent_id, set()) else right
+
+
+# The six rungs of the kernel's own ladder, mirrored here ONLY to recognise a class the
+# evaluation already named - never to classify an act. The taxonomy itself stays in the
+# kernel (``node/warrnt/actions.py``); this set is how the composer tells a real class name
+# from any other token that happens to follow the word "class". A token not in this set is
+# not accepted, so the fallback can never invent a class the evaluation did not name.
+_ACTION_CLASS_NAMES = ("observe", "read_personal", "draft", "write_reversible",
+                       "irreversible", "authorize")
+
+
+def _class_from_reason(reason: Optional[str]) -> Optional[str]:
+    """The action class the DECISION's own evaluation named, or ``None``.
+
+    The evaluated decision evidence is the kernel's ``reason`` string; its class phrase is
+    ``class <name>`` (e.g. ``... · class observe`` / ``class irreversible · ... · the machine
+    prepares, a person decides``). This reads the SAME fact the why-line renders, so the
+    reaches line and the why-line cannot disagree. Only a token that is a real rung of the
+    kernel's ladder is accepted - a stray "class" with anything else after it is ignored, so
+    nothing is ever invented. (AGENTS.md D3: one source of truth; D12: claim only what ran.)
+    """
+    if not reason:
+        return None
+    for token in re.findall(r"\bclass\s+([a-z_]+)", str(reason)):
+        if token in _ACTION_CLASS_NAMES:
+            return token
+    return None
 
 
 class Kernel:
@@ -553,6 +581,271 @@ class Kernel:
         except Exception:  # noqa: BLE001 - a missing receipt index is an absent field, not a crash
             return {}
         return out
+
+    # ------------------------------------------- ACT-5: the live security trace composition
+    def record_origin(self, action_id: str, origin: str) -> None:
+        """File WHY an action exists (``operator self-check`` / ``startup self-check``).
+
+        The mirror's ``Action`` is frozen (AGENTS.md); an unknown keyword would break its own
+        reload. So the origin label - a control-plane fact about who asked the kernel to run
+        this scenario, not a decision - is journaled beside the kernel store, exactly as the
+        provider's evidence journal is. Read back by :meth:`live_trace`. Best-effort: a failure
+        here never breaks a decided call.
+        """
+        if not action_id or not origin:
+            return
+        try:
+            path = self._origin_journal_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({"action_id": action_id, "origin": origin},
+                                    sort_keys=True) + "\n")
+                fh.flush()
+                os.fsync(fh.fileno())
+        except Exception:  # noqa: BLE001 - recording never breaks the enforcement path
+            pass
+
+    @staticmethod
+    def _state_dir() -> Path:
+        return Path(os.environ.get("TENET_STATE_DIR")
+                    or os.environ.get("WARRNT_HOME")
+                    or (REPO_ROOT / "state"))
+
+    def _origin_journal_path(self) -> Path:
+        return self._state_dir() / "control-plane" / "origins.jsonl"
+
+    def _origin_index(self) -> dict[str, str]:
+        """``action_id -> origin`` from the control plane's own journal. Absent = empty map."""
+        out: dict[str, str] = {}
+        try:
+            path = self._origin_journal_path()
+            if not path.exists():
+                return out
+            with open(path, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except ValueError:
+                        continue
+                    aid = str(row.get("action_id") or "")
+                    if aid:
+                        out[aid] = str(row.get("origin") or "")
+        except Exception:  # noqa: BLE001 - an unreadable journal is an absent field, not a crash
+            return {}
+        return out
+
+    def live_trace(self, action_id: Optional[str] = None) -> Optional[dict[str, Any]]:
+        """The live ``trace`` object: one action, composed with its authority evidence (ACT-5 AC1).
+
+        This is a read-only join over records the kernel already holds: the action ledger
+        (what was asked and what it decided), the agent register (identity + delegation), the
+        warrant register (the authority's own signature state) and the provider journal (the
+        model-trace evidence). It decides nothing and mints nothing; every field whose
+        evidence is missing is ``null`` **and named in ``incomplete``** - no field is rounded
+        up to look like a permission (``authority_source`` is always ``tenet-kernel``).
+
+        ``action_id`` is optional and read-only (ACT-6 AC1/AC2): omitted, the LAST real action
+        is composed, exactly as before. When given, THAT action is composed through the same
+        :meth:`_trace_from` composer - there is one composer, not two. An ``action_id`` the
+        ledger does not hold yields ``None`` (the caller answers 404), never a fabricated trace.
+
+        ``None`` when the kernel holds no action at all: an empty kernel yields ``trace: null``
+        and nothing else is invented.
+        """
+        if action_id:
+            row = self.action(str(action_id))
+            if row is None:
+                return None
+            # ``action()`` returns the ledger row plus the agent-level identity fields; the
+            # composer reads only the ledger keys, so the same body serves both cases.
+            return self._trace_from(row)
+        actions = self.actions(200)
+        if not actions:
+            return None
+        # Newest first: the ledger lists newest first, but sort defensively by timestamp then id.
+        latest = max(actions, key=lambda a: (float(a.get("ts") or 0.0),
+                                             str(a.get("action_id") or "")))
+        return self._trace_from(latest)
+
+    def _trace_from(self, action: dict[str, Any]) -> dict[str, Any]:
+        """Compose one AC1 ``trace`` object from a single action row + surrounding evidence."""
+        incomplete: list[str] = []
+        action_id = str(action.get("action_id") or "") or None
+        run_id = str(action.get("run_id") or "") or None
+        agent_id = str(action.get("agent") or "")
+        tool = str(action.get("tool") or "")
+
+        # ---- identity + delegation: read from the agent the order was issued to (never guessed)
+        agent_row: dict[str, Any] = {}
+        try:
+            for row in self.agents(dev=False):
+                if str(row.get("id")) == agent_id:
+                    agent_row = row
+                    break
+        except Exception:  # noqa: BLE001
+            agent_row = {}
+        agent_role = agent_row.get("role") or None
+        principal = agent_row.get("principal") or None
+        on_behalf_of = agent_row.get("on_behalf_of") or None
+        entitlements = list(agent_row.get("entitlements") or [])
+        scope = list(agent_row.get("scope") or [])
+        for name, value in (("agent_role", agent_role), ("principal", principal),
+                            ("on_behalf_of", on_behalf_of), ("entitlements", entitlements),
+                            ("scope", scope)):
+            if not value:
+                incomplete.append(name)
+
+        origin = self._origin_index().get(str(action_id or "")) or None
+        if not origin:
+            incomplete.append("origin")
+
+        # ---- the requested action, in the agent's own words
+        intent = self._intent(tool, action.get("parameters"))
+        if not intent:
+            incomplete.append("action.intent")
+        # ---- the action's class: one fact, one source. The DECISION's own evaluation is the
+        # ``reason`` string (its ``class <name>`` phrase is exactly what the why-line renders),
+        # so the class is read from there whenever the row does not carry one. Reading the row's
+        # field alone left the reaches line saying "no class recorded" beside a why-line that
+        # named the class; the row's own field, when present, still wins (it is the same fact
+        # the evaluation wrote). Only when NO evidence carries a class is it null and NAMED.
+        action_class = action.get("action_class") or _class_from_reason(action.get("reason"))
+        if not action_class:
+            incomplete.append("action.class")
+        args = dict(action.get("parameters") or {})
+
+        # ---- TENET checks: identity / entitlement / warrant / policy, each ok|false|None
+        identity_ok: Optional[bool] = True if (agent_id and principal) else None
+        if identity_ok is None:
+            incomplete.append("checks.identity")
+        right = ENTITLEMENT_OF_TOOL.get(tool, "")
+        if right:
+            entitled: Optional[bool] = right in ENTITLEMENTS.get(agent_id, set())
+        else:
+            # the register holds no opinion about this tool: honestly unknown, never a grant
+            entitled = None
+            incomplete.append("checks.entitlement")
+
+        # ---- warrant: the authority's own signature state, from the register
+        w_id = str(action.get("warrant") or "") or None
+        warrant_obj: dict[str, Any] = {"id": w_id, "state": None, "sig_ok": None,
+                                       "ttl_remaining": None}
+        try:
+            for w in self.warrants():
+                if str(w.get("id")) == str(w_id or ""):
+                    warrant_obj = {"id": w_id, "state": w.get("state"),
+                                   "sig_ok": w.get("sig_ok"),
+                                   "ttl_remaining": w.get("ttl")}
+                    break
+        except Exception:  # noqa: BLE001
+            pass
+        for key in ("state", "sig_ok", "ttl_remaining"):
+            if warrant_obj.get(key) is None:
+                incomplete.append(f"checks.warrant.{key}")
+
+        policy_result = action.get("policy_result") or None
+        if policy_result is None:
+            incomplete.append("checks.policy")
+
+        decision = action.get("decision") or None
+        reason = action.get("reason") or None
+
+        # ---- who decided: a person-resolved hold keeps the name it was decided by; where the
+        # kernel alone decided (allow/deny/redact/revoked with no hold) the kernel names itself.
+        # The row's own ``decided_by`` carries the real resolver - the approve/deny path records
+        # the person there - so a human decision must never be re-attributed to the kernel, and
+        # the kernel must never borrow a person's name it did not receive. No name is invented:
+        # an empty resolver on a human-resolved row is the empty string ruled out below.
+        resolver = str(action.get("decided_by") or "").strip()
+        decided_by = resolver if (resolver and decision == "human") else "tenet-kernel"
+
+        # ---- boundary crossing: honest rule (AC2). "contacted" is TRUE only when the action
+        # carries an execution result with an http_status - a decision of "allow" alone proves
+        # nothing, and a deny with no attempt yields contacted:false and no http_status. The
+        # EXECUTION RESULT is what proves contact, never the decision label: a person-resolved
+        # hold carries decision == "human" (or the release stays "human" after the call), and
+        # the far side still recorded a real status - so the label must not gate the evidence.
+        crossing = action.get("execution_result") or {}
+        http_status = crossing.get("http_status")
+        contact_proven = bool(http_status)
+        upstream_obj = {
+            "contacted": contact_proven,
+            "http_status": http_status if contact_proven else None,
+            "endpoint": crossing.get("endpoint") if contact_proven else None,
+            "value": crossing.get("value") if contact_proven else None,
+            "response_sha256": crossing.get("response_sha256") if contact_proven else None,
+            "latency_ms": crossing.get("latency_ms") if contact_proven else None,
+        }
+        if decision in ("allow", "redact") and not contact_proven:
+            # A permitted call with no proof of contact is an INCOMPLETE crossing, named - never
+            # assumed to have reached the far side.
+            incomplete.append("upstream.http_status")
+
+        # ---- the action's OWN resolved lifecycle state, verbatim (never mapped or renamed). A
+        # human hold reads "pending" until a person resolves it, then the row records "approved"
+        # or "denied"; the console needs the row's own word to tell "still waiting" from resolved.
+        state = action.get("state") or None
+        if state is None:
+            incomplete.append("state")
+
+        # ---- execution: the SAME evidence the crossing is proven from, plus the negative proof.
+        #   True  - the row carries an execution result with a real http_status (the call ran);
+        #   False - the row proves it did NOT run: it carries an execution result (even empty, as a
+        #           denial files) or an explicit ``upstream_contacted`` of false - the record says so;
+        #   None  - the row says nothing (no execution result AND no ``upstream_contacted``), so the
+        #           field is NAMED in incomplete rather than guessed.
+        claims_execution = "execution_result" in action or action.get("upstream_contacted") is not None
+        executed: Optional[bool] = True if contact_proven else (False if claims_execution else None)
+        if executed is None:
+            incomplete.append("executed")
+
+        receipt_id = action.get("receipt") or None
+        if not receipt_id:
+            incomplete.append("receipt_id")
+
+        # ---- model evidence for this run (null when the run has no provider trace)
+        model = self._model_evidence(self._provider_events_by_run().get(str(run_id or ""), []))
+        model_block = {
+            "provider": "deepseek",
+            "model_served": model.get("model_served"),
+            "trace_id": model.get("model_trace_id"),
+            "calls": model.get("model_calls_completed"),
+            "tokens": model.get("tokens"),
+        }
+
+        return {
+            "run_id": run_id,
+            "action_id": action_id,
+            "timestamp": action.get("ts") or None,
+            "origin": origin,
+            "agent": agent_id or None,
+            "agent_role": agent_role,
+            "principal": principal,
+            "on_behalf_of": on_behalf_of,
+            "entitlements": entitlements,
+            "scope": scope,
+            "action": {"tool": tool or None, "intent": intent,
+                       "class": action_class, "args": args},
+            "checks": {
+                "identity": {"ok": identity_ok, "detail": principal},
+                "entitlement": {"ok": entitled, "right": right or None},
+                "warrant": warrant_obj,
+                "policy": {"ok": bool(policy_result) if policy_result else None,
+                           "detail": policy_result},
+            },
+            "decision": decision,
+            "reason": reason,
+            "decided_by": decided_by,
+            "state": state,
+            "executed": executed,
+            "upstream": upstream_obj,
+            "receipt_id": receipt_id,
+            "model": model_block,
+            "incomplete": sorted(set(incomplete)),
+        }
 
     def security_events(self, limit: int = 60) -> dict[str, Any]:
         """The security-decision feed: one ``SecurityEvent`` per canonical action, newest first.
