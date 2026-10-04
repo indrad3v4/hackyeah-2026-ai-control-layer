@@ -49,3 +49,8 @@ class ControlAnswer(BaseModel):
     specialists: list[str] = Field(default_factory=list)
     run_id: str | None = None
     next_action: str | None = None
+    # Run-scoped model evidence, built by ``agents.answer`` via ``_ai_usage``: provider, model,
+    # whether the model was actually called/completed, and the SDK's per-run token totals. It
+    # was already passed into this constructor and already read by ``/api/ask`` - without the
+    # field, pydantic's default ``extra="ignore"`` dropped it silently and the ask path died.
+    ai: dict = Field(default_factory=dict)
