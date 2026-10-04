@@ -77,3 +77,40 @@ comment can cite them.
   provider). **Unchanged by this amendment:** no model output is ever an authorization
   decision; the kernel's verdict is the only execution boundary; a missing key degrades the
   assistance surface to DEMO and never the enforcement path.
+
+- **Amendment 2 — D13, trace field `decided_by`, 2026-10-04. Reason:** the live-trace composer
+  wrote `decided_by: "tenet-kernel"` as a literal for every action, so a hold that a named person
+  resolved was reported in the evidence as decided by the kernel — a false attribution in the one
+  field that exists to show who decided. Found live: after an operator approved a held action the
+  API reported `decided_by: "indradev_"`, the composed trace said `"tenet-kernel"`, and the same
+  trace reported the approved call as `contacted: false` because contact was proven from the
+  decision label (`allow`/`redact`) rather than from the execution result. **Exact change:** the
+  value of the existing field `decided_by` now carries the record's real resolver
+  (`"<operator>"`) when the decision came from a human-resolved hold, and stays `"tenet-kernel"`
+  where the kernel alone decided; `upstream.contacted` is proven from a recorded execution result
+  (a real `http_status`), never from the decision label. No field added, removed or renamed;
+  `authority_source` and `llm_authority` unchanged. **Consumers updated:** the code in `ccbcfdd`
+  (composer) and the field descriptions in `docs/act-5-live-security-trace-contract.md`, recorded
+  here as their own commit per D13. **Unchanged by this amendment:** no verdict, gate,
+  entitlement, policy, warrant, SoD or API status-code change; a missing resolver is never
+  replaced by an invented name.
+
+- **Amendment 3 — D13, trace fields `state` and `executed`, 2026-10-04. Reason:** the composed
+  trace proved the crossing and named the resolver, but carried neither the action's own resolved
+  lifecycle state nor a proven execution fact, so the console could not tell "a person is still
+  deciding" from "a person approved" or "a person denied". Measured live on `A-0004` (a
+  human-approved action): `decision="human"`, `state=null`, `executed=null`,
+  `upstream.contacted=true, http_status=200` — and the card printed "Nothing has been sent yet.
+  This action is waiting for you." and "What actually happened: Not recorded." while its own
+  technical row proved the far side answered. One system contradicting itself about one causal
+  event. **Exact change:** two fields added to the composed trace — `state` (the action row's own
+  lifecycle state, verbatim, `null` and named in `incomplete` when the row carries none) and
+  `executed` (`true` only on a proven execution, `false` when the record proves it did not run,
+  `null` and named in `incomplete` when the record does not say). **Consumers updated:** the code
+  in `5d3a726` (`control_plane/kernel.py` composer) plus `index.html`
+  (`renderActionCard`: the consequence and the outcome line follow the evidence —
+  `upstream.contacted`, `state`, `executed` — never the decision label), `scripts/check_console.py`
+  (the card check renders the approved and denied shapes), `tests/test_live_trace.py`, and the
+  field list in `docs/act-5-live-security-trace-contract.md`; recorded here as their own commit
+  per D13. **Unchanged by this amendment:** no verdict, gate, entitlement, policy, warrant, SoD,
+  budget or API-shape change; nothing is claimed as executed that the record does not prove.
