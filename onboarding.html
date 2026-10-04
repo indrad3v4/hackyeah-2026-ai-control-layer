@@ -110,7 +110,7 @@ button:disabled{opacity:.45;cursor:default}
     </div>
     <div class="roles">
       <span class="role">TENET · explains</span><span class="role">AI · proposes</span>
-      <span class="role">kernel · decides</span><span class="role you">You · control</span>
+      <span class="role">TENET kernel · decides</span><span class="role you">You · control</span>
     </div>
   </div>
 
@@ -146,7 +146,7 @@ button:disabled{opacity:.45;cursor:default}
     <div class="char idle" style="width:104px;height:104px;margin:0 auto" id="gateChar">
       <svg viewBox="0 0 78 78"><circle class="halo" cx="39" cy="36" r="29"/><circle class="head" cx="39" cy="34" r="18" fill="#123c33" stroke="#7fd4c1" stroke-width="1.7"/><circle cx="32.5" cy="31.5" r="2.3" fill="#e8eef6"/><circle cx="45.5" cy="31.5" r="2.3" fill="#e8eef6"/><path class="mouth" d="M34 42 q5 4 10 0" fill="none" stroke="#e8eef6" stroke-width="1.6" stroke-linecap="round"/></svg>
     </div>
-    <h2 style="margin:10px 0 6px">I'm TENET. Turn on the sound.</h2>
+    <h2 style="margin:10px 0 6px">I'm TENET.<br>Turn on the sound. I'll stay with you while your AI acts.</h2>
     <p class="lead" style="color:#8ea0b4;margin:0 0 12px">I'll stay with you while your AI acts — your words, your AI's proposal, the kernel's decision, and the proof. You keep the controls.</p>
     <div class="row" style="justify-content:center">
       <button class="primary pulseBtn" id="startSound">🔊 Turn on sound &amp; start</button>
@@ -208,6 +208,8 @@ function soundChip(){ const v=pickVoice();
 // (Verbatim from the film, so the person who watched it recognises the same TENET.)
 const LINES={
  listen:"Tell me what you want your AI to do.",
+ heard:"I heard you.",
+ proposes:"Your AI wants to do this.",
  check:"Let me check.",
  allow:"Allowed.", deny:"No.", denyAfter:"Nothing left TENET.",
  wait:"I'm waiting for you.", waitDecision:"Your decision.",
@@ -223,6 +225,9 @@ function spoken(){
     if(s==="deny") return LINES.deny+" "+LINES.denyAfter;
     if(s==="wait") return LINES.wait+" "+LINES.waitDecision;
     return LINES.check; }
+  if(k==="SAY") return LINES.listen;
+  if(k==="SEE") return LINES.heard;
+  if(k==="UNDERSTAND") return LINES.proposes;
   if(k==="WITNESS") return humanResolved()? LINES.canCross : (contacted()? LINES.crossed : LINES.nothingCrossed);
   if(k==="PROOF") return LINES.proof;
   if(k==="WIN") return LINES.win;
@@ -341,7 +346,7 @@ function paintStage(){ $("stage").innerHTML=stageHTML(); charState(currentStateN
   $("next").textContent = waiting ? "waiting for TENET…"
     : (BEATS[step].k==="DECIDE" ? "See what happened →" : (step===BEATS.length-1?"Done":"Next →")); }
 async function ask(){
-  asked=true; pending=true; charState("think"); speak(LINES.check);
+  asked=true; pending=true; charState("think");
   try{
     const r=await fetch(B+"/api/ask",{method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({q:intent||"check today's EUR/USD rate for me"})});

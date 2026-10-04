@@ -41,7 +41,8 @@ def test_there_is_one_character_from_the_film_to_the_journey():
     """One identity across film, journey and proof. A second guide would break the recognition."""
     body = _page()
     assert "Nadia" not in body, "one character: the film's TENET, not a second guide"
-    assert "I'm TENET. Turn on the sound." in body, "the live journey answers the film's last line"
+    assert "I'm TENET." in body and "Turn on the sound. I'll stay with you while your AI acts." in body, (
+        "the live journey answers the film's last line and ties the character to the idea")
     assert "I'll stay with you while your AI acts" in body
     assert "🔈 TENET, again" in body
     assert "the same character direction as the film" in body
@@ -50,7 +51,8 @@ def test_there_is_one_character_from_the_film_to_the_journey():
 def test_the_character_speaks_the_state_not_a_script():
     """Every line the character says is keyed to a real journey state (film copy, verbatim)."""
     body = _page()
-    for line in ("Tell me what you want your AI to do.", "Let me check.", "Allowed.",
+    for line in ("Tell me what you want your AI to do.", "I heard you.",
+                 "Your AI wants to do this.", "Let me check.", "Allowed.",
                  "Nothing left TENET.", "I'm waiting for you.", "Your decision.",
                  "It crossed.", "Nothing crossed.", "Now it can cross.",
                  "Here is what happened.", "You stayed in control."):
