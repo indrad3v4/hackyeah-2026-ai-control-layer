@@ -52,3 +52,11 @@ def test_a_reply_without_the_asked_symbol_names_the_symbols_it_did_return(tmp_pa
         assert xr2.get("value") == 0.22844                        # the ask WAS answerable
         assert xr2.get("value_symbol") == "EUR"
         assert xr2.get("rates_returned") == ["EUR"]
+
+        multi = {"ok": True, "endpoint": "https://api.frankfurter.dev/v1/latest",
+                 "http_status": 200, "response_sha256": "c" * 64, "latency_ms": 18.0,
+                 "symbol": "EUR,USD", "rates": {"EUR": 0.22844, "USD": 0.25636}}
+        xr3 = _crossing(kernel, "A-missing-3", multi)
+        assert xr3.get("value") is None                     # no single value for two symbols
+        assert xr3.get("rates") == {"EUR": 0.22844, "USD": 0.25636}   # the map itself is filed
+        assert xr3.get("rates_returned") == ["EUR", "USD"]

@@ -1173,6 +1173,11 @@ class Kernel:
                 "value_symbol": result.get("symbol"),
                 "rates_returned": (sorted(str(k) for k in result["rates"])
                                    if isinstance(result.get("rates"), dict) else None),
+                # The map itself, verbatim: the summary above says which symbols came back,
+                # this says what they are worth. A multi-symbol read has no single ``value``
+                # field, so without this the numbers would exist only in the model's
+                # arithmetic instead of in the record the receipt points at.
+                "rates": (dict(result["rates"]) if isinstance(result.get("rates"), dict) else None),
                 "latency_ms": result.get("latency_ms"),
                 "boundary": LIVE_BOUNDARY.get(tool, ""),
             }
