@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 *.egg-info/
+
+# runtime artifacts: a live run always rewrites these, so they can never be source
+state/provider/*.jsonl
