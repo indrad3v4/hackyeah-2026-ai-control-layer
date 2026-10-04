@@ -824,7 +824,8 @@ const _rail0=renderRail;renderRail=function(){_rail0();renderGuide()};
 window.renderGuide=renderGuide;
 
 /* the guide folds to a strip on a later visit — the app you already learned ------------------------ */
-try{const g0=$("guideStrip");if(g0&&localStorage.getItem("tenet.walked"))g0.classList.add("collapsed")}catch(e){}
+/* the guide is part of the console, not a mode you graduate out of: it stays open.
+   The toggle below still folds it by hand, but nothing folds it behind his back. */
 const _gt=$("guideToggle");if(_gt)_gt.onclick=()=>{const g=$("guideStrip");g.classList.toggle("collapsed");
   if(!g.classList.contains("collapsed"))renderGuide()};
 const _gr=$("gReplay");if(_gr)_gr.onclick=()=>{try{if(window.TENETVoice&&TENETVoice.say)TENETVoice.say(guideBeat||"SAY")}catch(e){}};
