@@ -50,7 +50,10 @@ def test_the_loop_carries_the_state_it_was_missing():
     """A transport failure leaves no kernel record, so the character may not speak a verdict."""
     src = VOICE.read_text(encoding="utf-8")
     assert "notEvaluated:" in src, "the guide has no line for the state the surfaces report"
-    line = src.split("notEvaluated:", 1)[1].split("\n", 1)[0]
+    # Read the LINES entry (the character's words). CLIPS is a sibling map that now also carries a
+    # `notEvaluated:` key pointing at the clip, so scope the read to the LINES block.
+    lines = src.split("const LINES = {", 1)[1].split("};", 1)[0]
+    line = lines.split("notEvaluated:", 1)[1].split("\n", 1)[0]
     assert "could not reach" in line.lower(), "the line must name what actually happened"
     assert "HTTP" not in line, "the spoken line must not dress a transport code as a verdict"
 
@@ -58,9 +61,9 @@ def test_the_loop_carries_the_state_it_was_missing():
 def test_provenance_comes_from_playback_not_from_a_static_lookup():
     src = VOICE.read_text(encoding="utf-8")
     assert "onplaying" in src, "the clip must report itself as played before it may be claimed"
-    assert 'lastOrigin = "device"' in src, "a fallback must relabel the origin"
+    assert 'lastOrigin = "silent"' in src, "a clip that cannot play must relabel the origin silent"
     # selecting the clip must never be what names the origin
-    assert 'const clip = els.clipKey ? CLIPS[els.clipKey] : null;' in src
+    assert 'lastOrigin = "locked-clip"; paintChip();' in src
 
 
 def test_every_surface_loads_the_one_module():
@@ -90,7 +93,11 @@ def test_both_surfaces_claim_the_same_sound_label_vocabulary():
     """One vocabulary, two consumers: the module owns the labels, the page only consumes them."""
     module = VOICE.read_text(encoding="utf-8")
     assert "TENET · studio voice" in module, "the module owns the studio-voice label"
-    assert "sound — " in module and "device voice" in module
+    # ONE voice, structurally: the labels the module may show are the studio clip, muted and silent.
+    # There is no "device voice" label, because there is no device voice to fall back to.
+    assert "sound — " in module
+    assert "device voice" not in module, (
+        "a device-voice label would name a second voice that must not be reachable")
     console = CONSOLE.read_text(encoding="utf-8")
     assert "TENET · studio voice" not in console, (
         "the page must not restate the label: the module owns the vocabulary")

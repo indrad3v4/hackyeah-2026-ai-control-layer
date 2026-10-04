@@ -116,8 +116,9 @@ def test_resolved_as_a_the_single_page_consumes_the_one_module_that_owns_the_wor
     assert label not in console, (
         "a second copy of the vocabulary on the page is a second source of truth: the guide's "
         "inline engine is exactly what this merge removed")
-    assert "device voice" in module, (
-        "the fallback must be named - a chip may never claim the studio voice while the device speaks")
+    # ONE voice, structurally: the module names no second voice, because none is reachable.
+    assert "device voice" not in module, (
+        "a device-voice label would name a second voice that must not be reachable")
     for forbidden in ("speechSynthesis", "function pickVoice", "function clipFor("):
         assert forbidden not in console, (
             "the page carries a second voice engine (%r): one product, one voice" % forbidden)

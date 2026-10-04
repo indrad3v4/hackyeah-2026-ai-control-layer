@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import Body, FastAPI, Header, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 
 from . import config
@@ -221,6 +222,22 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         yield
 
     app = FastAPI(title="TENET Control Plane", version="0.1.0", lifespan=lifespan)
+
+    # The console is also published as a static site (GitHub Pages). There the page is same-origin
+    # to a host with no backend, so a POST /api/ask would be refused (405) — the browser refuses it
+    # BEFORE the plane is reached, because the static host answers the preflight itself. This lets
+    # the static origin call the live plane: the page resolves its API base to THIS deployment, and
+    # the plane allows exactly that origin (plus local dev). An unknown origin is still refused.
+    # This only loosens the browser's same-origin rule; auth, rate limits and decision semantics are
+    # untouched — every decision route keeps its own token and its own verdict (AGENTS.md D5).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["https://indrad3v4.github.io", "http://localhost:8000",
+                       "http://127.0.0.1:8000"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["content-type", "x-warrnt-admin"],
+        max_age=600,
+    )
     app.state.kernel = kernel
     app.state.identity = identity
     app.state.runs = {}          # run_id -> {run_id, action_id, question, ts}
@@ -282,8 +299,13 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
 
     @app.get("/audio/{name}", include_in_schema=False)
     def audio(name: str) -> Any:
-        """TENET's own voice: one locked clip per beat, the same character as the film."""
-        if not re.fullmatch(r"[a-z0-9_-]{1,32}\.mp3", name):
+        """TENET's own voice: one locked clip per beat and per narration line, the film's character.
+
+        The pattern admits the camelCase narration keys (`line-denyAfter.mp3`,
+        `line-waitDecision.mp3`) verbatim, and still refuses traversal, other extensions and
+        anything with a path separator — the route serves clips, never arbitrary files.
+        """
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,48}\.mp3", name):
             return JSONResponse({"detail": "not found"}, status_code=404)
         path = AUDIO_DIR / name
         if not path.is_file():

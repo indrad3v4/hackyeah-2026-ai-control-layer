@@ -238,6 +238,11 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
 /* Bound up front: every renderer below may speak, and an isolated harness that evals one
    function alone must not meet a free identifier it was never given. */
 var V=(typeof window!=="undefined"&&window.TENETVoice)?window.TENETVoice:null;
+/* ONE API base resolver. On Railway the page is served by the plane itself, so an API call is
+ * same-origin and PLANE is "". On a static host (GitHub Pages, or opened from disk) there is no
+ * backend behind the page, and a same-origin "/api/…" would 405 — so the call is routed to the
+ * live plane instead. EVERY API call goes through this one base; none is written as a bare path. */
+const PLANE=/(^|\.)github\.io$/.test(location.hostname)||location.protocol==="file:"?"https://hackyeah-2026-ai-control-layer-production.up.railway.app":"";
 const $=id=>document.getElementById(id);let events=[],selected=null,usage=null,trace=null,cardTrace=null,cardPinned=false,llm_authority=null,authority_source=null,upstream_configured=null,live_mode=null;
 /* chainData is the kernel's own receipt-chain projection (GET /api/state -> chain), read once per
  * refresh and never invented. railNotEvaluated is TRUE only when a real transport failure means no
@@ -392,14 +397,14 @@ function renderStates(b){const el=$("states");if(!el)return;
     +cell("not allowed","denied",c.denied,lastOf("denied"))
     +cell("waiting for you","pending",c.pending,lastOf("pending"))
     +cell("expired","expired",c.expired,lastOf("expired"))}
-async function get(url,opts){const r=await fetch(url,opts);if(!r.ok){const err=new Error(url+" → HTTP "+r.status);err.status=r.status;err.body=await r.json().catch(()=>({}));throw err}return r.json()}
+async function get(url,opts){const r=await fetch(PLANE+url,opts);if(!r.ok){const err=new Error(url+" → HTTP "+r.status);err.status=r.status;err.body=await r.json().catch(()=>({}));throw err}return r.json()}
 let ready=false;
 async function refresh(){try{const [sec,res,lt,ov,sm,st]=await Promise.all([get("/api/security-events?limit=20"),get("/api/model-usage"),get("/api/live-trace"),get("/api/overview"),get("/api/stream?limit=20").catch(()=>({})),get("/api/state").catch(()=>null)]);events=sec.events||[];usage=res;trace=lt.trace||null;chainData=st||null;llm_authority=lt.llm_authority;authority_source=lt.authority_source;upstream_configured=(typeof ov.upstream_configured==="boolean")?ov.upstream_configured:null;live_mode=ov.mode||null;ready=true;if(!askFailureState)railNotEvaluated=false;$("live").textContent="Live control plane · kernel evidence";$("footer").textContent="Evidence source: TENET kernel · mode: "+(live_mode||"—")+(upstream_configured===true?" · upstream configured":upstream_configured===false?" · no upstream configured":"");setMode(upstream_configured);renderResource();renderFeed();renderStates(sm);if(!selected||!events.some(e=>e.event_id===selected)){selected=events[0]?.event_id||null;cardPinned=false}if(selected){const e=events.find(x=>x.event_id===selected);if(e)renderSelected(e)}/* The card follows the SELECTED record; with no pin it follows the latest action. On load cardPinned is false, so the default is the newest action. */if(cardPinned&&selected){renderCardFor(selected)}else{cardTrace=null;renderTrace();renderAuthority()}renderRail();renderNextStep();document.body.dataset.ok="true"}catch(err){$("live").textContent="Control plane unavailable";$("footer").textContent=err.message;setMode(null);if(err.body&&err.body.retry_after_s)$("selfCheckMsg").textContent=rateLimited(err.body.retry_after_s);document.body.dataset.ok="false";railNotEvaluated=true;renderRail();renderNextStep()}}
 /* The rate-limited state reads as waiting for a slot, never as a TENET failure. */
 function rateLimited(n){return "Rate limited · retrying in "+n+"s — the kernel is still enforcing; this is a wait, not a failure."}
 $("refresh").onclick=refresh;
 $("revoke").onclick=async()=>{const notice=$("operatorNotice");if(notice)notice.textContent="";if(!selected){if(notice)notice.textContent="Select an action first — a halt names the action it stops. No request was sent.";return}const e=events.find(x=>x.event_id===selected);if(!e?.agent)return;const token=localStorage.getItem("warrnt_admin")||"";if(!token){$("footer").textContent="Stop agent is protected. Use the authenticated operator console.";if(notice)notice.textContent="Stop agent is protected — declare the operator token first. No request was sent.";return}const by=declaredOperator();if(!by){$("footer").textContent="Declare the operator's name before stopping an agent — a halt must name the person who decided it. No request was sent.";if(notice)notice.textContent="No operator name declared — a halt must name the person who decided it. No request was sent.";return}if(!confirm("Stop "+e.agent+"? This revokes its authority, decided by "+by+"."))return;try{const r=await get("/api/agents/"+encodeURIComponent(e.agent)+"/revoke",{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:by})});if(notice)notice.textContent="Agent "+e.agent+" halted — recorded as decided by "+by+".";await refresh()}catch(err){$("footer").textContent="Revoke failed: "+err.message;if(notice)notice.textContent="Revoke failed: "+err.message}};
-$("selfCheck").onclick=async()=>{const b=$("selfCheck");b.disabled=true;$("selfCheckMsg").textContent="Running the journey — allow · redact · deny · hold…";try{const r=await fetch("/api/scenario/journey",{method:"POST"});const data=await r.json().catch(()=>({}));if(!r.ok){$("selfCheckMsg").textContent=data.retry_after_s?rateLimited(data.retry_after_s):(data.error||("HTTP "+r.status));return}const steps=data.steps||[];const beats=steps.map(s=>s.beat.toUpperCase()+" · "+s.agent+" · "+s.decision+(s.executed?" · crossed":" · far side untouched")+(s.action_id?" · "+s.action_id:"")).join("   |   ");await refresh();$("authoritySource").textContent="tenet-kernel";$("selfCheckMsg").textContent=(data.summary?data.summary.distinct_verdicts+" different verdicts on "+data.summary.beats+" real requests — ":"")+beats+(steps.some(s=>s.decision==="human")?" — the hold is waiting for a person in 04 · Actions on the record":"")}catch(err){$("selfCheckMsg").textContent="Journey failed: "+err.message}finally{b.disabled=false}};
+$("selfCheck").onclick=async()=>{const b=$("selfCheck");b.disabled=true;$("selfCheckMsg").textContent="Running the journey — allow · redact · deny · hold…";try{const r=await fetch(PLANE+"/api/scenario/journey",{method:"POST"});const data=await r.json().catch(()=>({}));if(!r.ok){$("selfCheckMsg").textContent=data.retry_after_s?rateLimited(data.retry_after_s):(data.error||("HTTP "+r.status));return}const steps=data.steps||[];const beats=steps.map(s=>s.beat.toUpperCase()+" · "+s.agent+" · "+s.decision+(s.executed?" · crossed":" · far side untouched")+(s.action_id?" · "+s.action_id:"")).join("   |   ");await refresh();$("authoritySource").textContent="tenet-kernel";$("selfCheckMsg").textContent=(data.summary?data.summary.distinct_verdicts+" different verdicts on "+data.summary.beats+" real requests — ":"")+beats+(steps.some(s=>s.decision==="human")?" — the hold is waiting for a person in 04 · Actions on the record":"")}catch(err){$("selfCheckMsg").textContent="Journey failed: "+err.message}finally{b.disabled=false}};
 /* ---- 00 · INTENT ENTRY + ACTION CARD + REAL HUMAN CONTROL (ACT-7) -----------------------------
  * The intent box uses the REAL proposal path (POST /api/ask); the "who acts" selector uses the
  * REAL POST /api/demo/run; the human control uses the REAL approve/deny routes. Nothing here
@@ -705,7 +710,7 @@ function setAskFailure(f){ askFailureState=f; if(typeof V!=="undefined"&&V)V.say
   try{acHide();renderControl(null);renderRail();renderNextStep();}catch(e){}}
 $("intentGo").onclick=async()=>{const q=($("intentInput").value||"").trim();if(!q){$("proposalText").textContent="Type what your AI should do first.";return}
   $("proposalText").textContent="Asking the model to propose… (the kernel will decide)";if(typeof V!=="undefined"&&V)V.say("proposes");askFailureState=null;railNotEvaluated=false;cardTrace=null;nsOpenReceipt=false;nsOpenChain=false;acHide();renderControl(null);renderRail();renderNextStep();
-  try{const r=await fetch("/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q:q})});
+  try{const r=await fetch(PLANE+"/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q:q})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok){setAskFailure(askFailure(r,data));return}
     askFailureState=null;railNotEvaluated=false;
@@ -731,7 +736,7 @@ $("whoGo").onclick=async()=>{const agent=$("whoActs").value;$("proposalText").te
      the page sends the operator token when it has one and never fabricates a verdict otherwise. */
   const token=localStorage.getItem("warrnt_admin")||"";
   try{const headers={"content-type":"application/json"};if(token){headers["x-warrnt-admin"]=token}
-    const r=await fetch("/api/demo/run",{method:"POST",headers:headers,body:JSON.stringify({agent:agent})});
+    const r=await fetch(PLANE+"/api/demo/run",{method:"POST",headers:headers,body:JSON.stringify({agent:agent})});
     const data=await r.json().catch(()=>({}));
     if(r.status===401){setAskFailure(Object.assign(askFailure(r,{}),{text:"Not evaluated — this path needs the authenticated operator console"+(token?" (the stored operator token was rejected)":"")+". No attempt was made and no record was written."}));return}
     if(!r.ok){setAskFailure(askFailure(r,data));return}
@@ -755,10 +760,10 @@ async function resolve(verb){const t=acTrace;if(!t||!t.action_id)return;let toke
   const by=declaredOperator();
   if(!by){resolveNotice("Declare the operator's name before approving or denying — a human decision must name the person who made it. No request was sent.");return}
   resolveNotice("Submitting "+verb+" …");
-  try{const r=await fetch("/api/actions/"+encodeURIComponent(t.action_id)+"/"+verb,{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:by})});
+  try{const r=await fetch(PLANE+"/api/actions/"+encodeURIComponent(t.action_id)+"/"+verb,{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:by})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok){resolveNotice("The control plane answered HTTP "+r.status+(data.error?": "+data.error:"")+" — nothing changed.");return}
-    const rr=await fetch("/api/live-trace?action_id="+encodeURIComponent(t.action_id));const rd=await rr.json().catch(()=>({}));
+    const rr=await fetch(PLANE+"/api/live-trace?action_id="+encodeURIComponent(t.action_id));const rd=await rr.json().catch(()=>({}));
     /* Render the RESULTING state from the kernel's own composer (GET /api/live-trace?action_id=…);
      * rendering it replaces the control block, so the confirmation is written to #controlMsg when it
      * still exists and always mirrored to the durable #operatorNotice — the human who decided must

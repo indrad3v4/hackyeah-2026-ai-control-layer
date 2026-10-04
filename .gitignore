@@ -6,3 +6,6 @@ __pycache__/
 
 # runtime artifacts: a live run always rewrites these, so they can never be source
 state/provider/*.jsonl
+
+# TTS intermediates: the raw synthesiser output is not the deliverable, only its processed clip is
+audio/raw-line-*.mp3

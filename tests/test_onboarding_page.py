@@ -92,8 +92,13 @@ def test_the_character_speaks_the_state_not_a_script():
         "the line the guide says is derived from the record, not hardcoded per render")
     with TestClient(create_app(seed=True)) as client:
         module = client.get("/voice.js").text
-    assert "u.rate = 0.94" in module and "u.pitch = 0.92" in module, (
-        "the device voice carries the film's character direction: slower and lower")
+    # One voice: no device synthesiser survives anywhere, so the film's character is the only
+    # voice the visitor can hear (the beat clips and the narration clips are both hers).
+    for forbidden in ("speechSynthesis", "SpeechSynthesisUtterance", "pickVoice", "speakDevice"):
+        assert forbidden not in module, (
+            "a device engine is a second voice (%r): one product, one voice" % forbidden)
+    assert 'audio/line-listen.mp3' in module, (
+        "the character's narration lines are her own clips too")
     assert "V.say(" in body, "the page speaks the state's line through the one voice module"
 
 
