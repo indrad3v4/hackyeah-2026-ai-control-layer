@@ -240,6 +240,15 @@ The internal Python namespace remains `warrnt` where compatibility with the cano
   route behind the operator token and then **re-read** the action to show the state the kernel
   actually reached; with no token the control says plainly that it is protected instead of
   pretending to work. The page never fabricates a receipt, an action id or a crossing.
+  Executed proof against the shipped kernel (a loopback stand-in for the Frankfurter tool server
+  behind `WARRNT_UPSTREAM`, so the live-upstream warrants `W-9001`/`W-9003` are issued): `fx-trader`
+  → **ALLOW**, `executed=True`; `support-copilot` → **DENY**, `executed=False`, no upstream contact;
+  `fx-auditor` → **HUMAN**, `executed=False`, no upstream contact, entering `pending` as a real
+  action id; then `resolve_hold(approve=True)` → the re-read record shows `state: approved`,
+  `decision: human`, and a real receipt. The Act-7 tests are
+  `tests/test_act7_intent_and_control.py` (T1–T6 plus the defect case, positive and negative, read
+  from the rendered DOM and from the bytes the page actually sent); all eight fail on the page as it
+  stood before this change and pass after it.
 
 ## Deliberately not claimed
 
