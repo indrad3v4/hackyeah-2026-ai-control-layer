@@ -297,6 +297,24 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         return FileResponse(path, media_type="application/javascript",
                             headers={"Cache-Control": "public, max-age=300"})
 
+    @app.get("/vendor/{name}", include_in_schema=False)
+    def vendor(name: str) -> Any:
+        """The two vendored browser libraries and their provenance record, served from our origin.
+
+        The answer block renders markdown through bytes that ship with this repo (they must never
+        come from a CDN), so the page needs a same-origin route to them. The shape is the one
+        ``/audio/{name}`` already uses: a strict filename whitelist, no path separator, no
+        traversal and no arbitrary file — anything else is 404, and the media type is fixed per
+        name rather than sniffed. ``vendor/*.min.js`` and ``SOURCES.json`` are never rewritten here.
+        """
+        if name not in _VENDOR_MEDIA:
+            return JSONResponse({"detail": "not found"}, status_code=404)
+        path = VENDOR_DIR / name
+        if not path.is_file():
+            return JSONResponse({"detail": "not found"}, status_code=404)
+        return FileResponse(path, media_type=_VENDOR_MEDIA[name],
+                            headers={"Cache-Control": "public, max-age=86400"})
+
     @app.get("/audio/{name}", include_in_schema=False)
     def audio(name: str) -> Any:
         """TENET's own voice: one locked clip per beat and per narration line, the film's character.
@@ -1203,3 +1221,13 @@ OBSERVER_HTML = REPO_ROOT / "observer.html"
 # TENET's own voice: the locked studio clips (Grok Ara) the walkthrough plays, served as files
 # so the page stays a page and the voice is one download per line.
 AUDIO_DIR = REPO_ROOT / "audio"
+# The vendored browser libraries the answer block renders through, plus their provenance record.
+# Served from our own origin so the page never depends on a CDN. The whitelist IS the route: only
+# these three names exist, each with one fixed media type — nothing is sniffed and nothing else
+# under vendor/ is reachable.
+VENDOR_DIR = REPO_ROOT / "vendor"
+_VENDOR_MEDIA: dict[str, str] = {
+    "markdown-it.umd.min.js": "application/javascript",
+    "purify.min.js": "application/javascript",
+    "SOURCES.json": "application/json",
+}

@@ -1,0 +1,24 @@
+[
+ {
+  "file": "markdown-it.umd.min.js",
+  "repo": "https://github.com/markdown-it/markdown-it",
+  "tag": "15.0.2",
+  "license": "MIT",
+  "url": "https://cdn.jsdelivr.net/npm/markdown-it@15.0.2/dist/browser/markdown-it.umd.min.js",
+  "bytes": 115080,
+  "sha256": "635972b985228e8af9f0143647c68616b7a3bb09f6946e7e4a52e43dcf5e7be5",
+  "license_file": "markdown-it-LICENSE.txt",
+  "license_sha256": "792c48c5a849a15fdf9e37e8bcf9e6d1dd13b32b46c642a748a0a46a9919d473"
+ },
+ {
+  "file": "purify.min.js",
+  "repo": "https://github.com/cure53/DOMPurify",
+  "tag": "3.4.16",
+  "license": "Apache-2.0",
+  "url": "https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js",
+  "bytes": 28885,
+  "sha256": "2c90a9b46d6463f26038a29b686e82bc91de01fdac9d5229e7cfe3b360134ea2",
+  "license_file": "DOMPurify-LICENSE.txt",
+  "license_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+ }
+]
