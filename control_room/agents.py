@@ -20,7 +20,7 @@ import httpx
 
 from .models import ControlAnswer, Evidence
 from .provider import (bind_sdk, build_provider, current_run_id, key_present, provider_status,
-                        set_run_id)
+                        read_events, set_run_id, summarize_events)
 
 try:  # the SDK is required for the live path but must not break import in a bare checkout
     from agents import Agent, Runner, function_tool
@@ -260,6 +260,53 @@ def provider_state() -> dict[str, Any]:
     return {**provider_status(), "available": build_provider() is not None}
 
 
+
+def _ai_usage(result: Any = None, run_id: str = "") -> dict[str, Any]:
+    """Return run-scoped model evidence, preferring Agents SDK runtime usage."""
+    sdk_usage = getattr(getattr(result, "context_wrapper", None), "usage", None)
+    sdk_requests = getattr(sdk_usage, "requests", None)
+    sdk_input = getattr(sdk_usage, "input_tokens", None)
+    sdk_output = getattr(sdk_usage, "output_tokens", None)
+    sdk_total = getattr(sdk_usage, "total_tokens", None)
+    try:
+        events = read_events(run_id)
+    except Exception:
+        events = []
+    persisted = summarize_events(events)
+    model_calls = int(sdk_requests) if sdk_requests is not None else int(persisted["model_calls"])
+    model_called = model_calls > 0 or bool(persisted["model_called"])
+    model_completed = bool(persisted["model_completed"]) or (result is not None and model_calls > 0)
+    if model_calls == 0:
+        input_tokens = output_tokens = total_tokens = 0
+        token_status = "not_applicable"
+    elif sdk_input is not None and sdk_output is not None and sdk_total is not None:
+        input_tokens, output_tokens, total_tokens = int(sdk_input), int(sdk_output), int(sdk_total)
+        token_status = "reported"
+    elif persisted["token_status"] == "reported":
+        input_tokens, output_tokens, total_tokens = persisted["input_tokens"], persisted["output_tokens"], persisted["total_tokens"]
+        token_status = "reported"
+    else:
+        input_tokens = output_tokens = total_tokens = None
+        token_status = "not_reported"
+    trace_id = persisted.get("trace_id")
+    if not trace_id and result is not None:
+        for response in reversed(getattr(result, "raw_responses", []) or []):
+            trace_id = getattr(response, "request_id", None) or trace_id
+            if trace_id:
+                break
+    return {
+        "model_called": model_called,
+        "model_completed": model_completed,
+        "model_calls": model_calls,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "token_status": token_status,
+        "model_requested": provider_status().get("model", "deepseek"),
+        "model_served": persisted.get("model_served"),
+        "trace_id": trace_id,
+    }
+
 def _evidence_from_records() -> list[Evidence]:
     """Kernel facts with real ids, read straight from the control plane's own kernel reads.
 
@@ -311,7 +358,8 @@ async def answer(user_text: str, *, run_id: str | None = None) -> ControlAnswer:
             answer=(f"Refusal: the agentic surface is DEGRADED ({reason}). "
                     f"No model call was made. The kernel record is attached as evidence and "
                     f"remains the only authority - nothing was authorized by this answer."),
-            evidence=evidence, specialists=[], run_id=run_id, next_action="retry when provider available")
+            evidence=evidence, specialists=[], run_id=run_id, next_action="retry when provider available",
+            ai={**_ai_usage(None, run_id), "answer_origin": "refusal"})
     try:
         result = await Runner.run(orchestrator, user_text)
         text = str(result.final_output)
@@ -320,8 +368,11 @@ async def answer(user_text: str, *, run_id: str | None = None) -> ControlAnswer:
             answer=(f"Refusal: the provider call failed ({type(exc).__name__}). "
                     f"No answer was synthesized and nothing was authorized; the kernel record "
                     f"is attached as evidence."),
-            evidence=evidence, specialists=[], run_id=run_id, next_action="retry when provider available")
+            evidence=evidence, specialists=[], run_id=run_id, next_action="retry when provider available",
+            ai={**_ai_usage(None, run_id), "answer_origin": "provider_failure"})
+    ai = _ai_usage(result, run_id)
+    ai["answer_origin"] = "model" if ai["model_called"] and ai["model_completed"] else "provider_failure"
     return ControlAnswer(answer=text, evidence=evidence, specialists=list(SPECIALISTS),
-                         run_id=run_id)
+                         run_id=run_id, ai=ai)
 
 
