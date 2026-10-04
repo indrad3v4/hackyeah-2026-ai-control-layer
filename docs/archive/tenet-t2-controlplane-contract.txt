@@ -1,0 +1,171 @@
+ARCHIVED 2026-10-03 — superseded by docs/TENET-CONTRACT.txt (canonical). Kept for history only.
+======================================================================
+ROLE:
+You are a senior Python engineer building the control plane of an AI control layer whose product
+claim is: the model proposes, the enforcement kernel decides, nothing else may authorize. You are
+allergic to a green screen that proves nothing - you never let a demo feed, a fixture or a model
+answer stand in for a real kernel decision.
+
+TASK:
+In the submission repository (working copy: /root/.hermes/hackyeah/ai-control-layer, branch
+pr14-work which tracks origin/feat/control-room-v2-hermes), add a real control-plane service and
+make the agent layer live. Concretely:
+
+1. New package `control_plane/` with a FastAPI app (app factory + `uvicorn control_plane.app:app`)
+   that is the single user-facing runtime:
+   GET  /health            -> {status: LIVE|DEGRADED|DEMO, mode, provider, model, commit, uptime}
+   GET  /api/overview      -> counters + authority summary (from the kernel)
+   GET  /api/activity      -> newest-first events, ?limit=
+   GET  /api/actions       -> all actions
+   GET  /api/actions/pending
+   GET  /api/actions/{id}  -> one action with its decision, receipt, upstream_contacted
+   GET  /api/agents        -> agents with authority state
+   GET  /api/warrants      -> warrants with lifecycle state
+   POST /api/actions/{id}/approve
+   POST /api/actions/{id}/deny
+   POST /api/agents/{id}/revoke
+   POST /api/ask           -> executes the REAL orchestrator (below)
+   Keep GET / serving the Control Room page (the repository's existing index.html dashboard,
+   TENET branding) and keep /api/state as a compatibility alias if the page uses it.
+2. The service imports the ENFORCEMENT KERNEL from the mirrored package in this repository
+   (`node/warrnt`, added to sys.path at import time - the mirror is shipped with the submission)
+   and delegates every decision to it. The control plane may read kernel state and call kernel
+   decision functions; it may NEVER decide, allow, or contact an upstream tool by itself.
+   If the kernel cannot produce a decision, the control plane must refuse (HTTP 503 for the
+   decision endpoints, a refusal body for /api/ask) - never a silent allow.
+3. Provider seam in `control_room/agents.py`: configure the OpenAI Agents SDK against an
+   OpenAI-compatible DeepSeek client built explicitly at runtime:
+   base_url `https://api.deepseek.com`, model `deepseek-chat`, key read from env
+   `DEEPSEEK_API_KEY` (by name only). No code path may require `OPENAI_API_KEY`. Provider
+   failure must degrade, not crash: `/health` reports DEGRADED and `/api/ask` returns a refusal
+   with the reason. Never print, log, echo or return the key; add a test asserting the key string
+   never appears in any response body.
+4. Orchestrator: exactly four agents - TENET Orchestrator plus the three specialists
+   (Governance, Kernel, Control-Plane) used as tools. Specialist answers are grounded in kernel
+   calls (tool results), never in model invention. `/api/ask` returns
+   `{run_id, answer, evidence[], specialists[], next_action}`; `evidence[]` entries carry the
+   kernel facts they came from (action id, warrant id, decision, receipt id) with real ids only.
+   No chain-of-thought in the response.
+5. Correlation: every `/api/ask` run records `run_id` and, when it results in or references an
+   action, the `action_id`; both traces must be retrievable (`/api/activity` entries carry both
+   when applicable). Agent trace and security trace stay separate records that share ids.
+6. Activity must be real: the current DEMO FEED (fixture events rendered as if live) must not be
+   the production path. Put fixtures behind an explicit mode flag `TENET_MODE=demo` (default
+   `live`), so a running production instance shows only kernel events, and the page/API label the
+   mode. `/health` must make LIVE vs DEMO unmistakable.
+7. Tests (pytest, no network): each route's status and shape; approval flow (pending -> approve ->
+   allow, receipt present); deny flow; revoke expires a pending action; fail-closed when the
+   provider is unreachable (simulate by clearing the key env / raising in the client) and when the
+   kernel raises; mode flag behaviour; no-secret-leak test.
+8. A runnable local proof: `scripts/tenet_live_proof.py` that starts (or targets) the app, performs
+   one full chain - user question -> orchestrator -> specialist -> tool -> kernel decision ->
+   execution or refusal -> receipt - and prints ONE JSON line with run_id, action_id, decision,
+   upstream_contacted, receipt_id, answer. It must fail loudly (non-zero exit) if any id is
+   missing or if `upstream_contacted` is true without an allow decision.
+
+IDEAL ENDING (ИКР):
+One process serves the Control Room, the API and the orchestrator; the enforcement authority is the
+kernel that already exists in this repository as a mirror, used as a library. The proof is a single
+JSON line where every id is real. No new service, no new framework, no second decision path, no
+mocked "live" screen: the pieces that already exist are wired so the chain proves itself.
+
+CONTEXT:
+- Repo: /root/.hermes/hackyeah/ai-control-layer (branch pr14-work -> origin/feat/control-room-v2-hermes).
+  Existing: `control_room/` (Reflex page + agents.py using the OpenAI Agents SDK + models.py),
+  `node/warrnt/` (the enforcement kernel mirror with `warrnt/api.py`, actions, warrants, policy,
+  receipts), `index.html` (the currently deployed dashboard), `scripts/` (kernel proof scripts).
+- The kernel's source of truth is a different repository; a separate task is adding missing kernel
+  routes and persistence there and the mirror pin will be bumped afterwards. Code against the
+  kernel interface that exists; if a kernel route you need is missing, implement the read against
+  the kernel's in-process functions (no HTTP-hop) and note it in your report.
+- Deployment: I (the orchestrator) run the deploy. You add only the run command + a `Procfile` /
+  `railway.json` start command + healthcheck path `/health`, and document required env var NAMES.
+- Naming: the product is TENET everywhere user-facing; the internal package stays `warrnt` and is
+  described to users as "TENET Enforcement Kernel". Never present WARRNT as a product.
+- Frozen vocabulary: action classes (observe, read_personal, draft, write_reversible, irreversible,
+  authorize); decisions (allow, deny, redact, human, revoked); warrant states (active, revoked,
+  expired); `expired` is a state, not a decision. Do not create a second taxonomy.
+- Do not introduce React/TypeScript/Vite/Next. The Control Room stays Reflex/Python or the existing
+  static dashboard page.
+
+ACCEPTANCE CRITERIA:
+AC1. `uvicorn control_plane.app:app` starts locally and every route in TASK.1 answers; paste the
+     curl commands with real responses for /health, /api/overview, /api/actions, /api/warrants.
+AC2. `/health` on a live-mode instance shows status LIVE (or DEGRADED with a named reason) and never
+     reports LIVE while the provider key is absent.
+AC3. `/api/ask` makes a REAL model call when the key is present: paste the response with a real
+     run_id and evidence entries carrying real kernel ids. If you cannot make a real call in this
+     environment, say so explicitly and paste the degraded-path response instead - never fake it.
+AC4. Approve flow proven end to end by test output: pending -> approve -> decision allow ->
+     receipt id present.
+AC5. Deny flow proven: decision deny, upstream_contacted false, receipt present.
+AC6. Revoke flow proven: authority revoked and the pending action expired (state, not decision).
+AC7. Fail-closed proven: provider unreachable AND kernel exception both produce refusal with no
+     execution and no allow (paste test output).
+AC8. No-secret-leak test passes (assert the env value string is absent from every response body).
+AC9. Demo mode isolated: with TENET_MODE=demo fixture events appear and are labelled; with default
+     mode they do not appear at all. Paste both /api/activity outputs.
+AC10. `scripts/tenet_live_proof.py` prints exactly one JSON line; paste it (or paste the explicit
+     failure with the reason if the chain could not complete in this environment).
+AC11. `python -m pytest -q` in the repo passes; paste the summary. Any pre-existing test you had to
+     change must be named with the reason.
+AC12. `bash scripts/sync-node.sh --check` still behaves as before (it checks the mirror, which you
+     must not edit); paste its output.
+
+CONSTRAINTS:
+- Python 3.12, the repo's existing venv/pytest. Keep dependencies to what is already pinned in
+  requirements-control-room.txt (reflex, openai-agents, fastapi/uvicorn if already present);
+  justify any addition in one line.
+- Do not edit `node/**` (mirror), do not change the mirror pin, do not force-push, do not modify
+  anything from PR #13, do not create extra branches beyond the current one.
+- Small scoped commits; never commit secrets, never commit a contract file.
+- No fabricated ids, receipts, decisions, upstream contacts or agent state anywhere, in code,
+  tests, fixtures or reports.
+
+NON-GOALS:
+- No package rename, no second action taxonomy, no 14-agent fan-out (exactly 4 agents).
+- No frontend rewrite, no React, no auth system, no billing.
+- No Railway configuration changes beyond the run command + healthcheck file mentioned in CONTEXT.
+- Do not "improve" the kernel's decision logic or its vocabulary.
+
+OUTPUT FORMAT:
+Plain text report, in this order: (1) files added/changed with one line each; (2) how to run it
+locally, exact command; (3) curl transcript for the four required routes; (4) the proof JSON line;
+(5) pytest summary; (6) per-AC PASS / NOT VERIFIED table with the evidence line for each;
+(7) known limitations and anything you could not verify.
+
+VERIFICATION / SELF-CHECK:
+Before finalizing, re-read TASK.6 and check the running instance shows only real events; re-read
+TASK.3 and check no code path touches OPENAI_API_KEY; re-read TASK.2 and check no endpoint can
+execute anything without a kernel decision. Mark each AC honestly. A plausible report without pasted
+command output is a failed task.
+
+
+=========================================================================
+DEPLOY SHAPE - BINDING OPERATOR DECISION (2026-10-03, Indra)
+=========================================================================
+1. The EXISTING Railway production service becomes the Python TENET Control Plane
+   runtime. Do NOT create a second production service.
+2. Entrypoint: FastAPI + uvicorn (startCommand: uvicorn <module>:app --host 0.0.0.0
+   --port $PORT, healthcheck path /health, restart on failure).
+3. Logical boundaries stay: TENET Control Room -> TENET Control Plane -> TENET
+   Enforcement Kernel -> upstream. One process may host all three, but the code
+   boundary is explicit: no agent and no UI route may reach upstream without the
+   kernel's decision.
+4. The same service must expose: /health, /api/overview, /api/activity, /api/actions,
+   /api/actions/pending, /api/actions/{id}, /api/agents, /api/warrants, /api/ask,
+   plus the human-decision endpoints (approve, deny, revoke).
+5. Keep the existing static/demo UI served as a compatibility page until the real
+   TENET Control Room is deployed - but it must not be what /api/* answers with, and
+   the demo feed must be clearly separated from live state.
+   The operator will flip the Railway source branch and the start command himself
+   (Hermes), NOT in this coding run: this run delivers code + tests + the start
+   contract; deployment and external verification are the operator's step (F5).
+6. DEEPSEEK_API_KEY is already present in the Railway service environment. The code
+   reads it by NAME at request time. It is never printed, logged, returned, or
+   committed, and no test may assert its value.
+7. Naming: user-facing product is TENET; "TENET Enforcement Kernel" is the term in
+   architecture text and UI. The internal warrnt/* package name stays where it is
+   required for compatibility - no global rename in this run.
+8. Operator will NOT merge PR #14 before F1-F4 pass locally and F5-F8 pass against
+   the deployed PR branch. Do not push to main, do not open a merge.

@@ -12,6 +12,17 @@
     GET  /api/breakglass            every grant, its state, its window and its debt
     POST /api/breakglass/revoke     close a grant early
     POST /api/breakglass/postmortem record the review a used grant owes
+    GET  /api/actions            the canonical Action log (one object per intercepted call)
+    GET  /api/actions/pending    the human holds, newest first (declared before /{id})
+    GET  /api/actions/{id}       one Action: decision, upstream_contacted, receipt
+    POST /api/actions/{id}/approve  a named person releases a held action (runs upstream)
+    POST /api/actions/{id}/deny     a named person refuses it (upstream NOT contacted)
+    GET  /api/overview           counters + authority summary + mode, one payload
+    GET  /api/activity           ordered recent events, newest first (?limit=, default 50)
+    GET  /api/warrants           alias of /warrants under the /api/ prefix
+    GET  /api/agents             alias of /agents under the /api/ prefix
+    POST /api/agents/{id}/revoke revoke an agent/authority (thin wrapper over /revoke)
+    POST /api/ask                an answer assembled from the record - never guessed
 
 The proxy is built once in ``create_app`` and stored on ``app.state.proxy``; routes are
 thin translators. A denied call returns a JSON-RPC ``error`` and the upstream is not
@@ -24,6 +35,7 @@ and prints it once at startup.
 """
 from __future__ import annotations
 
+import hashlib
 import hmac
 import os
 import secrets
@@ -33,19 +45,62 @@ from typing import Any, Optional
 
 from fastapi import FastAPI, Header, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+
+
 from pydantic import BaseModel
 
 from .actions import classify
 from .actors import ActorRegistry
 from .anchor import HeadAnchor
 from .breakglass import MAX_TTL_S, BreakGlassRefused
+from .controlplane import HoldRefused, answer
 from .config import Settings
 from .models import Decision
 from .policy import PolicyEngine
+from .proxy import MCPProxy, _receipt_row
+
+
 from .proxy import MCPProxy
+
+
+def upstream_log_path() -> str:
+    """The path of the upstream's own access log, as the deployment names it.
+
+    The tool server keeps its own journal of every call it received (``serve_tenet.sh``
+    points it at an env var). The reader has to honour *that* name, or the upstream logs a
+    real call and the evidence endpoint reports none - a chain that looks like nothing
+    happened. Returns ``""`` when nothing is configured: an absent log is reported as
+    absent, never as an empty proof.
+
+    Names are tried in the order the deployment uses: the product name first, then the
+    historical ones, so an old environment keeps working unchanged.
+    """
+    for name in ("TENET_UPSTREAM_LOG", "WARRNT_UPSTREAM_LOG", "FRANKFURTER_LOG"):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _sha256_of(path: str | None) -> str:
+    """SHA-256 of a file's bytes, or ``""`` when there is no file to digest.
+
+    One implementation, so the console, the API and an answer can never disagree about
+    which artifact they are pointing at. A missing path is not an error: it is the honest
+    "no artifact".
+    """
+    if not path:
+        return ""
+    try:
+        with open(path, "rb") as fh:
+            return hashlib.sha256(fh.read()).hexdigest()
+    except OSError:
+        return ""
+
+
 from .registry import AppendOnlyRegistry
 from .upstream import build_upstream, ExecutionCounter
-from .warrants import WarrantIssuer
+from .warrants import WarrantIssuer, refresh_state
 
 # Only refusals are errors. ``redact`` runs, so it is a result with a note - a receipt
 # that says *executed, minus these fields* - never a JSON-RPC error.
@@ -82,6 +137,15 @@ class BreakGlassPostmortem(BaseModel):
     note: str
 
 
+class DecideRequest(BaseModel):
+    by: str
+    note: str = ""
+
+
+class AskRequest(BaseModel):
+    q: str
+
+
 class ResetRequest(BaseModel):
     reason: str = ""
     actor: str = ""
@@ -93,7 +157,10 @@ def build_proxy(settings: Settings) -> MCPProxy:
     counter = ExecutionCounter()
     upstream = build_upstream(counter)
     engine = PolicyEngine(verify=issuer.signature_ok)
-    proxy = MCPProxy(issuer=issuer, registry=registry, engine=engine, upstream=upstream)
+    # The persistence layer writes its store next to the registry, under the same directory
+    # the process was pointed at (TENET_STATE_DIR, else WARRNT_HOME, else ./state).
+    proxy = MCPProxy(issuer=issuer, registry=registry, engine=engine, upstream=upstream,
+                     store_dir=str(settings.home))
     proxy.counter = counter
     # Every append, and every reset, re-signs the registry head with the issuer key and
     # records it in a separate anchor log. A rewritten registry no longer matches the last
@@ -123,6 +190,9 @@ def create_app(settings: Optional[Settings] = None, seed: bool = True) -> FastAP
     async def lifespan(app: FastAPI):
         if seed:
             app.state.proxy.issue_all(reset_registry=False)
+            # A restart may bring back an order that was halted while a person still owed a
+            # decision: that hold comes back expired, never pending (R2).
+            app.state.proxy._expire_holds_of_halted_agents()
         yield
 
     app = FastAPI(title="WARRNT node", version="0.1.0", lifespan=lifespan)
@@ -150,6 +220,35 @@ def create_app(settings: Optional[Settings] = None, seed: bool = True) -> FastAP
         p = proxy()
         return {**p.registry.verify(),
                 "anchor": p.anchor.verify(p.registry.head, len(p.registry.entries))}
+
+    def warrants_payload() -> list[dict[str, Any]]:
+        """Signed orders, one shape for both /warrants and /api/warrants (no drift)."""
+        p = proxy()
+        return [{
+            "id": w.id, "agent": w.agent, "role": w.role, "scope": w.scope,
+            "ttl": w.ttl, "issued": w.issued, "issuer": w.issuer,
+            "state": w.state, "sig": w.sig, "sig_ok": p.issuer.signature_ok(w),
+            "payload": w.payload(),
+        } for w in p.warrants.values()]
+
+    def agents_payload() -> list[dict[str, Any]]:
+        """Agent identities, one shape for both /agents and /api/agents (no drift).
+
+        Tokens are exposed only when WARRNT_DEV=1 - a demo convenience, not an API.
+        """
+        p = proxy()
+        out = []
+        for a in p.agents.values():
+            row = {"id": a.id, "role": a.role, "warrant": a.warrant, "state": a.state,
+                   "last": a.last,
+                   # ACT-2 §1/§2: the same identity facts a control plane projects - who acts,
+                   # for whom, and which tools the order entitles it to.
+                   "principal": a.principal, "on_behalf_of": a.on_behalf_of,
+                   "entitlements": list(a.entitlements), "scope": list(a.scope)}
+            if settings.dev:
+                row["token"] = a.token
+            out.append(row)
+        return out
 
     # ------------------------------------------------------------------- reads
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
@@ -218,32 +317,18 @@ def create_app(settings: Optional[Settings] = None, seed: bool = True) -> FastAP
 
     @app.get("/warrants")
     def warrants() -> list[dict[str, Any]]:
-        p = proxy()
-        return [{
-            "id": w.id, "agent": w.agent, "role": w.role, "scope": w.scope,
-            "ttl": w.ttl, "issued": w.issued, "issuer": w.issuer,
-            "state": w.state, "sig": w.sig, "sig_ok": p.issuer.signature_ok(w),
-            "payload": w.payload(),
-        } for w in p.warrants.values()]
+        return warrants_payload()
 
     @app.get("/agents")
     def agents() -> list[dict[str, Any]]:
-        """Agent identities. Tokens are exposed only when WARRNT_DEV=1 - a demo
-        convenience, not an API: this node has no separate control plane yet."""
-        p = proxy()
-        out = []
-        for a in p.agents.values():
-            row = {"id": a.id, "role": a.role, "warrant": a.warrant, "state": a.state, "last": a.last}
-            if settings.dev:
-                row["token"] = a.token
-            out.append(row)
-        return out
+        return agents_payload()
 
     # -------------------------------------------------------------- interception
     @app.post("/mcp")
     async def mcp(request: Request,
                   x_warrnt_agent: str = Header(default=""),
-                  x_warrnt_token: str = Header(default="")) -> JSONResponse:
+                  x_warrnt_token: str = Header(default=""),
+                  x_warrnt_run: str = Header(default="")) -> JSONResponse:
         body = await request.json()
         rpc_id = body.get("id")
         if body.get("method") != "tools/call":
@@ -258,11 +343,12 @@ def create_app(settings: Optional[Settings] = None, seed: bool = True) -> FastAP
                                  "error": {"code": -32602, "message": "params.name required"}})
 
         decision, reason, detail, receipt, executed = proxy().intercept(
-            x_warrnt_agent, x_warrnt_token, tool, args)
+            x_warrnt_agent, x_warrnt_token, tool, args, run_id=x_warrnt_run)
 
         if decision in (Decision.allow, Decision.redact):
             return JSONResponse({"jsonrpc": "2.0", "id": rpc_id, "result": {
                 "decision": decision.value, "reason": reason, "executed": executed,
+                "action_id": detail.get("action_id"),
                 "receipt": detail.get("receipt"),
                 "redacted": detail.get("redacted"),
                 "upstream_params": detail.get("upstream_params"),
@@ -272,6 +358,156 @@ def create_app(settings: Optional[Settings] = None, seed: bool = True) -> FastAP
             "code": RPC_CODES.get(decision, -32000), "message": reason,
             "data": {"decision": decision.value, "executed": executed, **detail},
         }})
+
+    # ---------------------------------------------------------- control plane (PR-14)
+    @app.get("/api/actions")
+    def actions(state: str = "", limit: int = 60) -> dict[str, Any]:
+        """The canonical Action log: the same object the console renders and an answer quotes."""
+        p = proxy()
+        return {"counts": p.actions.counts(),
+                "pending": p.actions.pending(),
+                "actions": p.actions.listing(state=state or None, limit=limit)}
+
+    # Declared before /api/actions/{action_id}: otherwise \"pending\" is read as an id and the
+    # hold list 404s. A projection of the ledger, not a second store.
+    @app.get("/api/actions/pending")
+    def actions_pending(limit: int = 50) -> dict[str, Any]:
+        """Actions whose state is pending - the human holds, newest first."""
+        p = proxy()
+        rows = p.actions.listing(state="pending", limit=limit)
+        return {"count": len(rows), "pending": rows}
+
+    @app.get("/api/overview")
+    def overview() -> dict[str, Any]:
+        """Counters + authority summary + mode, one payload - all projections of state.
+
+        Nothing here is invented: every number is a field the enforcement path already
+        recorded. With no data the lists are empty, not seeded.
+        """
+        p = proxy()
+        st = p.state(limit=1)
+        agents = agents_payload()
+        return {
+            "node": "TENET",
+            "mode": "dev" if settings.dev else "ops",
+            "counts": {
+                "agents": len(agents),
+                "agents_halted": sum(1 for a in agents if a["state"] == "halted"),
+                "warrants": len(p.warrants),
+                "receipts": len(p.registry.entries),
+                "actions": p.actions.counts()["total"],
+                "pending": p.actions.counts()["pending"],
+            },
+            "authority": {
+                "issuer": "risk-office",
+                "warrant_states": {
+                    s: sum(1 for w in p.warrants.values()
+                           if refresh_state(w, p._now()) == s)
+                    for s in ("active", "revoked", "expired")
+                },
+                "actors": p.actors.listing(),
+                "action_classes": st["actions"],
+            },
+            "chain": p.registry.verify(),
+        }
+
+    @app.get("/api/activity")
+    def activity(limit: int = 50) -> dict[str, Any]:
+        """Ordered recent events, newest first. Each event is a receipt or an action the
+        node already holds - no synthesized events, no placeholder timestamps."""
+        p = proxy()
+        events: list[dict[str, Any]] = []
+        for e in p.registry.recent(limit):
+            events.append({**_receipt_row(e), "kind": "receipt", "ts": e.get("ts")})
+        for a in p.actions.listing(limit=limit):
+            events.append({"kind": "action", "t": None, "ts": a.get("ts"),
+                           "action_id": a["action_id"], "agent": a["agent"],
+                           "tool": a["tool"], "state": a["state"],
+                           "decision": a.get("decision")})
+        # Newest first by the timestamp the record itself carries; a stable tiebreak on the
+        # action id keeps the order deterministic when two events share a second.
+        events.sort(key=lambda ev: (ev.get("ts") or 0.0, ev.get("action_id") or ""),
+                    reverse=True)
+        return {"count": min(len(events), limit), "events": events[:limit]}
+
+    @app.get("/api/warrants")
+    def api_warrants() -> list[dict[str, Any]]:
+        """Alias of /warrants under the /api/ prefix - the same payload, no second shape."""
+        return warrants_payload()
+
+    @app.get("/api/agents")
+    def api_agents() -> list[dict[str, Any]]:
+        """Alias of /agents under the /api/ prefix - the same payload, no second shape."""
+        return agents_payload()
+
+    @app.post("/api/agents/{agent_id}/revoke")
+    def api_agent_revoke(agent_id: str,
+                         x_warrnt_admin: str = Header(default="")) -> JSONResponse:
+        """Revoke an agent/authority. A thin wrapper over the one revoke path: same
+        receipts, same state change - there is no second code path to drift."""
+        denied = require_admin(x_warrnt_admin)
+        if denied is not None:
+            return denied
+        p = proxy()
+        if agent_id not in p.agents:
+            return JSONResponse({"error": "unknown agent or already halted",
+                                 "agent": agent_id}, status_code=409)
+        t0 = p.revoke(agent_id)
+        if t0 is None:
+            return JSONResponse({"error": "unknown agent or already halted",
+                                 "agent": agent_id}, status_code=409)
+        return JSONResponse({"agent": agent_id, "state": "halted",
+                             "warrant": p.agents[agent_id].warrant, "revoked_at": t0})
+
+    @app.get("/api/actions/{action_id}")
+    def action_one(action_id: str) -> JSONResponse:
+        action = proxy().actions.get(action_id)
+        if action is None:
+            return JSONResponse({"error": f"unknown action {action_id}",
+                                 "hint": "GET /api/actions lists the ledger"},
+                                status_code=404)
+        return JSONResponse(action.public())
+
+    @app.post("/api/actions/{action_id}/approve")
+    def action_approve(action_id: str, body: DecideRequest,
+                       x_warrnt_admin: str = Header(default="")) -> JSONResponse:
+        """A named person releases the hold: the upstream runs here, once, and the chain
+        records the human decision *before* the execution it authorises."""
+        denied = require_admin(x_warrnt_admin)
+        if denied is not None:
+            return denied
+        try:
+            out = proxy().resolve_hold(action_id, approve=True, by=body.by)
+        except HoldRefused as exc:
+            return JSONResponse({"error": str(exc), "action_id": action_id}, status_code=409)
+        return JSONResponse({"action_id": action_id, "state": out["action"]["state"],
+                             "executed": out["executed"], "upstream_contacted": True,
+                             "rows": out.get("rows", 0), "receipt": out["receipt"]})
+
+    @app.post("/api/actions/{action_id}/deny")
+    def action_deny(action_id: str, body: DecideRequest,
+                    x_warrnt_admin: str = Header(default="")) -> JSONResponse:
+        """A named person refuses the hold. The upstream is NOT contacted, and the receipt
+        is the proof: ``upstream_contacted`` stays false for this action_id."""
+        denied = require_admin(x_warrnt_admin)
+        if denied is not None:
+            return denied
+        try:
+            out = proxy().resolve_hold(action_id, approve=False, by=body.by)
+        except HoldRefused as exc:
+            return JSONResponse({"error": str(exc), "action_id": action_id}, status_code=409)
+        return JSONResponse({"action_id": action_id, "state": out["action"]["state"],
+                             "executed": False, "upstream_contacted": False,
+                             "receipt": out["receipt"]})
+
+    @app.post("/api/ask")
+    def ask(body: AskRequest) -> dict[str, Any]:
+        """An answer built from the record. There is no model in this path on purpose: what
+        the console says about a call must be a field of that call, or an admission that the
+        field is missing."""
+        p = proxy()
+        st = p.state(limit=20)
+        return answer(body.q, p.actions.listing(limit=60), st)
 
     # --------------------------------------------------------------------- brake
     @app.post("/revoke")
@@ -368,9 +604,14 @@ def create_app(settings: Optional[Settings] = None, seed: bool = True) -> FastAP
         if denied is not None:
             return denied
         body = body or ResetRequest()
-        rotation = proxy().issue_all(reset_registry=True,
-                                     reason=body.reason or "manual reset",
-                                     actor=body.actor or "operator")
+        p = proxy()
+        rotation = p.issue_all(reset_registry=True,
+                               reason=body.reason or "manual reset",
+                               actor=body.actor or "operator")
+        # A reset re-issues the orders; the recorded halts go with them, or a later restart
+        # would re-halt an agent the operator just reinstated.
+        p._revoked.clear()
+        p._save_node_state()
         return JSONResponse({"ok": True, "rotated": rotation, "state": proxy().state()})
 
     # --------------------------------------------------------- dev probe (signature)

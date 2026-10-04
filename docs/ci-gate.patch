@@ -1,0 +1,31 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 1471192..6fcdd23 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -28,17 +28,26 @@ jobs:
+       - name: Parse both console JavaScript surfaces
+         run: python scripts/check_console.py
+ 
++      - name: Install control-plane dependencies
++        run: python -m pip install -r requirements.txt
++
+       - name: Install node dependencies
+         run: python -m pip install -r node/requirements.txt
+ 
+       - name: Run node tests
+         run: python -m pytest -q node/tests
+ 
++      - name: Run control-plane tests
++        run: python -m pytest -q tests/test_control_plane.py
++
+       - name: Verify control-room contracts
+         run: python -m pytest -q tests/test_control_room.py
+ 
+       - name: Compile control-room runtime modules
+         run: python -m py_compile control_room/models.py control_room/agents.py
+ 
++      - name: D6 gate - enforcement path imports no paid provider
++        run: python scripts/check_enforcement_local_only.py
++
+       - name: Verify mirrored node
+         run: bash scripts/sync-node.sh --check

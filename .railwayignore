@@ -1,0 +1,8 @@
+# runtime junk must never reach the image
+state/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.log
+docs/act-4-cline-contract.md

@@ -1,0 +1,21 @@
+# console layout sweep - index.html as of this PR
+# produced by: python3 scripts/console_layout_sweep.py --json docs/evidence/console-layout-sweep.json
+# playwright 1.63.0 / chromium, 2026-10-03T18:26:35Z
+
+OK   400x600    mode=scroll overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   768x1024   mode=scroll overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1024x768   mode=scroll overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1150x700   mode=scroll overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1262x568   mode=scroll overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1366x768   mode=scroll overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1399x900   mode=scroll overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1400x899   mode=scroll overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1400x900   mode=board overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1440x900   mode=board overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1600x900   mode=board overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1920x750   mode=scroll overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   1920x1080  mode=board overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   2560x1440  mode=board overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+OK   3840x2160  mode=board overlaps=0 revokeOverTarget=false unreachable=0 squeezed=0
+
+15/15 viewports hold every layout invariant

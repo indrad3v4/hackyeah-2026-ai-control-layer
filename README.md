@@ -1,292 +1,424 @@
-# TENET — the AI control layer
+# TENET — AI Control Layer
 
-> **No warrant, no action.**
+> **The agent proposes. TENET decides. Data moves only after authorization.**
 
-**Read the two names as one sentence.** *TENET* is the name of the **idea** — set on 2026-10-03,
-with the evidence and the record of what came before it in
-[`docs/concept-form-and-name.md`](docs/concept-form-and-name.md). The node that implements it
-ships here under the repository name **WARRNT**, because the demo, the video and the submission
-were built under it and a rename at this point would be a paper change rather than a code change.
-*TENET* is Latin, "it holds": the order holds the action, and the word reads the same forwards and
-backwards — which is what the record must do, because a rewrite has to show. It is the palindrome
-at the centre of the **Sator Square**, the oldest word square known (Pompeii, before AD 79).
-Carried before it and kept on the record: **ADNOT** (*adnotare*, "to note down") was the Stage-3
-name, dropped by the founder's decision on 2026-10-03 although it was the cleanest name on the
-board; TESTIS (dictionary meaning), SURETY / WARDEN / VERDICT / ATTEST (live class 9/42 marks),
-VOWEN / SIGLUM (live companies) were rejected earlier; **ADNOT and PRAES stay as the clearable
-spares**. Honest caveat, measured today: **TENET is not a clearable product mark** (USPTO
-99151322 live, TENET TECHNOLOGIES, Tenet Apps FZCO, the 2020 film), `tenet.ai` and npm / PyPI are
-taken. `tenet.dev` and `tenet.io` resolve to nothing and are **not registered**.
+TENET is an enforcement resource for agentic systems. It sits between an AI agent and the tools/data the agent can affect, evaluates identity, entitlement, delegation, warrant and policy **before execution**, and records evidence of the decision and downstream result.
 
-Every action an AI agent takes carries a signed, scoped warrant — or it does not run.
-No warrant, no action. This is the one thing that turns "we deployed agents" into
-"we can stop one and prove why".
+**Live Control Room:** https://hackyeah-2026-ai-control-layer-production.up.railway.app/
 
-HackYeah 2026 · Partner task **AI Control Layer** (Goldman Sachs).
+**One front door:** `/` — the Control Room. It is the only entry point this README names, and it is the
+page that links onward: the console carries a plain `<a href="/onboarding">The guide →</a>`, and the
+guide carries a plain `<a href="/">← The Control Room</a>` back, so the corridor between the two rooms
+is walkable by a text-only fetch (`curl -s <url> | grep -c 'href="'` is at least 1 on both pages). The
+`/observer` read-only room carries its own doors back to both rooms.
 
----
+## Watch the story
 
-## Watch the demo (40 s)
+[![▶ Watch the 42-second TENET happy path](docs/tenet-happy-path-poster.png)](docs/tenet-happy-path.mp4)
 
-▶ **[`warrnt-demo-40s.mp4`](warrnt-demo-40s.mp4)** — the 3:47 scenario end to end, 1920×1080,
-no audio. An agent asks for 12 000 rows of customer PII; the layer **denies the call before it
-runs**, zero rows leave the perimeter; the denial lands in the hash-chained receipt log; one
-`/revoke` halts the agent in **0.8 s**. Frames are rendered deterministically, not screen-captured
-— the rebuild kit is in [`warrnt-demo/`](warrnt-demo/). Slides:
-[`warrnt-presentation.pdf`](warrnt-presentation.pdf).
+[▶ Watch the 42-second TENET happy path](docs/tenet-happy-path.mp4) — the real control room, one live run, every number read back from the kernel.
 
-Live console: open [`index.html`](index.html) (no dependencies, `file://` works — see [Run it](#run-it)).
+## The happy path
 
----
+Watch one real request move through the boundary:
 
-## The problem
+```text
+User: "Read the latest EUR/USD reference rate"
+        ↓
+AI agent proposes: fx.read_rate
+        ↓
+TENET: identity → entitlement → warrant → policy
+        ↓
+KERNEL: ALLOW
+        ↓
+real upstream request
+        ↓
+result + receipt
+```
 
-Enterprises are shipping agents faster than they can govern them. An agent runs under
-production credentials, moves data, calls tools — and when something goes wrong at 3:47
-in the morning, the team finds out at 9:15 from a log they cannot trust and cannot stop.
+The Control Room should make five questions obvious:
 
-The gap is not visibility. Everyone has visibility. The unanswered question is:
+**What did the agent ask? Why was it allowed? Did data leave? What happened? Where is the proof?**
 
-**Who authorised this agent action — and where is the proof?**
+The model is reasoning evidence, **not authority**. The browser is a control surface, **not authority**.
 
-A monitor tells you what already happened. It does not grant authority, and it cannot
-revoke it. You can watch an agent work and still be unable to fire it.
+## Who uses TENET?
 
-The hidden fear is not the breach. It is the silence after: sitting in front of a
-regulator, not knowing what your own agent did three minutes ago. Not knowing is
-worse than knowing.
+**Target end user: a Goldman Sachs-style Technology Risk / AI governance operator.**
 
-## The solution
+TENET is not primarily a dashboard to inspect a kernel. It is a **security resource inside the AI workflow**:
 
-Attach authority to the action itself. Before an agent calls a tool, a proxy in front
-of it decides — and that decision is an artifact, not a log line.
+- an agent runtime submits an action to TENET before touching a protected tool or data source;
+- TENET applies the firm's policy and scoped authority;
+- the operator gets an understandable decision and proof;
+- the business function gets the authorized result without giving the model unrestricted power.
 
-Five load-bearing bricks:
+This maps directly to the current Goldman direction: its 2026 operating model describes AI adoption alongside stronger risk management, data lineage and auditability; Goldman also says institutional AI products need auditable grounding and outputs traceable to verified sources. Goldman’s Client Security Statement describes firmwide AI governance, least-privilege access and intentionally restricted external LLM use.  
+Sources:  
+- https://www.goldmansachs.com/investor-relations/financials/8k/2026/8k-01-15-26.pdf
+- https://www.goldmansachs.com/insights/goldman-sachs-exchanges/building-ai-systems-for-capital-markets
+- https://www.goldmansachs.com/disclosures/client-security-statement.pdf
+- https://developer.gs.com/docs/services/transaction-banking/best-practices-api-connect/
 
-0. **Actor register — `this agent cannot`.** Before any warrant is read, the layer knows
-   *who is asking*: four classes of actor (`operator-human`, `autonomous-system`, `chatbot`,
-   `mcp-supplier`), each with tools it may never call and data it has no entitlement to.
-   The limit is on the actor, not on the rights of the user on whose behalf it acts — so a
-   valid warrant for the same tool does not widen it. This is the question that separates a
-   control layer from a permission system.
-1. **Identity, not a key.** Every agent gets a scoped, ephemeral identity. No shared
-   API keys, no "one credential for the whole fleet".
-2. **Pre-execution enforcement.** `allow` / `deny` / `require-human` is decided on the
-   *parameters of the call* before the call executes — not queued for review after.
-3. **Kill switch.** Monitoring is not containing. `/revoke` pulls the agent's warrant
-   and stops the chain mid-flight.
-4. **Receipt.** Every action lands in an append-only, hash-chained record: who, what,
-   why, who authorised, when. This is the measurement layer — the proof.
+**This is a target enterprise use case, not a claim that Goldman Sachs has deployed TENET.**
 
-The warrant is not a metaphor. It is the artifact: a signed order with a scope, a TTL,
-and the signature of whoever authorised it.
+## Why now?
+
+Agentic AI is moving from experiments into business workflows. Goldman Research says enterprise adoption is shifting toward implementation, while its own operating-model work highlights risk management, process automation, data lineage and auditability.
+
+The security gap is specific:
+
+> A human may be entitled to a resource while a particular agent should not be.
+
+TENET makes that distinction enforceable at the action boundary.
+
+## Security model
+
+```text
+User / system
+     ↓
+Agent proposal
+     ↓
+TENET Control Plane
+     ↓
+Enforcement Kernel
+     ├─ identity
+     ├─ entitlement
+     ├─ on-behalf-of / delegation
+     ├─ warrant
+     └─ policy
+     ↓
+ALLOW / DENY / REDACT / HUMAN
+     ↓
+Upstream
+     ↓
+Receipt + evidence
+```
+
+**No entitlement, no data.**  
+**No authority, no action.**  
+**Denied means no upstream execution through the enforced path.**  
+**Unknown stays unknown.**
+
+The evidence chain remains distinct:
+
+`run_id → model_trace_id → proposal_id → action_id → decision_id → upstream_call_id → receipt_id`
+
+An `upstream_call_id` is never relabelled from an `action_id`.
+
+## Why MCP is not enough
+
+MCP provides a standardized transport and authorization framework, but its own specification says implementers must build robust consent and authorization flows and treat tool behavior with caution.
+
+TENET adds the product-level enforcement boundary:
+
+`Agent → proposed action → TENET decision → gated execution → proof`
+
+This is consistent with current agent-authorization work: Google's AP2 explicitly describes tighter constraints for agents than ordinary human authorization and separates delegation from action authorization.
+
+Sources:
+- https://github.com/modelcontextprotocol/modelcontextprotocol
+- https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/index.mdx
+- https://github.com/google-agentic-commerce/AP2/blob/main/docs/ap2/agent_authorization.md
+
+## Happy path
+
+The [42-second proof video](docs/tenet-happy-path.mp4) shows one resource and two agents. Every number, hash, receipt and verdict below was read back from the running kernel during the recorded run - none of it is scripted prose.
+
+```text
+USER REQUEST
+  "Read the latest EUR/USD reference rate"
+        │
+        ▼
+AI AGENT WANTS DATA
+  fx-trader  →  fx.read_rate
+        │
+        ▼
+TENET DECIDES BEFORE ANYTHING MOVES
+  who is acting?  what may this agent access?
+        │
+        ├─────────────── ALLOW ───────────────┐
+        │  value EUR/USD 1.1225               │  same resource
+        │  upstream HTTP 200, 19.2 ms         │  same request
+        │  sha256 f63f64a5…                   │
+        │  receipt 332d79d2                   │
+        ▼                                     ▼
+  the far side answered            support-copilot → fx.read_rate
+  (a real crossing, HTTP 200)
+                                             │
+                                             ▼
+                                     DENY — no entitlement to
+                                     market_data.fx.read
+                                     upstream contacted: NO
+                                     (calls stay 4, boundary attempts 0)
+                                     receipt a0010008
+```
+
+Selected timeline (the compact frames in the video):
+
+| t | What the video shows | Where it comes from |
+|---|---|---|
+| 0–6 s | the insight: your monitoring says the agent works; nothing you own can stop it | the problem the product answers |
+| 6–12 s | an agent with production credentials acts before anyone is watching | the premise of the boundary |
+| 12–18.5 s | TENET stands at the boundary and asks one question before execution | the kernel's single decision point |
+| 18.5–26 s | **ALLOW**: the real value arrives (1.1225, HTTP 200, 19.2 ms, sha256, receipt `332d79d2`) | live Frankfurter response, recorded in `docs/tenet-happy-path-evidence.json` |
+| 32–37.5 s | **HOLD → a named human approves**; only then does the call cross (+1 upstream call, HTTP 200) | operator decision + execution record |
+| 26–32 s | **DENY**: *Frankfurter was NOT contacted* (calls stay 4, boundary attempts 0), receipt `a0010008` | kernel denial + the far side's own call journal |
+| 37.5–42 s | **"No warrant, no action."** + this run's receipts, rate and commit | the recorded run |
+
+The property the video is built around:
+
+> **The same question, asked by two agents, ends two different ways - and the denied call never reaches the data source.**
+
+The headline card follows the record the operator selects, so the ALLOW can still be inspected after the DENY has happened; with nothing selected it shows the latest action.
+
+`evidence.json` next to the video holds the raw values it was built from (`value`, `http_status`, `response_sha256`, `latency_ms`, both `receipt` ids, and the upstream call counter before/after each action).
 
 ## Architecture
 
-```
-        ┌────────────┐   tool-call (params)   ┌──────────────────────────┐
-        │   agent    │ ─────────────────────▶ │  WARRNT proxy (MCP)       │
-        │ (scoped    │                        │  intercept BEFORE exec    │
-        │  identity) │ ◀──── allow / deny ─── │                           │
-        └────────────┘                        └───────────┬──────────────┘
-                                                          │
-              ┌──────────────────┬────────────────────────┼──────────────────┐
-              ▼                  ▼                         ▼                  ▼
-      ┌──────────────┐   ┌──────────────┐        ┌──────────────┐   ┌──────────────┐
-      │ Warrant      │   │ Policy       │        │ Append-only  │   │ /revoke      │
-      │ issuer       │   │ engine       │        │ receipt log  │   │ kill switch  │
-      │ scope·TTL·   │   │ per-param    │        │ hash-chained │   │ pull warrant │
-      │ signature    │   │ allow/deny/  │        │ who·what·why │   │ stop chain   │
-      │              │   │ redact·human │        │ ·authoriser  │   │              │
-      └──────────────┘   └──────────────┘        └──────┬───────┘   └──────────────┘
-                                                         │
-                                                  ┌──────▼───────┐
-                                                  │ Console      │  one screen,
-                                                  │ GET /api/state│  four tiles
-                                                  └──────────────┘
-```
+**MCP = transport/protocol. TENET Enforcement Kernel = authority.**
 
-### The shape, against the microkernel canon
+The model may reason, plan and propose. It cannot authorize itself or bypass the kernel.
 
-The node is drawn and built as a **microkernel**: a small core that coordinates, everything that
-decides living outside it as a control plugin. The canon this is checked against is the
-[microkernel architecture pattern](https://www.geeksforgeeks.org/system-design/microkernel-architecture-pattern-system-design/)
-(minimal kernel · services as separate modules · a defined interface · inter-process
-communication · service management · drivers outside the kernel). Component by component, with
-the file that carries it:
+Internal `warrnt/*` names remain only where compatibility requires them. The product surface is **TENET**.
 
-| Canon component | What carries it here | State |
-|---|---|---|
-| Minimal kernel | `warrnt/proxy.py` — 238 of the node's 1 931 lines (12 %); it coordinates and holds no control table | built |
-| Services as separate modules | 17 modules outside the kernel, three of them the control gates themselves (`warrnt/plugins/act_class.py`, `actor_scope.py`, `order_policy.py`), plus `policy.py`, `actions.py`, `actors.py`, `registry.py`, `anchor.py`, `upstream.py` | built |
-| A defined interface | a gate = name · order · `check(ctx) → (decision, reason, detail) \| None`; outward, the seam is HTTP + JSON-RPC (MCP) | built |
-| Inter-process communication | the agent talks MCP over HTTP; the upstream is behind the `upstream.py` adapter, so the transport is not the policy | built |
-| **Service management** | `warrnt/gates.py` — `register(..., replace=True)` swaps a gate and `unregister(name)` pulls one **while the node runs**; discovery is `pkgutil` over `warrnt/plugins/` | built |
-| Drivers outside the kernel | `build_upstream()` — the kernel never names a vendor | built |
+## Evidence discipline
 
-**The kernel names no control.** `proxy.py` contains zero decision call sites — no `classify(`,
-no `apply_class(`, no `engine.evaluate(`, no `actors.check(`. Gates are files under
-`warrnt/plugins/` (`act_class` → `actor_scope` → `order_policy`, by `order`); adding one is adding
-a file. `tests/test_gates.py` proves it, including that a gate dropped into the package at test
-time stops the pipeline without a line of the kernel changing, and that the pipeline fails
-**loudly** (a `RuntimeError`) rather than silently allowing when no gate decides.
+- LLM output is never authorization.
+- A receipt records evidence; it does not create authority.
+- Process success is not proof of upstream contact.
+- An action ID is never relabelled as an upstream call ID.
+- A denial is an event and is recorded.
+- Secrets never enter the browser, README, video or public evidence.
+- If evidence is missing, TENET says **unknown**.
 
-**What is drawn but not built**, so the diagrams are not read as more than they are: discovery
-through `importlib.metadata.entry_points` (we use `pkgutil` over the package), gate order and
-enable/disable read from the catalog, and `watch()` hot reload.
+> **The UI cannot manufacture a cleaner story than the evidence supports.**
 
-**The price of the shape**, named rather than hidden: the split costs an indirection at every
-decision and makes a failure harder to trace — which is why the kernel is the only place that
-answers, and why "no gate decided" is an error instead of a default.
+## Run everything yourself
 
-The proxy sits between the agent and any MCP server. It sees the tool name and the full
-argument set, evaluates the active warrant's scope against them, and only then forwards —
-or rejects. A rejection is written to the receipt chain *before execution*, so the proof
-exists whether the action happened or not.
-
-**`GET /api/state` contract** (what the console polls — the seam between core and screen):
-
-```json
-{
-  "revoked": 1,
-  "last_stop": 0.8,
-  "agents":   [ { "id": "...", "role": "...", "state": "active|halted",
-                  "warrant": "W-4419", "ttl": 420, "ttl0": 420, "last": "..." } ],
-  "warrants": [ { "id": "W-4419", "agent": "...", "scope": "...",
-                  "ttl": 420, "ttl0": 420, "state": "active|revoked|expired" } ],
-  "actions":  [ { "class": "observe", "decider": "machine",
-                  "decider_text": "the node decides", "meaning": "...",
-                  "tools": ["infra.plan"] } ],
-  "receipts": [ { "t": "14:02:43", "decision": "allow|deny|redact|human|revoked",
-                  "what": "<code>crm.read</code> ...",
-                  "meta": "order W-4419 · policy: read-only",
-                  "hash": "d46ef77e" } ]
-}
-```
-
-The `actions` field is an explicit D13 contract extension. It is the machine-readable Stage 4 taxonomy consumed by the console's taxonomy strip; its six class values are `observe | read_personal | draft | write_reversible | irreversible | authorize`.
-
-Two of the five decisions **execute**, and the `tools/call` result says so:
-
-* `allow` — the payload goes through untouched.
-* `redact` — the call runs, and the personal fields named by the rule are stripped from the
-  payload *before* the upstream is called. The result carries `redacted` (the fields removed)
-  and `upstream_params` (what the upstream was actually allowed to see), so the screen can show
-  the difference between what was asked for and what left the node. This is the vocabulary's
-  fifth value doing real work: `inspect_pii` refuses the act, `redact` lets the act happen
-  without the data.
-* The other three (`deny`, `human`, `revoked`) are refusals and leave the perimeter untouched —
-  `executed: false`, and the executor counter does not move. An order whose TTL elapsed is one
-  of these: a `deny` whose detail carries `warrant_state: expired`, because `expired` is a
-  *warrant state*, not a decision.
-
-## The demo vector (the 3:47 moment)
-
-One scenario, deterministic, run end to end:
-
-1. Three agents run under three signed warrants.
-2. At **3:47**, `support-copilot` asks to export customer email and PESEL:
-   `crm.bulk_export {table:"customers", fields:["email","pesel"], rows:12000}`.
-3. Its warrant says *read-only, no PII fields* → the call is **DENIED before execution**.
-   Zero rows leave the perimeter.
-4. The denial is written to the hash-chained receipt log, with the authorising order.
-5. One `/revoke` pulls warrant **W-4419**; the agent halts in **0.8 s**.
-
-**Authorised. Recorded. Revocable.**
-
-## What works today
-
-Honest split between what is running and what is designed.
-
-**Working and verified (2026-10-02):**
-
-- **The node itself** — [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt): the MCP
-- **The node's source, inside this package** — [`node/`](node/), a mirror pinned to
-  `warrnt@831b166`, so the code and its 86 tests can be read without leaving the repository.
-  The canonical repository is still [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt)
-  (`node/MIRROR.md` says so, and `scripts/sync-node.sh --check` proves the mirror still matches).
-  proxy, per-parameter policy, signed warrants with TTL, the hash-chained registry with
-  `GET /verify`, `/revoke`, and the console served from the node. `pytest -q` → **60 passed**;
-  a clean-machine run (`scripts/f2_clean_run.sh`) starts from an empty temp dir, clone, fresh
-  venv, deps from PyPI.
-- **The actor register** — `GET /actors`, `warrnt/actors.py`, ten tests, PR
-  [#1](https://github.com/indrad3v4/warrnt/pull/1). The load-bearing test: same agent, same
-  signed warrant, same parameters — change only the actor's class and the answer flips
-  `allow` → `deny`, with nothing run upstream.
-- **Console** — `index.html`, one dense screen, four tiles
-  (agents · warrants · kill switch · proof), **zero dependencies, no page scroll**.
-  Verified in headless Chromium at 1920×1080, 1440×900, 1366×768, 2560×1440: four tiles
-  present, all in view, `scrollHeight == innerHeight`, `overflow-y: hidden`.
-  Screenshots in `warrnt-screen/shot-*.png`.
-- **Two data paths, one screen.** The console polls `GET /api/state` every 1.5 s.
-  On a 200 it renders the **live feed**; on failure it falls back to the built-in
-  **demo feed** and replays the 3:47 scenario. The screen is real; the feed is swappable.
-- **Demo video** — `warrnt-demo-40s.mp4`, 1920×1080, 25 fps, 40.0 s, H.264 (~1.9 MB).
-  Recorded deterministically: page state is a pure function of virtual time, so frames
-  do not drift and the take is reproducible, not screen-captured by hand.
-- **`/api/state` contract** — documented above and frozen; it is the interface the
-  proxy must satisfy. The freeze was lifted once, to add `redact` to the receipt
-  vocabulary: the task requires redaction as a control action, and a receipt the
-  chain cannot record is not a receipt. Any further change goes through D13.
-
-**Designed here, built in the node repo (the core):**
-
-- The MCP proxy, per-parameter policy, warrant issuing with signature + TTL, the append-only
-  receipt store, `/revoke` and the actor register all exist and are tested — in
-  [`indrad3v4/warrnt`](https://github.com/indrad3v4/warrnt), not in this package.
-- What is *not* wired here: this console's live feed talks to a running node only when you
-  serve it with one (`?source=live`); offline it replays the scripted 3:47 state machine.
-  The screen renders exactly the JSON the node emits, so the seam is one HTTP call wide.
-
-We would rather show you a small thing that truly runs than a big thing that only
-looks finished.
-
-## Run it
+One command runs every check this submission owes, and ends with a verdict. A SKIP is never
+counted as a pass: if something cannot run here, the script says so and prints the one line that
+would make it run.
 
 ```bash
-# the screen — offline, file:// works (demo feed)
-chromium warrnt-screen/index.html
-
-# or serve it so a live /api/state can be polled
-cd warrnt-screen && python3 -m http.server 8099
-#  ->  http://127.0.0.1:8099/index.html
-
-# query flags: ?source=live|demo (default: auto)   ?qa=1 (self-measures viewport fit)
-
-# reproof the demo video (deterministic)
-cd warrnt-demo && python render_demo.py 10 40
-ffmpeg -y -framerate 10 -start_number 0 -i frames/f_%04d.jpg \
-  -vf "fps=25,fade=t=in:st=0:d=0.4,fade=t=out:st=39.4:d=0.6,format=yuv420p" \
-  -c:v libx264 -preset slow -crf 18 -movflags +faststart -t 40.0 \
-  /root/.hermes/media/video/warrnt-demo-40s.mp4
+pip install -r node/requirements.txt        # the mirrored node's dependencies
+bash scripts/run_all_checks.sh
 ```
 
-## Concept lock
+```
+STATE  CHECK                                  TIME    WHY IT MATTERS
+PASS   console: inline JavaScript parses      0.7s    a syntax error blanks the whole page
+PASS   console: layout invariants            0.1s     grid rows, kill-switch floor, responsive fallback
+PASS   console: 15 viewports                  1.9s    no overlap or clipped text at any size
+FAIL   mirror: matches the pinned commit      5.0s    node/ must equal the canonical repo or judges read stale code
+FAIL   node: the test suite                   8.8s    positive and negative cases per control (D10)
+PASS   node: proof gates                      5.9s    console, security boundaries, live vector, demo path
+------------------------------------------
+passed 4   failed 2   skipped 0
+VERDICT: FAIL - at least one check did not hold.
+```
 
-The form and the name are decided, and the decisions — including what was rejected — are
-recorded in [`docs/concept-form-and-name.md`](docs/concept-form-and-name.md).
+**Two known failures, neither of them hidden.** The script reports them rather than skipping them,
+which is the point of having it:
 
-- **Form** — *the witness at the boundary*: an in-line judge that answers, for every step,
-  whether **this** agent may perform **this** action, on behalf of **this** user, right now.
-- **Name** — **TENET** (Latin *tenet*, "it holds"): the order holds the action, and the record
-  reads the same both ways. The name of the idea, not a product mark — the register is crowded
-  (see the check table above); `tenet.dev` / `tenet.io` free, `tenet.ai` taken.
-- Fifteen candidate forms were scored against five tests taken from the brief; every
-  rejected form is on the record with the test it fails.
+| failure | cause | status |
+|---|---|---|
+| `mirror: matches the pinned commit` | six lines in `node/warrnt/proxy.py` were edited in the mirror instead of upstream, so the mirror no longer equals the commit it pins | the change needs a pull request in the canonical repository, then a pin bump here |
+| `node: the test suite` | two tests assert POSIX file modes and `chmod` is a no-op on Windows, so they are red on a Windows checkout and green on CI's Linux | the fix travels with the node's own open pull request |
 
-## What's next
+Everything else passes, including the console across all fifteen viewports.
 
-- **Settle the idea's address** — `tenet.dev` / `tenet.io` resolve to nothing and are free; the
-  mark under that name is crowded, so if a product or a domain must be defensible, clear one of
-  the spares (ADNOT, PRAES) instead. The idea has a name and still no address.
-- **Break-glass with a term** — the last unbuilt artifact of the Stage 4 table: an emergency
-  override that names who used it, for how long, and audits every use.
-- **RFC 3161 external timestamp** for the anchor — deliberately not added inside the 17-hour
-  window, because it needs an outside service and could break the demo.
-- Identity issuance per agent/task is real in the node (ephemeral identity per call, warrant scope
-  tied to it); what is not built is a multi-tenant issuer, and it stays that way on purpose.
+Useful variants:
 
----
+| | |
+|---|---|
+| `SKIP_NETWORK=1` | skip the checks that clone the canonical node repo |
+| `SKIP_NODE=1` | skip the mirrored node's tests and gates (fast, console only) |
+| `PYTHON=/path/to/python` | use a specific interpreter (a virtualenv, say) |
 
-*WARRNT is a working demo of the AI control layer: authority attached to the action,
-proof attached to the authority.*
+Two further scripts back the documents:
+
+```bash
+python3 scripts/benchmark_scale.py          # the tables in docs/complexity-and-scale.md
+python3 scripts/doc_qa.py                   # every claim in the documents, turned into a check
+```
+
+`scripts/console_layout_sweep.py` drives the console through fifteen viewports from 400×600 to
+3840×2160 and reads the verdict the page computes about itself; it exits `2` (SKIP) when no browser
+is installed, because an unchecked sweep must never look like a sweep that passed.
+
+## Demo
+
+The canonical demo is intentionally one story:
+
+**REQUEST → AGENT → TENET CHECK → ALLOW/DENY → REAL DATA / NO DATA → PROOF**
+
+The final submission video should show the real happy path in ~60 seconds, without terminals, Railway logs, private chats, credentials or development noise.
+
+## Repository
+
+```text
+control_plane/   API seam and kernel-backed projections
+control_room/    orchestration and provider evidence
+node/            pinned internal implementation mirror
+index.html       TENET Control Room
+tests/           security and contract tests
+docs/            architecture and evidence contracts
+```
+
+## API surface
+
+`GET /api/security-events?limit=20` — live security-decision feed.
+
+`GET /api/security-events/{run_id}` — causal evidence graph.
+
+`GET /api/model-usage` — read-only DeepSeek resource evidence.
+
+`GET /api/overview` · `/api/state` · `/api/activity` · `/api/actions` · `/api/agents` · `/api/warrants`.
+
+`POST /api/actions/{action_id}/approve` · `/deny`.
+
+`POST /api/agents/{agent_id}/revoke`.
+
+`POST /mcp` — intercepted `tools/call` path.
+
+## Implemented
+
+- pre-execution MCP interception;
+- signed/scoped warrants with TTL;
+- actor-specific restrictions and entitlement checks;
+- explicit on-behalf-of delegation;
+- parameter-aware policy decisions;
+- allow / deny / redact / human / revoked vocabulary;
+- contextual revoke;
+- append-only/hash-chained receipt evidence;
+- upstream access-log evidence;
+- explicit DeepSeek provider integration;
+- provider trace/resource journal;
+- security-event projection and causal evidence graph;
+- operator Control Room with live model-resource display;
+- the Control Room classified-data-row honesty rule: a crossing is shown only when the record
+  carries an upstream `http_status`, and an intercept has no destination to show;
+- the AC3/AC4 data-flow proof pair — `scripts/data_flow_demo.py` raises the real upstream and
+  control plane and drives one ALLOW (`fx-trader`) and one DENY (`support-copilot`), reading the
+  upstream's own `sent` counter on both sides of each call. Executed result: allow `sent` +1 with
+  a real `https://api.frankfurter.dev/v1/latest?...` crossing (`value 1.1225`), deny `sent` +0 with
+  `upstream.contacted: false`.
+- the Control Room's end-user journey, a real first-step entry point: an **intent box**
+  ("What should your AI do?") posts the real proposal path `POST /api/ask` and renders the model's
+  answer as a **proposal that is never a permission** (the kernel's own verdict, when present, is
+  shown as the action card; when it is absent, no decision is invented). A separate, visible
+  **"Who should act?"** selector drives the real `POST /api/demo/run` for the same resource
+  (`fx.read_rate`) so `fx-trader` → ALLOW, `support-copilot` → DENY and `fx-auditor` → HOLD are the
+  three real verdicts, not three mock-ups. A HOLD shows the real **human control** — "The request
+  has NOT been sent yet." with Approve / Deny that POST the real `/api/actions/{id}/approve|deny`
+  route behind the operator token and then **re-read** the action to show the state the kernel
+  actually reached; with no token the control says plainly that it is protected instead of
+  pretending to work. The page never fabricates a receipt, an action id or a crossing.
+  Executed proof against the shipped kernel (a loopback stand-in for the Frankfurter tool server
+  behind `WARRNT_UPSTREAM`, so the live-upstream warrants `W-9001`/`W-9003` are issued): `fx-trader`
+  → **ALLOW**, `executed=True`; `support-copilot` → **DENY**, `executed=False`, no upstream contact;
+  `fx-auditor` → **HUMAN**, `executed=False`, no upstream contact, entering `pending` as a real
+  action id; then `resolve_hold(approve=True)` → the re-read record shows `state: approved`,
+  `decision: human`, and a real receipt. The Act-7 tests are
+  `tests/test_act7_intent_and_control.py` (T1–T6 plus the defect case, positive and negative, read
+  from the rendered DOM and from the bytes the page actually sent); all eight fail on the page as it
+  stood before this change and pass after it.
+
+### The journey — the browser's own demo (no credential)
+
+`POST /api/scenario/journey` runs four real requests through the kernel in order and returns the
+four verdicts with their own records: `allow` (`fin-reconcile` reading payments), `redact`
+(`support-copilot` reading CRM with PII fields — stripped before the reader saw them), `deny`
+(`support-copilot` attempting a 9000-row export — `executed=False`, `upstream_contacted=False`),
+`hold` (`report-bot` attempting a 500-row export — `decision: human`, waiting for a person).
+Measured against the shipped kernel (2026-10-04, live upstream):
+
+```
+allow  fin-reconcile    allow    exec=True  upstream=True
+redact support-copilot  redact   exec=True  upstream=True
+deny   support-copilot  deny     exec=False upstream=False
+hold   report-bot       human    exec=False upstream=False
+```
+
+Tool and args are constants in the server, never read from the request; the payload carries what
+the kernel decided and the boundary's own counters, so a beat that stops holding up shows up
+instead of being smoothed over. Full contract record: `docs/act-5-live-security-trace-contract.md`
+(Amendment 1); tests: `tests/test_journey_scenario.py`.
+
+## Deliberately not claimed
+
+A diagram is not presented as a deployed feature. If evidence is unavailable, TENET shows unknown or incomplete. A future enterprise connector is not presented as installed until it exists and is exercised.
+
+The Control Room's live render is proven by a real headless render (`chromium --dump-dom`, the same
+mechanism as `scripts/check_rendered_trace.py`), and by `tests/test_control_room_experience.py`
+(AC3: JSON-object values never render as `[object Object]`; the action card is the first block,
+before any technical identifier; the empty state explains TENET and offers a way to start; a `429`
+with `retry_after_s` renders `Rate limited · retrying in Ns` with the real N). Where chromium is
+absent the test **skips** with a reason — it never claims a render it did not perform.
+
+### Measured limits — seen live, still open (04.10.2026)
+
+Named here because they were observed on the deployed instance, not because they were guessed.
+Two of the five that were found are closed; the rest are known and not yet fixed.
+
+| # | Limit as measured | Status |
+|---|---|---|
+| 1 | A multi-symbol read had no machine-readable value in the record, so the answer's numbers existed only in the model's arithmetic. Seen live: `A-0002` (`PLN` → `EUR,USD`) carried `rates_returned` but no `value`. | **Closed** — the record now keeps the upstream's `rates` map verbatim (`Amendment 6`, `c23c407`); the answer's digits re-check against the receipt. |
+| 2 | An absent value with no explanation read as a broken tool. Seen live: asked for a rate in a currency it had not named, the assistant reported only "the result block carries no rate". | **Closed** — the crossing now names `value_symbol` and `rates_returned` (`Amendment 5`, `d816578`). |
+| 3 | Action ids restart from `A-0001` on every boot, so a receipt quoted two deploys apart can mean a different call. Observed: `A-0001` after each deploy. | Open |
+| 4 | The action ledger lives with the container, so a deploy starts an empty history — an audit trail a deploy erases is not yet an audit trail. Observed: the ledger reset to one startup action after a deploy. | Open |
+| 5 | The `/api/ask` evidence list can point at an action that is not the one the run created (seen: evidence naming `A-0001` while the run created `A-0002`). | Open |
+
+Two more, in the code rather than the deployment: fields are dropped silently by design
+(`if v is not None`, `if k in crossing`) — honest about absence, but a reader cannot tell
+"the upstream did not send it" from "we did not file it"; and `/api/ask` shows token usage per
+run, while the answer text itself remains the only unverified channel — every number in it
+should be traceable to a record.
+
+
+## Demo sentence
+
+> **Watch the agent ask for data. TENET stops it before the request reaches the data source — then shows you the evidence.**
+
+## Run locally
+
+The front door is `/`, so run the control plane — the same command the platform runs — and walk from it:
+
+```bash
+uvicorn control_plane.app:app --host 127.0.0.1 --port 8099
+# open http://127.0.0.1:8099/            the Control Room (the front door)
+#      http://127.0.0.1:8099/onboarding  -> 307 to / (the guide is a layer of the console, not a second page)
+#      http://127.0.0.1:8099/observer    the read-only room
+```
+
+A bare static server (`python -m http.server 8099`) serves the console file only: `/onboarding` is a
+control-plane route, and GitHub Pages is the static host that resolves it (Pages maps `/onboarding` to
+`onboarding.html`). The link itself is plain markup on both hosts either way.
+
+Tests: `python -m pytest tests/ -q`
+
+The paired data-flow proof (raises the real upstream + control plane, prints raw JSON, exits
+non-zero unless the pair is a genuine allow-crossing / deny-non-contact):
+
+```bash
+python scripts/data_flow_demo.py
+```
+
+Console gates: `python scripts/check_console.py` (both inline script blocks parse) and
+`python scripts/console_layout_check.py index.html` (layout invariants).
+
+DeepSeek is configured in the deployment environment with `DEEPSEEK_API_KEY`. Never commit or print the secret.
+
+**Project:** https://github.com/indrad3v4/hackyeah-2026-ai-control-layer  
+**Enforcement dependency:** https://github.com/indrad3v4/warrnt
+
+
+## Principles
+
+1. The agent proposes; the kernel decides.
+2. User entitlement does not automatically grant agent authority.
+3. TENET decides before the upstream call.
+4. Human approval is explicit where required.
+5. Every decision should leave inspectable evidence.
+6. Privacy and least privilege are part of the product, not an afterthought.

@@ -1,0 +1,77 @@
+{
+ "listen": {
+  "sec": 2.3,
+  "bytes": 18668,
+  "raw_sec": 2.38
+ },
+ "heard": {
+  "sec": 1.06,
+  "bytes": 8684,
+  "raw_sec": 1.08
+ },
+ "proposes": {
+  "sec": 2.09,
+  "bytes": 16940,
+  "raw_sec": 2.14
+ },
+ "check": {
+  "sec": 0.98,
+  "bytes": 8108,
+  "raw_sec": 1.01
+ },
+ "allow": {
+  "sec": 0.96,
+  "bytes": 7916,
+  "raw_sec": 0.94
+ },
+ "deny": {
+  "sec": 0.74,
+  "bytes": 6188,
+  "raw_sec": 0.77
+ },
+ "denyAfter": {
+  "sec": 2.02,
+  "bytes": 16364,
+  "raw_sec": 1.97
+ },
+ "wait": {
+  "sec": 1.37,
+  "bytes": 11180,
+  "raw_sec": 1.42
+ },
+ "waitDecision": {
+  "sec": 1.15,
+  "bytes": 9452,
+  "raw_sec": 1.18
+ },
+ "crossed": {
+  "sec": 1.13,
+  "bytes": 9260,
+  "raw_sec": 1.18
+ },
+ "nothingCrossed": {
+  "sec": 1.2,
+  "bytes": 9836,
+  "raw_sec": 1.25
+ },
+ "canCross": {
+  "sec": 1.51,
+  "bytes": 12332,
+  "raw_sec": 1.49
+ },
+ "proof": {
+  "sec": 0.65,
+  "bytes": 5420,
+  "raw_sec": 1.49
+ },
+ "win": {
+  "sec": 1.56,
+  "bytes": 12716,
+  "raw_sec": 1.66
+ },
+ "notEvaluated": {
+  "sec": 7.54,
+  "bytes": 60524,
+  "raw_sec": 7.49
+ }
+}

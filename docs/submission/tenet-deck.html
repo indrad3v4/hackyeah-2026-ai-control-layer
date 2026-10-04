@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TENET — deck v3 (roast pass)</title>
+<style>
+@font-face{font-family:MG;src:url('fonts/Montserrat-100.ttf') format('truetype');font-weight:100;font-style:normal}@font-face{font-family:MG;src:url('fonts/Montserrat-400.ttf') format('truetype');font-weight:400;font-style:normal}@font-face{font-family:MG;src:url('fonts/Montserrat-500.ttf') format('truetype');font-weight:500;font-style:normal}@font-face{font-family:MG;src:url('fonts/Montserrat-600.ttf') format('truetype');font-weight:600;font-style:normal}@font-face{font-family:MG;src:url('fonts/Montserrat-700.ttf') format('truetype');font-weight:700;font-style:normal}@font-face{font-family:MG;src:url('fonts/Montserrat-800.ttf') format('truetype');font-weight:800;font-style:normal}
+@font-face{font-family:MO;src:url('fonts/DejaVuSansMono.ttf') format('truetype');font-weight:400;font-style:normal}@font-face{font-family:MO;src:url('fonts/DejaVuSansMono-Bold.ttf') format('truetype');font-weight:700;font-style:normal}
+:root{
+--bg:#070a0e; --p:#0d1218; --up:#111821; --line:#202b37;
+--tx:#edf3f8; --mu:#8291a3; --ok:#42d392; --hd:#f3bd4f; --no:#ff5d6c;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+@page{size:1920px 1080px;margin:0}
+body{background:var(--bg);color:var(--tx);font-family:MG,sans-serif;-webkit-font-smoothing:antialiased}
+section.slide{position:relative;width:1920px;height:1080px;overflow:hidden;
+  padding:76px 96px 96px;display:flex;flex-direction:column;gap:30px;page-break-after:always;background:var(--bg)}
+.kick{font-family:MO,monospace;font-size:22px;letter-spacing:.16em;text-transform:uppercase;color:var(--mu)}
+.slide h1{font-weight:800;letter-spacing:-.03em;line-height:1.02;text-wrap:balance}
+.mo{font-family:MO,monospace}
+.lab{font-family:MO,monospace;font-size:22px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu)}
+
+.chain{display:flex;align-items:center;gap:0}
+.nd{font-family:MO,monospace;font-size:26px;letter-spacing:.04em;color:var(--tx);
+  border:1px solid var(--line);background:var(--p);padding:18px 26px;border-radius:4px;white-space:nowrap}
+.nd.tenet{border-color:var(--tx);font-weight:700}
+.lk{flex:0 0 64px;height:1px;background:var(--line);position:relative}
+.lk:after{content:"";position:absolute;right:0;top:-4px;border-left:9px solid var(--line);
+  border-top:4px solid transparent;border-bottom:4px solid transparent}
+.vd{font-family:MO,monospace;font-size:40px;margin-left:26px;line-height:1}
+.ok{color:var(--ok)} .hd{color:var(--hd)} .no{color:var(--no)}
+.big{font-family:MO,monospace;font-weight:700;letter-spacing:-.04em;line-height:.92}
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:34px;flex:1}
+.pan{border:1px solid var(--line);background:var(--p);padding:34px 38px;display:flex;flex-direction:column;gap:18px}
+.pan h2{font-family:MO,monospace;font-size:44px;letter-spacing:.06em;font-weight:700}
+.chip{display:inline-flex;align-items:center;min-height:40px;font-family:MO,monospace;font-size:19px;letter-spacing:.14em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:2px;padding:7px 14px;color:var(--mu);white-space:nowrap}
+.chip.ok{color:var(--ok);border-color:#1d4a35} .chip.no{color:var(--no);border-color:#4a1d24}
+footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:26px;
+  border-top:1px solid var(--line);padding-top:18px;white-space:nowrap;
+  font-family:MO,monospace;font-size:20px;color:var(--mu)}
+
+/* cover */
+.cov h1{font-size:230px;letter-spacing:-.055em;line-height:.86}
+.cov .tg{font-size:48px;font-weight:500;letter-spacing:-.02em;color:var(--tx);max-width:1200px;line-height:1.18}
+.cov .rule{width:120px;height:4px;background:var(--ok)}
+/* hook */
+.hk h1{font-size:118px}
+.metaph{display:flex;align-items:center;gap:0;margin:6px 0}
+/* problem */
+.pb .clock{font-family:MO,monospace;font-size:170px;font-weight:700;letter-spacing:-.04em;line-height:.9;color:var(--no)}
+.pb .row{display:grid;grid-template-columns:repeat(4,1fr);gap:28px}
+.pb .row div{border-top:2px solid var(--line);padding-top:20px;font-size:35px;line-height:1.25}
+/* solution */
+.sol h1{font-size:150px}
+.caps{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;margin-top:8px}
+.caps div{border:1px solid var(--line);background:var(--p);padding:26px 24px;font-family:MO,monospace;
+  font-size:30px;letter-spacing:.06em;text-align:center}
+/* how */
+.how .vchain{display:flex;flex-direction:column;gap:14px;font-family:MO,monospace;font-size:34px}
+.how .vchain div{border-left:2px solid var(--line);padding:6px 0 6px 22px}
+/* proof */
+.pf .fx{font-family:MO,monospace;font-weight:700;font-size:210px;letter-spacing:-.05em;line-height:.88}
+.pf .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line)}
+.pf .grid div{padding:24px 26px 0 0}
+.pf .grid .k{font-family:MO,monospace;font-size:20px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu)}
+.pf .grid .v{font-family:MO,monospace;font-size:44px;font-weight:700;margin-top:10px}
+/* market / competition / team / ask */
+.mk h1{font-size:150px}
+.four{display:grid;grid-template-columns:repeat(4,1fr);gap:30px}
+.four div{border-top:2px solid var(--line);padding-top:22px}
+.four .t{font-family:MO,monospace;font-size:30px;letter-spacing:.06em}
+.four .d{font-size:27px;color:var(--mu);margin-top:12px;line-height:1.3}
+.team .nm2{display:grid;grid-template-columns:1fr 1fr;gap:60px}
+.team .n{font-size:76px;font-weight:800;letter-spacing:-.03em}
+.team .r{font-size:30px;color:var(--mu);margin-top:14px;line-height:1.3}
+.ask h1{font-size:150px}
+.pilot{display:grid;grid-template-columns:repeat(4,1fr);gap:30px}
+.pilot div{border-top:2px solid var(--line);padding-top:20px;font-family:MO,monospace;font-size:30px}
+.cl h1{font-size:150px}
+</style></head><body>
+
+<section class="slide cov" id="s1">
+<header class="kick">HackYeah 2026 · Goldman Sachs — AI Control Layer</header>
+<main style="display:flex;flex-direction:column;gap:44px;justify-content:center;flex:1">
+  <h1>TENET</h1>
+  <div class="rule"></div>
+  <div class="tg">Your AI can act.<br>TENET decides what it is allowed to do.</div>
+  <div class="chain" style="margin-top:26px">
+    <span class="nd">AI proposal</span><span class="lk"></span>
+    <span class="nd tenet">TENET</span><span class="lk"></span>
+    <span class="nd">real system</span><span class="vd ok">&#10003;</span>
+  </div>
+</main>
+<footer><span>hackyeah-2026-ai-control-layer-production.up.railway.app · github.com/indrad3v4/hackyeah-2026-ai-control-layer</span><span>engineering traction, not revenue</span></footer>
+</section>
+
+<section class="slide hk" id="s2">
+<header class="kick">02 · why now</header>
+<main style="display:flex;flex-direction:column;gap:52px;flex:1;justify-content:center">
+  <h1>AI agents got hands.<br>Permission didn&#8217;t change.</h1>
+  <div class="chain">
+    <span class="nd">the agent</span><span class="lk"></span>
+    <span class="nd" style="border-style:dashed;color:var(--no)">nothing decides in between</span><span class="lk"></span>
+    <span class="nd">real world</span><span class="vd no">&#10007;</span>
+  </div>
+</main>
+<footer><span>MCP gives an agent transport. It does not decide whether the call may cross.</span><span>no permission, no action</span></footer>
+</section>
+
+<section class="slide pb" id="s3">
+<header class="kick">03 · the problem</header>
+<main style="display:flex;flex-direction:column;gap:40px;flex:1;justify-content:center">
+  <div style="display:flex;align-items:flex-end;gap:60px">
+    <div class="clock">03:47</div>
+    <h1 style="font-size:66px;line-height:1.08;padding-bottom:14px">An action you cannot take back<br>deserves a decision before it runs.</h1>
+  </div>
+  <div class="row">
+    <div>the agent acts</div>
+    <div>with real credentials</div>
+    <div>against a real system</div>
+    <div class="mo" style="color:var(--no)">and it has already happened</div>
+  </div>
+  <div style="font-size:44px;font-weight:600;letter-spacing:-.02em">Monitoring tells you what happened.<br><span style="color:var(--ok)">TENET decides whether it can happen.</span></div>
+</main>
+<footer><span>TENET is not a dashboard and not a SIEM. It decides before the call leaves.</span><span>before execution, not after</span></footer>
+</section>
+
+<section class="slide sol" id="s4">
+<header class="kick">04 · the solution</header>
+<main style="display:flex;flex-direction:column;gap:46px;flex:1;justify-content:center">
+  <h1>NO PERMISSION.<br>NO ACTION.</h1>
+  <div class="chain">
+    <span class="nd">AI proposal</span><span class="lk"></span>
+    <span class="nd tenet">TENET</span><span class="lk"></span>
+    <span class="nd">real data · real systems</span><span class="vd ok">&#10003;</span>
+  </div>
+  <div class="caps"><div>POLICY</div><div>HUMAN CONTROL</div><div>ENFORCEMENT</div><div>PROOF</div></div>
+</main>
+<footer><span>deployed in front of the tool server — one endpoint</span><span>the kernel decides; the model never does</span></footer>
+</section>
+<section class="slide how" id="s5">
+<header class="kick">05 · how it works</header>
+<main style="display:flex;flex-direction:column;gap:34px;flex:1;justify-content:center">
+  <div class="vchain">
+    <div>human intent</div>
+    <div>AI proposal — a tool call</div>
+    <div style="border-color:var(--tx)">TENET evaluates: warrant · entitlement · policy · budget · separation of duties</div>
+    <div>ALLOW &nbsp;/&nbsp; DENY &nbsp;/&nbsp; HOLD</div>
+    <div>upstream — or no contact at all</div>
+    <div style="border-color:var(--ok);color:var(--ok)">receipt — a record any auditor can read</div>
+  </div>
+  <div style="font-size:40px;font-weight:600;letter-spacing:-.02em;margin-top:10px">MCP transports the request.<br><span style="color:var(--ok)">TENET decides whether it crosses.</span></div>
+</main>
+<footer><span>deterministic checks first, semantic second — a cheap filter is never paid for with a model call</span><span>the check is code, not a prompt</span></footer>
+</section>
+
+<section class="slide pf" id="s6">
+<header class="kick">06 · live proof — one call, one receipt</header>
+<main style="display:flex;flex-direction:column;gap:30px;flex:1;justify-content:center">
+  <div style="display:flex;align-items:center;gap:20px">
+    <span class="chip ok">live run</span><span class="chip">engineering traction — not revenue</span>
+  </div>
+  <div class="fx">EUR/USD 1.1225</div>
+  <div class="grid">
+    <div><div class="k">http status</div><div class="v">200</div></div>
+    <div><div class="k">latency</div><div class="v">43.4 ms</div></div>
+    <div><div class="k">upstream calls</div><div class="v">1</div></div>
+    <div><div class="k">action</div><div class="v">A-0047</div></div>
+  </div>
+</main>
+<footer><span>Frankfurter, rate date 2026-10-02 · call-t1-allow-001 · response sha256 f63f64a5&#8230;</span><span>the number above was fetched through the boundary</span></footer>
+</section>
+
+<section class="slide" id="s7">
+<header class="kick">07 · the other side — what did not happen</header>
+<main style="display:flex;flex-direction:column;gap:34px;flex:1;justify-content:center">
+  <div class="panels">
+    <div class="pan">
+      <h2 class="no" style="color:var(--no)">DENY</h2>
+      <div class="big" style="font-size:96px;color:var(--no)">0</div>
+      <div class="lab">upstream calls</div>
+      <div style="font-size:29px;line-height:1.35">A-0003 refused by entitlement before execution.<br>Nothing left the box — the boundary&#8217;s own egress counter: <span class="mo">sent 1 &rarr; 1</span>.</div>
+    </div>
+    <div class="pan">
+      <h2 style="color:var(--hd)">HOLD</h2>
+      <div class="big" style="font-size:96px;color:var(--hd)">0</div>
+      <div class="lab">upstream calls until a person decides</div>
+      <div style="font-size:29px;line-height:1.35">A-0004 held, not executed. Approved by a named person (<span class="mo">anna.kowalska</span>) &rarr; executed &middot; receipt <span class="mo">062e3ef0</span>.</div>
+    </div>
+  </div>
+  <div style="font-size:48px;font-weight:700;letter-spacing:-.02em">Control happens before contact.</div>
+</main>
+<footer><span>measured 2026-10-04, two runs · scripts/tenet_live_proof.py — 46 of 49 checks green</span><span>revoke &amp; hold expiry: in the contract, not proven in this run</span></footer>
+</section>
+
+<section class="slide mk" id="s8">
+<header class="kick">08 · why this matters</header>
+<main style="display:flex;flex-direction:column;gap:34px;flex:1;justify-content:center">
+  <div style="display:flex;align-items:center;gap:20px"><span class="chip">sourced</span><span class="chip">no invented market share</span></div>
+  <div class="big" style="font-size:230px">22,000+</div>
+  <div style="font-size:46px;font-weight:600;letter-spacing:-.02em;line-height:1.2">DORA-covered financial entities in the EU.<br>Every one of them now has to prove it can stop what it runs.</div>
+  <div style="font-size:34px;color:var(--mu);line-height:1.3">Regulators now ask these firms to prove they can stop what they run.</div>
+</main>
+<footer><span>source: published DORA scope estimate — cited in docs, not modelled by us</span><span>price and share: not claimed</span></footer>
+</section>
+<section class="slide" id="s9">
+<header class="kick">09 · competition — the status quo</header>
+<main style="display:flex;flex-direction:column;gap:40px;flex:1;justify-content:center">
+  <div class="four">
+    <div><div class="t">SIEM</div><div class="d">sees what already happened</div></div>
+    <div><div class="t">IAM / PAM</div><div class="d">controls human identities</div></div>
+    <div><div class="t">human-in-the-loop</div><div class="d">waits for a person to click</div></div>
+    <div><div class="t" style="color:var(--ok)">TENET</div><div class="d" style="color:var(--tx)">controls the action boundary</div></div>
+  </div>
+  <div style="font-size:48px;font-weight:700;letter-spacing:-.02em;line-height:1.18">We are not replacing them.<br><span style="color:var(--ok)">We control the moment they don&#8217;t.</span></div>
+</main>
+<footer><span>the real competitor is doing nothing until the incident review</span><span>the gap is the second before the call</span></footer>
+</section>
+
+<section class="slide team" id="s10">
+<header class="kick">10 · team — two builders, one weekend</header>
+<main style="display:flex;flex-direction:column;gap:44px;flex:1;justify-content:center">
+  <div class="nm2">
+    <div><div class="n">indradev_</div><div class="r">the journey and the character: one voice from the film, carried into the live console</div></div>
+    <div><div class="n">Dmytro Poznanskyi</div><div class="r">the control surface: the kill switch and its real states, the layout guards, the architecture record</div></div>
+  </div>
+  <div class="four" style="margin-top:10px">
+    <div><div class="t" style="font-size:58px;color:var(--ok)">153</div><div class="d">commits on main, 3&#8211;4 Oct</div></div>
+    <div><div class="t" style="font-size:58px;color:var(--ok)">306</div><div class="d">tests passing in 33 s</div></div>
+    <div><div class="t" style="font-size:58px;color:var(--ok)">49</div><div class="d">live checks run, 46 green</div></div>
+    <div><div class="t" style="font-size:58px;color:var(--ok)">2</div><div class="d">builders, both in the log</div></div>
+  </div>
+</main>
+<footer><span>every number above is read from the git log, the pytest output and the live-run log</span><span>checked line by line, on 4 Oct</span></footer>
+</section>
+
+<section class="slide ask" id="s11">
+<header class="kick">11 · the ask</header>
+<main style="display:flex;flex-direction:column;gap:44px;flex:1;justify-content:center">
+  <h1>ONE REAL<br>TOOL SERVER.</h1>
+  <div class="pilot"><div>1 night</div><div>1 integration</div><div>1 control boundary</div><div>a human revoke</div></div>
+  <div style="font-size:44px;font-weight:600;letter-spacing:-.02em;line-height:1.22">Give us one action you don&#8217;t want an AI taking without you.<br><span style="color:var(--mu);font-size:34px">Our ask is one call: the one you would rather approve yourself.</span></div>
+</main>
+<footer><span>pilot scope, not pricing</span><span>if it holds for one call, we scale it to the rest</span></footer>
+</section>
+
+<section class="slide cl" id="s12">
+<header class="kick">12 · close</header>
+<main style="display:flex;flex-direction:column;gap:40px;flex:1;justify-content:center">
+  <h1>TENET</h1>
+  <div style="font-size:52px;font-weight:600;letter-spacing:-.02em;line-height:1.2">Your AI can act.<br>You stay in control.</div>
+  <div class="chain" style="margin-top:16px">
+    <span class="nd">AI proposal</span><span class="lk"></span>
+    <span class="nd tenet">TENET</span><span class="lk"></span>
+    <span class="nd">real world</span><span class="vd ok">&#10003;</span>
+  </div>
+</main>
+<footer><span>hackyeah-2026-ai-control-layer-production.up.railway.app</span><span class="mo">github.com/indrad3v4/hackyeah-2026-ai-control-layer &nbsp;·&nbsp; 1ndradev4@proton.me</span></footer>
+</section>
+
+<script>
+(function(){var out=[];
+document.querySelectorAll('section.slide').forEach(function(s){
+  var of=s.scrollHeight>1080+1||s.scrollWidth>1921?'OVERFLOW':'';
+  out.push(s.id+':h='+s.scrollHeight+','+(of||'ok'));
+});
+document.title='QA '+out.join(' | ');})();
+</script>
+</body></html>
