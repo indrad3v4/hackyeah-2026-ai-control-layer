@@ -158,7 +158,7 @@ button:disabled{opacity:.45;cursor:default}
 <script>
 const $=id=>document.getElementById(id);
 const B=location.origin;
-let step=0, intent="", soundOn=true, rec=null, resp=null, recRow=null, asked=false, pending=false;
+let step=0, intent="", soundOn=true, rec=null, resp=null, recRow=null, asked=false, pending=false, playedOrigin="silent";
 
 const BEATS=[
  {k:"SAY",t:"Tell me what you want your AI to do.",
@@ -198,7 +198,7 @@ function clipFor(){ const b=BEATS[step]; return (b&&CLIPS[b.k])||null; }
 function stopVoice(){ if(voiceAudio){ try{voiceAudio.pause();}catch(e){} voiceAudio=null; } }
 function speak(txt){
   charState("speak");
-  if(!soundOn){ setTimeout(()=>charState(currentStateName()),900); return; }
+  if(!soundOn){ playedOrigin="muted"; soundChip(); setTimeout(()=>charState(currentStateName()),900); return; }
   // TENET's own locked voice first: one studio clip per beat, the same character as the film.
   if(greeting){ pendingLine=txt; return; }
   const clip=clipFor();
@@ -206,6 +206,7 @@ function speak(txt){
     try{
       stopVoice();
       const a=new Audio(clip); voiceAudio=a;
+      a.onplaying=()=>{ playedOrigin="locked-clip"; soundChip(); };
       a.onended=()=>{ voiceAudio=null; charState(currentStateName()); };
       a.onerror=()=>{ voiceAudio=null; speakDevice(txt); };
       const pr=a.play(); if(pr&&pr.catch) pr.catch(()=>{ voiceAudio=null; speakDevice(txt); });
@@ -220,11 +221,14 @@ function speakDevice(txt){
   const v0=pickVoice();
   if(!v0){ setTimeout(()=>charState(currentStateName()),1400); return; }
   try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(txt); u.voice=v0; u.rate=0.94; u.pitch=0.85;
+    playedOrigin="device"; soundChip();
     u.onend=()=>charState(currentStateName()); u.onerror=()=>charState(currentStateName()); speechSynthesis.speak(u);
   }catch(e){ charState(currentStateName()); }
 }
+/* The chip reports what ACTUALLY played, never what might have: a clip that errored, a
+ * rejected play(), or a beat with no studio clip all report the device voice. */
 function soundChip(){ const v=pickVoice();
-  $("voiceChip").textContent="sound — "+(soundOn? (clipFor()? "TENET · studio voice" : (v? v.name+" (device fallback)" : "unavailable on this device")) : "muted");
+  $("voiceChip").textContent="sound — "+(soundOn? (playedOrigin==="locked-clip"? "TENET · studio voice" : playedOrigin==="device"? (v? "device voice — "+v.name+" (no studio clip for this line)" : "device voice unavailable") : "silent") : "muted");
   const n=$("voiceName"); if(n) n.textContent = v? v.name : ""; }
 // The character's own lines, keyed to the REAL journey state — never a script read aloud.
 // (Verbatim from the film, so the person who watched it recognises the same TENET.)
@@ -236,12 +240,16 @@ const LINES={
  allow:"Allowed.", deny:"No.", denyAfter:"Nothing left TENET.",
  wait:"I'm waiting for you.", waitDecision:"Your decision.",
  crossed:"It crossed.", nothingCrossed:"Nothing crossed.", canCross:"Now it can cross.",
- proof:"Here is what happened.", win:"You stayed in control."
+ proof:"Here is what happened.", win:"You stayed in control.",
+ // The state the loop was missing: a transport failure leaves NO record, so no verdict may be
+ // spoken. "Nothing came back" is not a decision.
+ notEvaluated:"I could not reach my own decision path. Nothing was decided — and nothing was authorized, because nothing was asked."
 };
 function contacted(){ const t=(resp&&resp.answer)||""; return /HTTP\s*200/i.test(t)||!!(recRow&&recRow.upstream&&recRow.upstream.contacted); }
 function humanResolved(){ const s=String((recRow&&(recRow.state||recRow.decided_by))||""); return /approv|human|operator/i.test(s)&&contacted(); }
 function spoken(){
   const k=BEATS[step].k;
+  if(k==="DECIDE" && asked && !resp) return LINES.notEvaluated;
   if(k==="DECIDE"){ const s=decisionState();
     if(s==="allow") return LINES.allow;
     if(s==="deny") return LINES.deny+" "+LINES.denyAfter;

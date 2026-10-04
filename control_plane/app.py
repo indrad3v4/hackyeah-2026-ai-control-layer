@@ -252,6 +252,15 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             return HTMLResponse("<h1>TENET</h1><p>Guided walkthrough page missing</p>", status_code=500)
         return HTMLResponse(ONBOARDING_HTML.read_text(encoding="utf-8"))
 
+    @app.get("/voice.js", include_in_schema=False)
+    def voice_module() -> Any:
+        """The guide's single source of truth: one voice module for every surface."""
+        path = REPO_ROOT / "voice.js"
+        if not path.is_file():
+            return JSONResponse({"detail": "voice module missing"}, status_code=500)
+        return FileResponse(path, media_type="application/javascript",
+                            headers={"Cache-Control": "public, max-age=300"})
+
     @app.get("/audio/{name}", include_in_schema=False)
     def audio(name: str) -> Any:
         """TENET's own voice: one locked clip per beat, the same character as the film."""

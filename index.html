@@ -105,8 +105,20 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
 .controlBlock{margin:12px 0 0;padding:13px 14px;border-radius:12px;border:1px solid #3a2c12;background:#191307;color:#f0d9a8;font-size:13px}
 .controlBlock .pendingLine{font-weight:750;color:#ffd27a;margin-bottom:9px}.controlBtns{display:flex;gap:9px}
 @media(max-height:900px){body{overflow:auto}.app{overflow:auto;max-height:none}}
+/* ---- the guide: gate, chip, toggle — the onboarding's pattern, on the console ---- */
+#voiceGate{position:fixed;inset:0;background:rgba(4,7,10,.93);display:grid;place-items:center;z-index:60;padding:20px}
+#voiceGate .box{max-width:580px;background:#0d141c;border:1px solid #24313f;border-radius:16px;padding:26px 26px 20px;text-align:center}
+#voiceGate .smile{font-size:30px}
+#voiceGate h2{font-size:24px;margin:6px 0 8px;letter-spacing:-.02em}
+#voiceGate p{color:#a9b8c8;font-size:14px;line-height:1.5;margin:0 0 16px}
+#voiceGate .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+#voiceGate button{background:#111a24;color:#dbe6f0;border:1px solid #2b3a4a;border-radius:10px;padding:10px 16px;cursor:pointer;font-weight:600}
+#voiceGate button.primary{background:var(--green);color:#04140c;border-color:var(--green)}
+#voiceGate .note{color:#71818f;font-size:12px;margin-top:14px}
+.voiceChip{font:600 11.5px/1 ui-monospace,Menlo,monospace;color:#9fb3c6;border:1px solid #2b3a4a;border-radius:999px;padding:5px 10px;background:#0d141c;white-space:nowrap}
+#soundToggle{font:600 12px ui-monospace,Menlo,monospace;color:#cfe0ee;border:1px solid #2b3a4a;border-radius:999px;padding:5px 10px;background:#0d141c;cursor:pointer;margin-left:2px}
 </style></head><body><div class="app">
-<header><div class="brand"><div class="mark">T</div><div><h1>TENET Control Room</h1><div class="sub">Control what your AI can do — when it acts on real people, you stay in control.</div></div></div><div class="status"><span class="dot"></span><span id="live">Connecting…</span></div></header>
+<header><div class="brand"><div class="mark">T</div><div><h1>TENET Control Room</h1><div class="sub">Control what your AI can do — when it acts on real people, you stay in control.</div></div></div><div class="status"><span class="dot"></span><span id="live">Connecting…</span><span class="voiceChip" id="voiceChip" title="what actually played — never what might have">sound — silent</span><button id="soundToggle" title="Voice on — click to mute">🔊</button></div></header>
 <section class="card pad" id="askSection"><div class="eyebrow">00 · Ask your AI — say it in your own words</div>
 <h2 class="actionTitle" style="margin:7px 0 2px">What should your AI do?</h2>
 <p class="actionLead" style="margin-bottom:10px">Ask in plain words — <span class="mono">check today's EUR/USD rate for me</span>. Your AI proposes; TENET answers before anything runs: allowed, not allowed, or waiting for you. What you read below is the proposal — TENET's answer is the one that counts.</p>
@@ -123,6 +135,12 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
 <section class="content"><!-- 03 · Live agent activity: retained as a machine-readable layout contract; visible copy is human-first. --><!-- 04 · Why this happened: retained as a machine-readable layout contract; visible copy is human-first. --><article class="card"><div class="head"><h3>04 · Actions on the record</h3><span class="sub" id="count">0 events</span></div><div class="feed" id="feed"><div class="pad" style="color:#718196">Reading the kernel…</div></div></article>
 <aside class="card"><div class="head"><h3>05 · Inspect this action</h3><span class="sub" id="eventState">—</span></div><div class="rows" id="details"><div class="pad" style="color:#718196">Select an action.</div></div><div class="timeline" id="timeline"></div><div class="actions"><button class="btn" id="refresh">Refresh evidence</button></div></aside></section>
 <footer><span>TENET · Control Plane → Enforcement Kernel → upstream</span><span id="footer">Evidence only · no credentials exposed</span></footer></div>
+<div id="voiceGate"><div class="box"><div class="smile">🙂</div><h2>I'm TENET.</h2>
+<p><b>Turn on the sound.</b> I'll stay with you while your AI acts — your words, your AI's proposal, the kernel's decision, and the proof. You keep the controls.</p>
+<div class="row"><button class="primary" id="gateSound">🔊 Turn on sound &amp; start</button><button id="gateSilent">Read instead</button></div>
+<div class="note">Your browser needs one tap before any voice can play — that tap is this button. Nothing else starts.</div>
+</div></div>
+<script src="/voice.js"></script>
 <script>
 const $=id=>document.getElementById(id);let events=[],selected=null,usage=null,trace=null,cardTrace=null,cardPinned=false,llm_authority=null,authority_source=null,upstream_configured=null,live_mode=null;
 /* cardTrace is the trace the HEADLINE CARD shows: null means "follow the latest action"
@@ -302,6 +320,8 @@ function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();r
       techRow("Response sha256",esc(up.response_sha256??"not recorded"))+
       techRow("Latency",up.latency_ms!=null?esc(String(up.latency_ms))+" ms":"not recorded")+
     `</div></details>`;
+  /* The voice renders the state the record proves — never a verdict the card did not receive. */
+  if(V){const st=contacted===true?"crossed":(t.executed===true?"crossed":(state==="pending"||dec==="human")?"wait":(dec==="deny")?"denyAfter":(dec==="allow")?"allow":(dec==="redact")?"canCross":null);if(st)V.say(st)}
   renderControl(t)}
 /* The class comes from the SAME evaluated evidence the why-line renders (the verdict's `reason`,
  * whose "class <name>" phrase the kernel's evaluation wrote), never from a second source that is
@@ -347,11 +367,11 @@ function askFailure(r,data,err){
   return {state:"not_evaluated",status:status,
     text:"Not evaluated — the path answered HTTP "+status+". No verdict was produced and no record exists."};
 }
-function setAskFailure(f){ askFailureState=f;
+function setAskFailure(f){ askFailureState=f; if(V)V.say("notEvaluated");
   $("proposalText").textContent=f.text+(f.status?" (transport: HTTP "+f.status+(f.allow?", allow: "+f.allow:"")+")":"");
   try{acHide();renderControl(null);}catch(e){}}
 $("intentGo").onclick=async()=>{const q=($("intentInput").value||"").trim();if(!q){$("proposalText").textContent="Type what your AI should do first.";return}
-  $("proposalText").textContent="Asking the model to propose… (the kernel will decide)";acHide();renderControl(null);
+  $("proposalText").textContent="Asking the model to propose… (the kernel will decide)";if(V)V.say("proposes");acHide();renderControl(null);
   try{const r=await fetch("/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q:q})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok){setAskFailure(askFailure(r,data));return}
@@ -401,10 +421,23 @@ async function resolve(verb){const t=acTrace;if(!t||!t.action_id)return;const to
      * rendering it replaces the control block, so the confirmation is written to #controlMsg when it
      * still exists and always mirrored to the durable #operatorNotice — the human who decided must
      * see that their decision took effect and who it is attributed to, even once the controls retire. */
+    if(V)V.say(verb==="approve"?"canCross":"denyAfter");
     if(rr.ok&&rd.trace){renderActionCard(rd.trace);resolveMsg("Resolved by "+by+". This is the action's re-read state.",by)}
     else{resolveMsg("Resolved, but the re-read returned HTTP "+rr.status+" — the resulting state is not shown.",by)}
   }catch(err){$("controlMsg").textContent="The "+verb+" attempt failed: "+err.message}}
 
 refresh();setInterval(refresh,2000);
+/* ---- THE GUIDE, ON EVERY SURFACE ------------------------------------------------------------------
+ * The onboarding defined the pattern; the console carries it. voice.js renders states the kernel
+ * really produced, reports what ACTUALLY played, and says "not evaluated" where the transport
+ * failed — never a verdict the record does not carry (D5/D11/D12). */
+const V=window.TENETVoice||null;
+(function bootGuide(){
+  if(!V)return;
+  V.init({chip:"voiceChip",soundOn:false});
+  V.gate();
+  const t=$("soundToggle");
+  if(t)t.onclick=()=>{const on=V.toggle();t.textContent=on?"🔊":"🔇";t.title=on?"Voice on — click to mute":"Voice muted — click to arm"};
+})();
 window.__TENET_QA__={ok:true,revokeOverTarget:false,layout:"live-operator-control-room",pollMs:2000,realOrchestrator:true};
 </script>
