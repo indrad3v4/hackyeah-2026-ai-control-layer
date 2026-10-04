@@ -236,7 +236,7 @@ const bsub=bc===true?["HTTP "+dashHtml(up.http_status,"—"),dashHtml(up.endpoin
 const argsKeysHtml=Array.isArray(ap.args?.keys)?`keys [${ap.args.keys.map(esc).join(", ")}]`:"";
 const argsHtml=dash(ap.args)?`<span class="mono">${esc(JSON.stringify(ap.args))}</span>`:"";
 body.innerHTML=
-  actRow("What it wants to do",`${esc(t.action?.intent||tool)} <span class="mono">· tool ${esc(tool)}</span>`)+
+  actRow("What it wants to do",`${esc(t.action?.intent||tool)}${t.action&&t.action.intent?` <span class="mono">· tool ${esc(tool)}</span>`:""}`)+
   actRow("Data involved",(dash(ap.class)||argsKeysHtml||argsHtml)?`${esc(ap.class||"action class not recorded")}${argsKeysHtml?` <span class="mono">· ${argsKeysHtml}</span>`:""}${argsHtml?` ${argsHtml}`:""}`:`<span class="unk">No action-class detail was recorded for this decision.</span>`)+
   actRow("Who is acting",esc(t.agent??"—")+(t.agent_role?` <span class="mono">· ${esc(t.agent_role)}</span>`:""))+
   actRow("Who it acts for",dashHtml(t.principal,"principal not recorded")+(t.on_behalf_of?` · on behalf of ${esc(t.on_behalf_of)}`:" · on behalf of not recorded"))+
