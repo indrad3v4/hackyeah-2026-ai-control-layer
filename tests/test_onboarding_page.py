@@ -1,9 +1,11 @@
-"""The guided walkthrough (``/onboarding``) is a real surface, not a mock-up.
+"""The guided journey (``/onboarding``) is a real surface, not a mock-up and not a tutorial.
 
-Why these assertions exist: the console explained the product in one paragraph and a first-time
-operator still could not say what it does. The walkthrough is the answer - one action, narrated
-step by step by a character who lives in the page, with the microphone transcribing what the
-operator says and the live control plane answering at the step that matters.
+Why these assertions exist: a first-time person could not say what TENET does from a paragraph
+of documentation, and a voice narrating from nowhere is still a dashboard with sound. So the
+page is one real controlled action walked with a character who is a GUIDE, never the authority:
+Nadia explains, the AI proposes, TENET decides, the human controls. These tests pin the parts
+that make that true: who does what, the seven beats of the journey, the character's honest
+reactions to the REAL verdict, and the absence of childish gamification.
 """
 from __future__ import annotations
 
@@ -15,49 +17,68 @@ from control_plane.app import create_app
 def _page() -> str:
     with TestClient(create_app(seed=True)) as client:
         r = client.get("/onboarding")
-    assert r.status_code == 200, "the walkthrough page must be served"
+    assert r.status_code == 200, "the journey page must be served"
     return r.text
 
 
-def test_the_walkthrough_is_served():
+def test_the_journey_is_served():
     body = _page()
-    assert "TENET" in body and "walk with Nadia" in body
+    assert "TENET" in body and "the guide" in body
+
+
+def test_the_character_is_a_guide_and_the_roles_are_visible():
+    body = _page()
+    assert "Nadia" in body, "the guide is a named character, not a bare voice"
+    for role in ("explains", "proposes", "decides", "control"):
+        assert role in body, f"the page must show who {role}"
+    assert "AI moves with the human, not around the human" in body
 
 
 def test_the_character_lives_in_the_page_and_asks_for_the_sound():
     body = _page()
-    assert "Nadia" in body, "the guide is a named character, not a bare voice"
     assert 'id="gate"' in body and "Turn on sound" in body, (
         "a browser needs one gesture before audio: the character asks for it")
     assert 'id="gateChar"' in body, "the character is shown in the sound gate, not just text"
-    assert "charState" in body and "speak" in body and "listen" in body
+    assert "position:sticky" in body, "the character stays present while the human scrolls"
+    assert "Read instead" in body, "silence must be a choice"
 
 
-def test_the_journey_map_shows_where_the_operator_is():
+def test_the_journey_has_the_seven_beats():
     body = _page()
-    assert 'id="map"' in body and 'id="walker"' in body, "the character walks a visible map"
-    assert body.count("node:") >= 5, "every step has its own node on the map"
+    for beat in ("SAY", "SEE", "UNDERSTAND", "DECIDE", "WITNESS", "PROVE", "WIN"):
+        assert f'"{beat}"' in body, f"beat {beat} is missing from the journey"
+    # the map is built from the beats themselves, so a new beat cannot be forgotten in the
+    # markup (the nodes are rendered in JS, not hand-written seven times)
+    assert 'id="node${i}"' in body and "BEATS.map" in body, "the map is drawn from the beats"
 
 
-def test_there_is_basic_gamification_that_rewards_real_control():
+def test_the_character_reacts_to_the_real_verdict():
     body = _page()
-    assert "control score" in body, "a score the operator can see"
-    assert "receipt earned" in body and "You won" in body and "Copy the receipt" in body
-    assert "Play again" in body, "the run can be replayed"
+    for state in ("listen", "think", "allow", "deny", "wait", "done"):
+        assert f'"{state}"' in body or f'"{state}" ' in body or f" {state}" in body, f"state {state} missing"
+    assert "decisionState" in body, "the reaction is derived from the record, not hardcoded"
+    assert "NOT ALLOWED" in body and "WAITING FOR YOU" in body and "ALLOWED" in body
 
 
-def test_it_speaks_every_step_listens_and_never_scripts_the_answer():
+def test_there_is_no_childish_gamification():
     body = _page()
-    assert body.count("s:") >= 5, "every step carries its own spoken line"
+    for wrong in ("control score", "+25", "XP", "badge", "points"):
+        assert wrong not in body, f"the win is control, not {wrong!r}"
+
+
+def test_the_reward_is_control_kept():
+    body = _page()
+    assert "You stayed in control" in body
+    assert "CONTROL KEPT" in body
+    assert "Your words, your AI's proposal" in body.replace("&", "&"), "the chain must be named"
+
+
+def test_it_speaks_every_beat_listens_and_never_scripts_the_answer():
+    body = _page()
+    assert body.count("s:") >= 7, "every beat carries its own spoken line"
     assert "webkitSpeechRecognition" in body or "SpeechRecognition" in body
-    assert "Nadia heard:" in body, "the transcription is shown to the operator"
+    assert "I heard:" in body, "the transcription is shown to the human"
     assert "/api/ask" in body and "/api/actions" in body
-    assert "real records, not a script" in body
-    assert "this run" in body and "replace(/[^0-9]/g" in body, (
-        "the evidence line names THIS run, not the oldest row of a newest-first list")
-
-
-def test_the_operator_keeps_control_of_the_flow():
-    body = _page()
-    for control in ("Back", "Next", "Sound off", "Sound on", "Read instead"):
-        assert control in body, f"{control} control missing"
+    assert "never a script" in body
+    assert "replace(/[^0-9]/g" in body, (
+        "the record named is THIS run's, not the oldest row of a newest-first list")
