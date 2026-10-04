@@ -450,15 +450,23 @@ const BEAT_WORD={SAY:"your words",SEE:"what I heard",UNDERSTAND:"what your AI wa
   DECIDE:"the kernel decided",WITNESS:"it happened",PROVE:"the receipt",WIN:"you stayed in control"};
 function chainHead(){return (chainData&&chainData.chain)||null}
 function receiptInChain(receipt){const ch=chainHead();if(!ch||!receipt)return false;
-  if(ch.head&&String(ch.head)===String(receipt))return true;
+  const re=String(receipt);
+  /* THE HEAD IS THE CHAIN'S OWN HASH, NOT THE ACTION'S RECEIPT. The live node answers
+   * head "b2d630f4e65f83d1" while the trace carries the receipt "b2d630f4": the receipt is the
+   * HEAD'S PREFIX, so equality alone can never match and WITNESS would never advance. */
+  if(ch.head&&re&&String(ch.head).startsWith(re))return true;
   /* the chain is a projection of the kernel's own receipts; a non-zero length with ok true and
-   * this receipt present in the correlation is proof. When the chain says nothing, it is NOT_ */
+   * this receipt present in the correlation is proof. The correlation entry spells the id
+   * `receipt` on the live node (proof.correlation[].receipt); both spellings are read, and a
+   * prefix in either direction counts, because one side truncates. */
   if(ch.ok===true&&Number(ch.length||0)>0){
-    const re=String(receipt);
-    const corr=(chainData&&chainData.proof&&chainData.proof.correlation)||chainData&&chainData.correlation;
-    if(Array.isArray(corr))return corr.some(r=>String(r&&r.receipt_id||"")===re);
-    return ch.head!=null?String(ch.head)===re:true;
+    const corr=(chainData&&chainData.proof&&chainData.proof.correlation)||(chainData&&chainData.correlation);
+    if(Array.isArray(corr))return corr.some(r=>{const id=String((r&&(r.receipt_id||r.receipt))||"");
+      return !!id&&(id===re||re.startsWith(id)||id.startsWith(re))});
   }
+  /* The chain said nothing this page can match. The old line returned TRUE when the chain
+   * carried no head at all — proof invented out of an empty read. An unproven chain is NOT
+   * proven: PROVE stays unmarked and the note says why. */
   return false}
 function journeyBeats(t,notEvaluated){const r={SAY:"not_yet",SEE:"not_yet",UNDERSTAND:"not_yet",
   DECIDE:"not_yet",WITNESS:"not_yet",PROVE:"not_yet",WIN:"not_yet"};

@@ -486,9 +486,18 @@ def test_ac6e_card_prints_the_upstream_url_once_escaped_never_double_escaped():
 
 
 # ------------------------------------------- ACT NEW-AC7: the rail is a way in, and it says why it stops
-def _chain_payload(receipt):
-    chain = {"ok": True, "length": 1, "head": receipt,
-             "proof": {"correlation": [{"receipt_id": receipt}]}}
+def _chain_payload(receipt, *, full_head=None):
+    """The shape the LIVE node answers (observed on the deployed instance, 04.10.2026).
+
+    ``/api/state -> chain`` spells ``head`` as the chain's own full hash ("b2d630f4e65f83d1")
+    and the correlation entry's id as ``receipt`` ("b2d630f4") — NOT ``receipt_id``. A fixture
+    that invents ``receipt_id`` and sets head = receipt passes against the code's assumption
+    while the real page can never advance. This one is the real one.
+    """
+    chain = {"ok": True, "length": 2, "head": full_head or (receipt + "e65f83d1"),
+             "history": {"rotations": 0, "archived_rows": 0, "archives_ok": True, "problems": []},
+             "proof": {"correlation": [{"run_id": "startup-1", "action_id": "A-0001",
+                                        "receipt": receipt, "receipt_in_chain": True}]}}
     return {"chain": chain}
 
 
@@ -526,4 +535,25 @@ def test_rail_reaches_the_proof_when_the_chain_lists_the_receipt():
     note = _text(dom, "railNote")
     assert "does not list" not in note, f"the chain lists the receipt yet the rail stalls: {note!r}"
     assert "You are at" in note, note
+    rail = dom.split('id="journeyRail"')[1].split("</div></div>")[0]
+    assert "not yet" not in rail, "a beat is still unproven although the chain lists the receipt"
     assert "PROVE" in note or "WIN" in note, f"the rail never reached the proof: {note!r}"
+
+
+# ---------------------------------------- the honest fallback: an unreadable chain proves nothing
+def test_chain_that_says_nothing_is_not_treated_as_proof():
+    """A chain with ok=true, length>0 and NO head and NO correlation must not mark PROVE done.
+
+    The page used to answer ``return ch.head!=null ? ... : true`` — an empty read produced
+    "proven". This is the invented-proof case, and it must stay unproven.
+    """
+    receipt = _TRACE_OBJECT_VALUE["receipt_id"]
+    payloads = _api_payloads(trace=dict(_TRACE_OBJECT_VALUE))
+    payloads["/api/state"] = (lambda _r: {"chain": {"ok": True, "length": 3}})
+    with _Served(payloads) as url:
+        dom = _rendered_dom(url)
+    rail = dom.split('id="journeyRail"')[1].split("</div></div>")[0]
+    assert 'data-beat="PROVE" data-state="not_yet"' in rail, \
+        f"an unreadable chain was treated as proof: {rail[:400]!r}"
+    note = _text(dom, "railNote")
+    assert "You are at WITNESS" in note, note
