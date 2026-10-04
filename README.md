@@ -8,6 +8,8 @@ TENET is an enforcement resource for agentic systems. It sits between an AI agen
 
 ## Watch the story
 
+[![▶ Watch the 42-second TENET happy path](docs/tenet-happy-path-poster.png)](docs/tenet-happy-path.mp4)
+
 [▶ Watch the 42-second TENET happy path](docs/tenet-happy-path.mp4) — the real control room, one live run, every number read back from the kernel.
 
 ## The happy path
