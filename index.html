@@ -271,12 +271,18 @@ function renderControl(t){const box=$("controlBlock");if(!t||String(t.decision).
   box.style.display="";box.innerHTML=`<div class="pendingLine">The request has NOT been sent yet. This action is waiting for you.</div><div class="controlBtns"><button class="btn" id="approveBtn">Approve</button><button class="btn red" id="denyBtn">Deny</button></div><div class="mono" id="controlMsg" style="margin-top:8px;color:#c9b98a"></div>`;
   $("approveBtn").onclick=()=>resolve("approve");$("denyBtn").onclick=()=>resolve("deny")}
 function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();return}
-  const up=t.upstream||{},dec=String(t.decision||"").toLowerCase(),contacted=up.contacted;
-  const consequence=dec==="allow"&&contacted===true?`Data leaves TENET: the request was sent upstream.${up.value?` The far side answered ${esc(jsonSafe(up.value))}.`:""}`
+  const up=t.upstream||{},dec=String(t.decision||"").toLowerCase(),contacted=up.contacted,state=String(t.state||"").toLowerCase();
+  /* Every line below follows the EVIDENCE, never the decision label: a crossing is proven by
+   * upstream.contacted (a real http_status), and an execution by the composer's `executed` fact.
+   * `state` is the action row's own resolved lifecycle word, so "still waiting for a person" is
+   * distinct from "a person approved" / "a person denied". */
+  const consequence=contacted===true?`Data leaves TENET: the request was sent upstream.${up.value!=null?` The far side answered ${esc(jsonSafe(up.value))}.`:""}`
+    :state==="denied"?`Nothing left TENET. The upstream was not contacted.`
+    :state==="pending"?`Nothing has been sent yet. This action is waiting for you.`
     :dec==="deny"?`Nothing left TENET. The upstream was not contacted.`
     :dec==="human"?`Nothing has been sent yet. This action is waiting for you.`
     :`Not proven in the record.`;
-  const happened=t.executed===true?`Yes — it ran.${up.value?` Real value: ${esc(jsonSafe(up.value))}.`:""}`
+  const happened=t.executed===true?`Yes — it ran.${up.value!=null?` Real value: ${esc(jsonSafe(up.value))}.`:""}`
     :t.executed===false?`No — it did not run.`:`Not recorded.`;
   c.style.display="";
   c.innerHTML=`<h3>Action under control</h3>`+

@@ -59,9 +59,20 @@ with its authority evidence, shape:
 `trace` fields: `run_id, action_id, timestamp, origin, agent, agent_role, principal,
 on_behalf_of, entitlements[], scope[], action{tool,intent,class,args}, checks{identity,
 entitlement, warrant{id,state,sig_ok,ttl_remaining}, policy}, decision, reason,
-decided_by:"tenet-kernel", upstream{contacted,http_status,endpoint,value,response_sha256,
-latency_ms}|null, receipt_id, model{provider,model_served,trace_id,calls,tokens},
-incomplete[]`. When no action exists, `"trace": null` and nothing else is invented.
+decided_by, state, executed:true|false|null, upstream{contacted,http_status,endpoint,value,
+response_sha256, latency_ms}|null, receipt_id, model{provider,model_served,trace_id,calls,
+tokens}, incomplete[]`. When no action exists, `"trace": null` and nothing else is invented.
+
+`state` is the action row's own resolved lifecycle state, verbatim (`"approved"`, `"denied"`,
+`"pending"`, `"decided"`, …) — never mapped or renamed; `null` (and named in `incomplete`) when
+the row carries none. `executed` is `true` only when the record itself proves the call ran (the
+same evidence the crossing is proven from: an execution result with a real `http_status`),
+`false` when the record proves it did NOT run (a denial: the row carries an execution result and
+no crossing), and `null` (named in `incomplete`) when the record does not say.
+
+`decided_by` (ACT-7d): the real resolver of a person-resolved hold is named verbatim from the
+row's own `decided_by`; where the kernel alone decided it reads `"tenet-kernel"`. No name is
+invented either way.
 AC1b — every field whose evidence is missing is `null` AND its name appears in `incomplete`.
 
 AC2 — Honest boundary rule: `upstream.contacted` is true ONLY when the action carries an

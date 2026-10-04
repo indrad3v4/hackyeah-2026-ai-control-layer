@@ -750,6 +750,24 @@ class Kernel:
             # assumed to have reached the far side.
             incomplete.append("upstream.http_status")
 
+        # ---- the action's OWN resolved lifecycle state, verbatim (never mapped or renamed). A
+        # human hold reads "pending" until a person resolves it, then the row records "approved"
+        # or "denied"; the console needs the row's own word to tell "still waiting" from resolved.
+        state = action.get("state") or None
+        if state is None:
+            incomplete.append("state")
+
+        # ---- execution: the SAME evidence the crossing is proven from, plus the negative proof.
+        #   True  - the row carries an execution result with a real http_status (the call ran);
+        #   False - the row proves it did NOT run: it carries an execution result (even empty, as a
+        #           denial files) or an explicit ``upstream_contacted`` of false - the record says so;
+        #   None  - the row says nothing (no execution result AND no ``upstream_contacted``), so the
+        #           field is NAMED in incomplete rather than guessed.
+        claims_execution = "execution_result" in action or action.get("upstream_contacted") is not None
+        executed: Optional[bool] = True if contact_proven else (False if claims_execution else None)
+        if executed is None:
+            incomplete.append("executed")
+
         receipt_id = action.get("receipt") or None
         if not receipt_id:
             incomplete.append("receipt_id")
@@ -787,6 +805,8 @@ class Kernel:
             "decision": decision,
             "reason": reason,
             "decided_by": decided_by,
+            "state": state,
+            "executed": executed,
             "upstream": upstream_obj,
             "receipt_id": receipt_id,
             "model": model_block,

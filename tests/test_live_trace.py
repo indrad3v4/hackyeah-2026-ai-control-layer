@@ -545,3 +545,70 @@ def test_act7d_kernel_decided_action_still_names_the_kernel(client):
     assert trace["decided_by"] == "tenet-kernel", (
         "a kernel-decided action must keep the kernel's own attribution: %r" % trace["decided_by"])
 
+
+# ------------------------------------------------------------------- ACT-7e (composed state + executed)
+# The composer must carry the action row's OWN resolved lifecycle state and an `executed` fact that
+# is proven from the record, so the console can tell "still waiting for a person" from "a person
+# approved" / "a person denied". These drive the real hold / approve / deny path against the
+# repository's own kernel, so the state is the one a real decision wrote onto the row.
+def test_act7e_human_approved_state_and_executed_are_composed(client):
+    """A person-approved hold: the trace carries the row's own state, and the execution is proven.
+
+    The row's state is what a person's approve wrote (``"approved"``), so the console can show the
+    resolution instead of a permanent wait. The call really crossed (the crossing is filed as it is
+    on the live rig), so ``executed`` must be proven true from the same evidence.
+    """
+    action_id = _hold(client)
+    ap = client.post(f"/api/actions/{action_id}/approve", json={"by": "indradev_"},
+                     headers=_admin_headers())
+    assert ap.status_code == 200 and ap.json()["executed"] is True
+    _file_crossing(client, action_id, _REAL_CROSSING)
+
+    trace = client.get(f"/api/live-trace?action_id={action_id}").json()["trace"]
+    row = client.app.state.kernel.action(action_id)
+    assert trace["state"] == row["state"] == "approved", (
+        "the composed state is not the row's own resolved state: trace=%r row=%r"
+        % (trace["state"], row["state"]))
+    assert trace["executed"] is True, "a proven execution was not composed as executed:true"
+    assert trace["upstream"]["contacted"] is True
+    assert trace["upstream"]["http_status"] == _REAL_CROSSING["http_status"]
+
+
+def test_act7e_human_denied_state_and_executed_are_composed(client):
+    """A person-denied hold: state ``"denied"``, ``executed`` false, and no crossing - all proven.
+
+    The denial writes a state and an (empty) execution result onto the row, so the record itself
+    proves the call did NOT run: ``executed`` is false, never null, and the far side was not
+    contacted.
+    """
+    action_id = _hold(client, rows=700)
+    dn = client.post(f"/api/actions/{action_id}/deny", json={"by": "indradev_"},
+                     headers=_admin_headers())
+    assert dn.status_code == 200 and dn.json()["upstream_contacted"] is False
+
+    trace = client.get(f"/api/live-trace?action_id={action_id}").json()["trace"]
+    row = client.app.state.kernel.action(action_id)
+    assert trace["state"] == row["state"] == "denied", (
+        "the composed state is not the row's own denied state: trace=%r row=%r"
+        % (trace["state"], row["state"]))
+    assert trace["executed"] is False, "a proven non-execution must be composed as executed:false"
+    assert trace["upstream"]["contacted"] is False
+    assert trace["upstream"]["http_status"] is None
+
+
+def test_act7e_pending_hold_never_claims_an_execution(client):
+    """A still-pending hold: no crossing, and the trace never claims an execution it cannot prove."""
+    action_id = _hold(client, rows=900)
+
+    trace = client.get(f"/api/live-trace?action_id={action_id}").json()["trace"]
+    row = client.app.state.kernel.action(action_id)
+    assert trace["decision"] == "human"
+    assert trace["state"] == row["state"], (
+        "the composed state is not the row's own pending state: trace=%r row=%r"
+        % (trace["state"], row["state"]))
+    assert trace["upstream"]["contacted"] is False, "a holding action must show no crossing"
+    assert trace["upstream"]["http_status"] is None
+    # The record does not prove an execution (no crossing): the trace must NOT claim one. It is
+    # either the proven NEGATIVE or an honest null - never a fabricated True.
+    assert trace["executed"] is not True, "a holding action claimed an execution it cannot prove"
+
