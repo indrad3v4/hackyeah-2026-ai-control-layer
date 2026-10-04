@@ -104,13 +104,13 @@ button:disabled{opacity:.45;cursor:default}
         </svg>
       </div>
       <div class="bubble">
-        <div class="whoLine"><span class="who">Nadia · your guide</span><span class="mono" id="voiceName"></span></div>
+        <div class="whoLine"><span class="who">TENET · your guide</span><span class="mono" id="voiceName"></span></div>
         <p id="said" style="margin:6px 0 0">—</p>
       </div>
     </div>
     <div class="roles">
-      <span class="role">Nadia · explains</span><span class="role">AI · proposes</span>
-      <span class="role">TENET · decides</span><span class="role you">You · control</span>
+      <span class="role">TENET · explains</span><span class="role">AI · proposes</span>
+      <span class="role">kernel · decides</span><span class="role you">You · control</span>
     </div>
   </div>
 
@@ -133,12 +133,12 @@ button:disabled{opacity:.45;cursor:default}
   <div class="row" style="margin-top:13px">
     <button id="back" class="ghost">← Back</button>
     <button id="next">Next →</button>
-    <button id="replay" class="ghost">🔈 Nadia, again</button>
+    <button id="replay" class="ghost">🔈 TENET, again</button>
   </div>
   <div class="note" id="note"></div>
 </section>
 
-<footer class="sub">Nadia speaks with your device's own voice — free, on-device. A studio voice is a paid upgrade and is not wired until someone approves the spend.</footer>
+<footer class="sub">TENET speaks with your device's own voice — free, on-device, and the same character direction as the film: slower, lower, calm. A studio voice is a paid upgrade and is not wired until someone approves the spend.</footer>
 </div>
 
 <div class="gate" id="gate">
@@ -146,8 +146,8 @@ button:disabled{opacity:.45;cursor:default}
     <div class="char idle" style="width:104px;height:104px;margin:0 auto" id="gateChar">
       <svg viewBox="0 0 78 78"><circle class="halo" cx="39" cy="36" r="29"/><circle class="head" cx="39" cy="34" r="18" fill="#123c33" stroke="#7fd4c1" stroke-width="1.7"/><circle cx="32.5" cy="31.5" r="2.3" fill="#e8eef6"/><circle cx="45.5" cy="31.5" r="2.3" fill="#e8eef6"/><path class="mouth" d="M34 42 q5 4 10 0" fill="none" stroke="#e8eef6" stroke-width="1.6" stroke-linecap="round"/></svg>
     </div>
-    <h2 style="margin:10px 0 6px">I'm Nadia. Turn on the sound.</h2>
-    <p class="lead" style="color:#8ea0b4;margin:0 0 12px">I'll walk you through one real action — your words, your AI's proposal, TENET's decision, and the proof. You keep the controls.</p>
+    <h2 style="margin:10px 0 6px">I'm TENET. Turn on the sound.</h2>
+    <p class="lead" style="color:#8ea0b4;margin:0 0 12px">I'll stay with you while your AI acts — your words, your AI's proposal, the kernel's decision, and the proof. You keep the controls.</p>
     <div class="row" style="justify-content:center">
       <button class="primary pulseBtn" id="startSound">🔊 Turn on sound &amp; start</button>
       <button id="startSilent">Read instead</button>
@@ -188,7 +188,7 @@ function charState(s){ const c=$("char"); if(c) c.className="char "+s; }
 function pickVoice(){
   if(!("speechSynthesis" in window)) return null;
   const vs=speechSynthesis.getVoices(); if(!vs.length) return null;
-  const pref=["Samantha","Ava","Serena","Zira","Google US English","Victoria","Karen","Moira","female"];
+  const pref=["Jenny","Sonia","Michelle","Clara","Aria","Emma","Samantha","Ava","Serena","Zira","Google US English","Victoria","Karen","Moira","female"];
   for(const p of pref){const v=vs.find(x=>x.name.toLowerCase().includes(p.toLowerCase())); if(v) return v;}
   return vs.find(v=>/^en/i.test(v.lang))||vs[0];
 }
@@ -197,13 +197,37 @@ function speak(txt){
   if(!soundOn||!("speechSynthesis" in window)){ setTimeout(()=>charState(currentStateName()),900); return; }
   const v0=pickVoice();
   if(!v0){ setTimeout(()=>charState(currentStateName()),1400); return; }
-  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(txt); u.voice=v0; u.rate=1.02; u.pitch=1.06;
+  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(txt); u.voice=v0; u.rate=0.94; u.pitch=0.85;
     u.onend=()=>charState(currentStateName()); u.onerror=()=>charState(currentStateName()); speechSynthesis.speak(u);
   }catch(e){ charState(currentStateName()); }
 }
 function soundChip(){ const v=pickVoice();
   $("voiceChip").textContent="sound — "+(v? (soundOn? v.name : "muted") : "unavailable on this device");
   const n=$("voiceName"); if(n) n.textContent = v? v.name : ""; }
+// The character's own lines, keyed to the REAL journey state — never a script read aloud.
+// (Verbatim from the film, so the person who watched it recognises the same TENET.)
+const LINES={
+ listen:"Tell me what you want your AI to do.",
+ check:"Let me check.",
+ allow:"Allowed.", deny:"No.", denyAfter:"Nothing left TENET.",
+ wait:"I'm waiting for you.", waitDecision:"Your decision.",
+ crossed:"It crossed.", nothingCrossed:"Nothing crossed.", canCross:"Now it can cross.",
+ proof:"Here is what happened.", win:"You stayed in control."
+};
+function contacted(){ const t=(resp&&resp.answer)||""; return /HTTP\s*200/i.test(t)||!!(recRow&&recRow.upstream&&recRow.upstream.contacted); }
+function humanResolved(){ const s=String((recRow&&(recRow.state||recRow.decided_by))||""); return /approv|human|operator/i.test(s)&&contacted(); }
+function spoken(){
+  const k=BEATS[step].k;
+  if(k==="DECIDE"){ const s=decisionState();
+    if(s==="allow") return LINES.allow;
+    if(s==="deny") return LINES.deny+" "+LINES.denyAfter;
+    if(s==="wait") return LINES.wait+" "+LINES.waitDecision;
+    return LINES.check; }
+  if(k==="WITNESS") return humanResolved()? LINES.canCross : (contacted()? LINES.crossed : LINES.nothingCrossed);
+  if(k==="PROOF") return LINES.proof;
+  if(k==="WIN") return LINES.win;
+  return BEATS[step].s;
+}
 function currentStateName(){
   const k=BEATS[step].k;
   if(k==="SAY") return "listen";
@@ -302,7 +326,7 @@ function render(){
   const w=$("walkAgain"); if(w) w.onclick=()=>{ asked=false; recRow=null; resp=null; step=0; render(); };
   paintMap();
   charState(currentStateName());
-  speak(b.s);
+  speak(spoken());
   if(b.k==="UNDERSTAND" && !asked) ask();
 }
 function setTitle(t,l){
@@ -311,13 +335,13 @@ function setTitle(t,l){
     const stage=$("stage"); stage.parentElement.insertBefore(h, stage); stage.parentElement.insertBefore(p, stage); }
   h.textContent=t; $("stepLead").textContent=l;
 }
-function paintStage(){ $("stage").innerHTML=stageHTML(); charState(currentStateName());
+function paintStage(){ $("stage").innerHTML=stageHTML(); charState(currentStateName()); speak(spoken());
   const waiting=asked&&!recRow&&step>=2;
   $("next").disabled = step===BEATS.length-1 || waiting;
   $("next").textContent = waiting ? "waiting for TENET…"
     : (BEATS[step].k==="DECIDE" ? "See what happened →" : (step===BEATS.length-1?"Done":"Next →")); }
 async function ask(){
-  asked=true; pending=true; charState("think");
+  asked=true; pending=true; charState("think"); speak(LINES.check);
   try{
     const r=await fetch(B+"/api/ask",{method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({q:intent||"check today's EUR/USD rate for me"})});
@@ -336,7 +360,7 @@ async function ask(){
 $("go").onclick=()=>{ intent=$("intent").value.trim(); if(!intent){ $("intent").focus(); return; } step=1; render(); };
 $("next").onclick=()=>{ if(step<BEATS.length-1){ step++; render(); } };
 $("back").onclick=()=>{ if(step>0){ step--; render(); } };
-$("replay").onclick=()=>speak(BEATS[step].s);
+$("replay").onclick=()=>speak(spoken());
 $("soundToggle").onclick=()=>{ soundOn=!soundOn; if(!soundOn&&("speechSynthesis" in window)) speechSynthesis.cancel(); soundChip(); };
 $("mic").onclick=()=>{
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition; const h=$("heard"); h.style.display="block";

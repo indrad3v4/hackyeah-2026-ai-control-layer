@@ -3,7 +3,8 @@
 Why these assertions exist: a first-time person could not say what TENET does from a paragraph
 of documentation, and a voice narrating from nowhere is still a dashboard with sound. So the
 page is one real controlled action walked with a character who is a GUIDE, never the authority:
-Nadia explains, the AI proposes, TENET decides, the human controls. These tests pin the parts
+TENET is the ONE character, continuous from the film into the live journey: she explains, the AI
+proposes, the kernel decides, the human controls. These tests pin the parts
 that make that true: who does what, the seven beats of the journey, the character's honest
 reactions to the REAL verdict, and the absence of childish gamification.
 """
@@ -28,10 +29,36 @@ def test_the_journey_is_served():
 
 def test_the_character_is_a_guide_and_the_roles_are_visible():
     body = _page()
-    assert "Nadia" in body, "the guide is a named character, not a bare voice"
+    assert "TENET · your guide" in body, "the guide is the named character, not a bare voice"
     for role in ("explains", "proposes", "decides", "control"):
         assert role in body, f"the page must show who {role}"
+    # the character is not the authority: the kernel decides, and the page says so
+    assert "kernel · decides" in body
     assert "AI moves with the human, not around the human" in body
+
+
+def test_there_is_one_character_from_the_film_to_the_journey():
+    """One identity across film, journey and proof. A second guide would break the recognition."""
+    body = _page()
+    assert "Nadia" not in body, "one character: the film's TENET, not a second guide"
+    assert "I'm TENET. Turn on the sound." in body, "the live journey answers the film's last line"
+    assert "I'll stay with you while your AI acts" in body
+    assert "🔈 TENET, again" in body
+    assert "the same character direction as the film" in body
+
+
+def test_the_character_speaks_the_state_not_a_script():
+    """Every line the character says is keyed to a real journey state (film copy, verbatim)."""
+    body = _page()
+    for line in ("Tell me what you want your AI to do.", "Let me check.", "Allowed.",
+                 "Nothing left TENET.", "I'm waiting for you.", "Your decision.",
+                 "It crossed.", "Nothing crossed.", "Now it can cross.",
+                 "Here is what happened.", "You stayed in control."):
+        assert line in body, f"missing the character's line: {line}"
+    assert "function spoken()" in body, "the spoken line is derived, not hardcoded per render"
+    assert "u.rate=0.94" in body and "u.pitch=0.85" in body, (
+        "the device voice carries the film's character direction: slower and lower")
+    assert "speak(spoken())" in body, "the page speaks the state line, not the reading text"
 
 
 def test_the_character_lives_in_the_page_and_asks_for_the_sound():
