@@ -1,152 +1,287 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TENET · guided walkthrough</title>
+<title>TENET · walk with Nadia</title>
 <style>
-:root{--bg:#080d15;--card:#0c1522;--line:#1d2b3d;--ink:#e8eef6;--mut:#8ea0b4;--acc:#7fd4c1;--warn:#ffd27a}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-.wrap{max-width:880px;margin:0 auto;padding:26px 18px 60px}
-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+:root{--bg:#080d15;--card:#0c1522;--line:#1d2b3d;--ink:#e8eef6;--mut:#8ea0b4;--acc:#7fd4c1;--gold:#ffd27a;--bad:#ff9b9b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(1200px 600px at 78% -10%,#12253a 0%,#080d15 55%);color:var(--ink);font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
+.wrap{max-width:900px;margin:0 auto;padding:22px 18px 120px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(145deg,#14324a,#0d2033);display:grid;place-items:center;font-weight:800;color:var(--acc)}
 .brand{display:flex;gap:11px;align-items:center}.brand h1{font-size:16px;margin:0}
 .sub{color:var(--mut);font-size:12px}
-.card{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:18px;margin:14px 0}
+.card{border:1px solid var(--line);background:linear-gradient(180deg,#0c1522,#0a1220);border-radius:14px;padding:18px;margin:13px 0}
 .eyebrow{color:var(--acc);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 h2{margin:8px 0 6px;font-size:20px}
 .lead{color:var(--mut);margin:0 0 12px}
-.dots{display:flex;gap:7px;margin:0 0 14px}
-.dot{width:26px;height:4px;border-radius:3px;background:#1b2a3c}.dot.on{background:var(--acc)}
+/* ---- journey map ---- */
+.mapWrap{position:relative;padding:34px 6px 6px;margin:6px 0 4px}
+.map{display:flex;justify-content:space-between;position:relative}
+.map:before{content:"";position:absolute;left:16px;right:16px;top:9px;height:2px;background:#1b2a3c}
+.mapFill{position:absolute;left:16px;top:9px;height:2px;background:linear-gradient(90deg,#14584a,#7fd4c1);width:0;transition:width .5s ease}
+.node{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;width:20%;text-align:center}
+.node i{width:20px;height:20px;border-radius:50%;background:#101c2b;border:2px solid #24384f;display:grid;place-items:center;font-style:normal;font-size:10px;color:var(--mut)}
+.node.on i{background:#123c33;border-color:var(--acc);color:var(--acc);box-shadow:0 0 0 4px #7fd4c11a}
+.node.win i{background:#3a2c12;border-color:var(--gold);color:var(--gold)}
+.node span{font-size:10.5px;color:var(--mut);line-height:1.25}
+.node.on span{color:#cfe9e1}
+.walker{position:absolute;top:-30px;left:0;transition:left .5s ease;transform:translateX(-50%)}
+/* ---- the character ---- */
+.charBox{display:flex;gap:14px;align-items:center}
+.char{width:78px;height:78px;flex:0 0 78px;position:relative}
+.char svg{width:100%;height:100%;display:block;overflow:visible}
+.halo{fill:none;stroke:#7fd4c1;stroke-width:1.4;opacity:.5}
+.idle .head{animation:breathe 3.4s ease-in-out infinite}
+.speak .mouth{animation:talk .3s ease-in-out infinite}
+.listen .ring{animation:ring 1.5s ease-out infinite}
+.think .dots circle{animation:blink 1.1s ease-in-out infinite}
+.win .halo{stroke:var(--gold);opacity:.95;stroke-width:2}
+.win .spark{opacity:1;animation:pop 1.1s ease-in-out infinite}
+.spark{opacity:0}
+@keyframes breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+@keyframes talk{0%,100%{d:path("M34 54 q8 5 16 0")}50%{d:path("M34 55 q8 9 16 0")}}
+@keyframes ring{0%{r:26;opacity:.55}100%{r:40;opacity:0}}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes pop{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.35);opacity:1}}
+.bubble{flex:1;min-width:200px;border:1px solid var(--line);background:#0a1220;border-radius:13px;padding:11px 13px;position:relative}
+.bubble:before{content:"";position:absolute;left:-7px;top:20px;width:12px;height:12px;background:#0a1220;border-left:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
+.who{color:var(--acc);font-size:11.5px;font-weight:700;letter-spacing:.04em}
+.whoLine{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.saysaid{margin:6px 0 0}
+/* ---- controls ---- */
 .row{display:flex;gap:9px;flex-wrap:wrap}
 input[type=text]{flex:1;min-width:220px;background:#0a1220;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 12px;font-size:14px}
 button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#132133;color:var(--ink);padding:10px 14px;font-size:13px}
 button.primary{background:linear-gradient(145deg,#1c6f5e,#14584a);border-color:#1c6f5e;font-weight:650}
+button.gold{background:linear-gradient(145deg,#7a5a14,#5c4410);border-color:#8a6a1a;color:#ffe6b0;font-weight:650}
 button.mic{background:#20182a;border-color:#3a2c4a}
 button:disabled{opacity:.45;cursor:default}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
-.said{border-left:2px solid var(--acc);padding:8px 12px;margin:10px 0;color:#cfe9e1}
-.heard{border-left:2px solid #6f7fd4;padding:8px 12px;margin:10px 0;color:#cfd6f5}
 .out{white-space:pre-wrap;background:#0a1220;border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px}
-.ev{margin-top:10px;color:var(--mut);font-size:12px}
+.ev{margin-top:9px;color:var(--mut);font-size:12px}
+.heard{border-left:2px solid #6f7fd4;padding:8px 12px;margin:10px 0;color:#cfd6f5;display:none}
+/* ---- rewards ---- */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;min-height:26px}
+.chip{border:1px solid #24384f;border-radius:999px;padding:5px 11px;font-size:11.5px;color:var(--mut);background:#0b1421}
+.chip.on{border-color:var(--acc);color:#d7f5ee;background:#0e2a25;animation:pop2 .45s ease}
+@keyframes pop2{0%{transform:scale(.85);opacity:0}100%{transform:scale(1);opacity:1}}
+.score{color:var(--gold);font-weight:700}
+/* ---- sound gate ---- */
+.gate{position:fixed;inset:0;background:rgba(5,9,14,.92);display:grid;place-items:center;z-index:20;backdrop-filter:blur(3px)}
+.gateCard{max-width:460px;margin:18px;border:1px solid var(--line);background:linear-gradient(180deg,#0d1826,#0a1220);border-radius:16px;padding:22px;text-align:center}
+.gateCard h2{margin:10px 0 6px}
+.pulseBtn{animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 #7fd4c155}50%{box-shadow:0 0 0 12px #7fd4c100}}
 .note{color:#718196;font-size:11.5px;margin-top:12px}
-.modeRow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.chip{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:11.5px;color:var(--mut)}
-.ok{color:var(--acc)}.bad{color:#ff9b9b}.wait{color:var(--warn)}
+.badge{border:1px solid var(--gold);background:#191307;color:#ffe6b0;border-radius:12px;padding:14px;margin-top:12px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style></head><body><div class="wrap">
 <header>
-  <div class="brand"><div class="mark">T</div><div><h1>TENET · guided walkthrough</h1>
-  <div class="sub">One action, from your words to a receipt — with a voice that walks you through it.</div></div></div>
-  <div class="modeRow"><span class="chip" id="voiceChip">voice —</span><button id="voiceToggle">Voice on</button></div>
+  <div class="brand"><div class="mark">T</div><div><h1>TENET · walk with Nadia</h1>
+  <div class="sub">One real action, from your words to a receipt — guided by a voice, at your pace.</div></div></div>
+  <div class="row"><span class="chip" id="voiceChip">sound —</span><button id="soundToggle">🔊 Sound on</button></div>
 </header>
 
 <section class="card">
-  <div class="eyebrow">Your guide</div>
-  <div class="dots" id="dots"></div>
-  <h2 id="title">—</h2>
-  <p class="lead" id="lead">—</p>
-  <div class="said" id="said">—</div>
+  <div class="mapWrap">
+    <div class="walker" id="walker">
+      <svg width="26" height="26" viewBox="0 0 78 78" aria-hidden="true"><circle class="halo" cx="39" cy="34" r="24"/><circle cx="39" cy="34" r="15" fill="#123c33" stroke="#7fd4c1" stroke-width="1.6"/><circle cx="33" cy="32" r="2.1" fill="#e8eef6"/><circle cx="45" cy="32" r="2.1" fill="#e8eef6"/></svg>
+    </div>
+    <div class="map" id="map"><div class="mapFill" id="mapFill"></div></div>
+  </div>
 
-  <div class="row" id="inputRow" style="display:none">
+  <div class="charBox">
+    <div class="char idle" id="char">
+      <svg viewBox="0 0 78 78" role="img" aria-label="Nadia, your guide">
+        <circle class="halo" cx="39" cy="38" r="30"/>
+        <circle class="head" cx="39" cy="36" r="19" fill="#123c33" stroke="#7fd4c1" stroke-width="1.8"/>
+        <circle cx="32" cy="33" r="2.4" fill="#e8eef6"/><circle cx="46" cy="33" r="2.4" fill="#e8eef6"/>
+        <path class="mouth" d="M34 44 q5 4 10 0" fill="none" stroke="#e8eef6" stroke-width="1.7" stroke-linecap="round"/>
+        <circle class="ring" cx="39" cy="36" r="26" fill="none" stroke="#7fd4c1" stroke-width="1.3"/>
+        <g class="dots" fill="#7fd4c1"><circle cx="27" cy="66" r="2.6"/><circle cx="39" cy="66" r="2.6" style="animation-delay:.15s"/><circle cx="51" cy="66" r="2.6" style="animation-delay:.3s"/></g>
+        <g class="spark" fill="#ffd27a"><circle cx="14" cy="20" r="2.6"/><circle cx="65" cy="18" r="2.1"/><circle cx="68" cy="52" r="2.4"/><circle cx="10" cy="52" r="2"/></g>
+      </svg>
+    </div>
+    <div class="bubble">
+      <div class="whoLine"><span class="who">Nadia · your guide</span><span class="mono" id="voiceName"></span></div>
+      <p class="saysaid" id="said">—</p>
+    </div>
+  </div>
+
+  <div class="row" id="inputRow" style="display:none;margin-top:12px">
     <input id="intent" type="text" placeholder="check today's EUR/USD rate for me" autocomplete="off">
     <button class="mic" id="mic">🎙 Speak</button>
     <button class="primary" id="go">Walk with me</button>
   </div>
-  <div class="heard" id="heard" style="display:none"></div>
+  <div class="heard" id="heard"></div>
 
   <div id="result" style="display:none"></div>
+  <div class="chips" id="chips"></div>
+  <div id="win"></div>
 
   <div class="row" style="margin-top:14px">
     <button id="back">← Back</button>
     <button id="next">Next →</button>
-    <button id="replay">🔈 Replay voice</button>
+    <button id="replay">🔈 Nadia, again</button>
   </div>
   <div class="note" id="note"></div>
 </section>
 
-<footer class="sub">Voice here is your browser's own on-device voice (free). A studio voice (ElevenLabs) is a paid upgrade — ask before spending.</footer>
+<footer class="sub">Nadia speaks with your device's own voice (free, on-device). A studio voice is a paid upgrade and is not wired until someone approves the spend.</footer>
+</div>
+
+<div class="gate" id="gate">
+  <div class="gateCard">
+    <div class="char idle" style="width:110px;height:110px;margin:0 auto" id="gateChar">
+      <svg viewBox="0 0 78 78"><circle class="halo" cx="39" cy="38" r="30"/><circle class="head" cx="39" cy="36" r="19" fill="#123c33" stroke="#7fd4c1" stroke-width="1.8"/><circle cx="32" cy="33" r="2.4" fill="#e8eef6"/><circle cx="46" cy="33" r="2.4" fill="#e8eef6"/><path class="mouth" d="M34 44 q5 4 10 0" fill="none" stroke="#e8eef6" stroke-width="1.7" stroke-linecap="round"/></svg>
+    </div>
+    <h2>I'm Nadia. Turn on the sound.</h2>
+    <p class="lead">I'll say what happens at every step of a real action — so you never have to read a dashboard to understand it.</p>
+    <div class="row" style="justify-content:center">
+      <button class="primary pulseBtn" id="startSound">🔊 Turn on sound &amp; start</button>
+      <button id="startSilent">Read instead</button>
+    </div>
+    <div class="note">Your browser needs one tap before any voice can play — that tap is this button. Nothing else starts.</div>
+  </div>
 </div>
 <script>
 const $=id=>document.getElementById(id);
 const B=location.origin;
-let step=0, intent="", heard="", voiceOn=true, rec=null, willing=false;
+let step=-1, intent="", soundOn=true, rec=null, score=0;
 
 const STEPS=[
- {t:"Your AI can already act — so can it do it behind your back?",
-  l:"I am TENET's guide. I will walk you through one real action, end to end, and show you where you stay in control.",
-  s:"Hi. I am TENET's guide. Together we will walk one real action, from your words to a signed receipt. I will say what happens at every step, and you can stop me at any point. Tell me what you want your AI to do — type it, or press the microphone and say it."},
+ {t:"Your AI can already act — can it act behind your back?",
+  l:"Nadia walks you through one real action, end to end, and shows where you keep control.",
+  s:"Hi, I am Nadia, your guide. Together we will walk one real action, from your words to a signed receipt. I will say what happens at every step. Tell me what you want your AI to do: type it, or press the microphone and say it.",
+  node:"Awake", chip:"Nadia wakes up", pts:0},
  {t:"Say what you want — in your own words",
   l:"Ask like you would ask a colleague. Your AI turns it into one concrete tool call; TENET decides before anything runs.",
-  s:"Say it the way you would say it to a colleague. For example: check today's EUR USD rate for me. Once you send it, your AI proposes exactly one tool call, and TENET decides before anything runs."},
+  s:"Say it the way you would say it to a colleague. For example: check today's EUR USD rate for me. Once you send it, your AI proposes exactly one tool call.",
+  node:"You speak", chip:"you said it your way", pts:25},
  {t:"Your AI proposes — TENET decides",
-  l:"Not your AI's call. Not the model's. The kernel answers one of three things: allowed, not allowed, or waiting for you.",
-  s:"Now the important part. Your AI does not act on its own. It asks: may I make this call, with this scope, right now. The kernel answers allowed, not allowed, or waiting for a person. The answer you see is a proposal. The kernel's answer is the one that counts."},
+  l:"Not your AI's call. Not the model's. The kernel answers: allowed, not allowed, or waiting for you.",
+  s:"Now the important part. Your AI does not act on its own. It asks: may I make this call, with this scope, right now. The kernel answers allowed, not allowed, or waiting for a person. What you see is a proposal. The kernel's answer is the one that counts.",
+  node:"The boundary", chip:"you saw the boundary", pts:25},
  {t:"What actually happened",
-  l:"If it was allowed, the call really went out — and you get the receipt that proves it.",
-  s:"Here is what really happened — taken from the kernel's own record, not from the model's words."},
- {t:"You stayed in control",
-  l:"Your words → one tool call → a verdict before execution → a receipt. That chain is the product.",
-  s:"And that is the whole chain: your words, one tool call, a verdict before anything runs, and a receipt you can hand to an auditor. You stayed in control the entire way."}
+  l:"Allowed means the call really went out — and you get the receipt that proves it.",
+  s:"Here is what really happened, taken from the kernel's own record, not from the model's words.",
+  node:"Real call", chip:"the call really went out", pts:25},
+ {t:"You won — you stayed in control",
+  l:"Your words → one tool call → a verdict before execution → a receipt you can hand to an auditor.",
+  s:"And that is the win. Your words, one tool call, a verdict before anything runs, and a receipt you can prove. Not a feeling of control: a record of it. You played one real action to the end and kept the keys.",
+  node:"Receipt", chip:"receipt earned — control preserved", pts:25}
 ];
 
+function charState(s){ const c=$("char"); if(c) c.className="char "+s; }
 function pickVoice(){
-  const vs=speechSynthesis.getVoices();
-  if(!vs.length) return null;
+  if(!("speechSynthesis" in window)) return null;
+  const vs=speechSynthesis.getVoices(); if(!vs.length) return null;
   const pref=["Samantha","Ava","Serena","Zira","Google US English","Victoria","Karen","Moira","female"];
   for(const p of pref){const v=vs.find(x=>x.name.toLowerCase().includes(p.toLowerCase())); if(v) return v;}
-  return vs.find(v=>/en/i.test(v.lang))||vs[0];
+  return vs.find(v=>/^en/i.test(v.lang))||vs[0];
 }
 function speak(txt){
-  if(!voiceOn||!("speechSynthesis" in window)) return;
-  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);const v=pickVoice();
-    if(v)u.voice=v; u.rate=1.02; u.pitch=1.06; speechSynthesis.speak(u);}catch(e){}
+  charState("speak");
+  if(!soundOn||!("speechSynthesis" in window)){ setTimeout(()=>charState("idle"),900); return; }
+  const v0=pickVoice();
+  if(!v0){ setTimeout(()=>charState("idle"),1400); return; }  // no device voices: stay honest, stay calm
+  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(txt); const v=v0;
+    if(v)u.voice=v; u.rate=1.02; u.pitch=1.06;
+    u.onend=()=>charState("idle"); u.onerror=()=>charState("idle"); speechSynthesis.speak(u);
+  }catch(e){ charState("idle"); }
 }
-function dots(){ $("dots").innerHTML=STEPS.map((_,i)=>`<span class="dot${i<=step?" on":""}"></span>`).join(""); }
+function chipLabel(){ const v=pickVoice(); const el=$("voiceName");
+  if(el) el.textContent = !("speechSynthesis" in window) ? "no speech in this browser" : (v? v.name : "no device voices"); }
+function soundChip(){ const v=pickVoice();
+  $("voiceChip").textContent="sound — "+(v? (soundOn? v.name : "muted") : "unavailable on this device");
+  $("soundToggle").textContent = soundOn ? "🔇 Sound off" : "🔊 Sound on"; }
+
+function buildMap(){
+  $("map").innerHTML='<div class="mapFill" id="mapFill"></div>'+STEPS.map((s,i)=>
+    `<div class="node" id="node${i}"><i>${i+1}</i><span>${s.node}</span></div>`).join("");
+}
+function paintMap(){
+  STEPS.forEach((_,i)=>{ const n=$("node"+i); if(!n) return; n.className="node"+(i<step?" on":"")+(step===4&&i===4?" win on":""); });
+  const pct = step<=0 ? 0 : Math.min(100, (step/(STEPS.length-1))*100);
+  $("mapFill").style.width = pct+"%";
+  $("walker").style.left = (8 + (pct/100)*84)+"%";
+}
+function paintChips(){
+  const earned=STEPS.slice(0,Math.max(0,step+1));
+  $("chips").innerHTML = earned.map((s,i)=> s.pts? `<span class="chip on">+${s.pts} · ${s.chip}</span>`:"").join("")
+    + `<span class="chip on">control score <span class="score">${score}/${STEPS.reduce((a,s)=>a+s.pts,0)}</span></span>`;
+}
 function render(){
-  const s=STEPS[step]; dots();
-  $("title").textContent=s.t; $("lead").textContent=s.l; $("said").textContent=s.s;
+  if(step<0) return;
+  const s=STEPS[step];
+  $("title"); // no-op guard
+  setTitle(s.t, s.l);
+  $("said").textContent=s.s;
   $("inputRow").style.display = step===1 ? "flex":"none";
   $("back").disabled = step===0; $("next").disabled = step===STEPS.length-1;
-  $("next").textContent = step===2 ? "Let it run →" : "Next →";
+  $("next").textContent = step===2 ? "Let it run →" : (step===STEPS.length-1 ? "Done" : "Next →");
+  score = STEPS.slice(0,step+1).reduce((a,x)=>a+x.pts,0);
+  paintMap(); paintChips();
+  charState(step===1?"listen":"idle");
   speak(s.s);
   if(step===3) runAsk();
+  if(step===4) winCard();
+}
+function setTitle(t,l){
+  let h=$("stepTitle"); if(!h){ h=document.createElement("h2"); h.id="stepTitle"; const lead=document.createElement("p");
+    lead.id="stepLead"; lead.className="lead"; const anchor=$("said").closest(".bubble").parentElement.parentElement;
+    anchor.insertBefore(h, anchor.querySelector(".charBox")); anchor.insertBefore(lead, anchor.querySelector(".charBox")); }
+  h.textContent=t; $("stepLead").textContent=l;
 }
 async function runAsk(){
-  const box=$("result"); box.style.display="block";
+  const box=$("result"); box.style.display="block"; charState("think");
   box.innerHTML='<div class="out mono">asking the kernel…</div>';
   try{
     const r=await fetch(B+"/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q:intent||"check today's EUR/USD rate for me"})});
     const d=await r.json();
     box.innerHTML='<div class="out">'+(d.answer||"(no answer)")+'</div>'+
-      '<div class="ev mono">payload · action_id '+(d.action_id||"—")+' · run '+(d.run_id||"—")+(d.demo?" · DEMO":"")+'</div>';
-    speak("It was allowed. The call really went out, and the receipt proves it. You can read the answer and the receipt on screen.");
+      '<div class="ev mono">payload · action_id '+(d.action_id||"—")+' · run '+(d.run_id||"—")+'</div>';
+    charState("win"); setTimeout(()=>charState("idle"),1200);
+    speak("It was allowed. The call really went out, and the receipt proves it. Read the answer and the receipt on screen.");
     fetch(B+"/api/actions").then(x=>x.json()).then(a=>{
       const rows=Array.isArray(a)?a:(a.actions||[]); if(!rows.length) return;
-      // The list is newest-first, so "the last row" is the OLDEST action - the page must show
-      // the record of THIS run. Prefer the row whose id matches the payload, else the highest id.
+      // The list is newest-first, so "the last row" is the OLDEST action — show THIS run's record.
       const num=r=>parseInt(String(r.action_id||"").replace(/[^0-9]/g,""),10)||-1;
       const own=rows.find(r=>r.action_id===d.action_id);
       const n=own||rows.reduce((m,r)=>num(r)>num(m)?r:m,rows[0]);
       box.innerHTML+='<div class="ev mono">record · '+(n.action_id)+(own?" (this run)":"")+' · '+(n.agent||"—")+' → '+(n.tool||"—")+' · decision '+(n.decision||"—")+' · receipt '+(n.receipt||"—")+' · state '+(n.state||"—")+'</div>';
     }).catch(()=>{});
-  }catch(e){ box.innerHTML='<div class="out bad">The control plane did not answer. Nothing was executed.</div>'; }
+  }catch(e){ box.innerHTML='<div class="out" style="color:#ff9b9b">The control plane did not answer. Nothing was executed.</div>'; charState("idle"); }
+}
+function winCard(){
+  const act=(($("result").innerText.match(/A-\d+/g)||[])[0])||"—";
+  const rec=(($("result").innerText.match(/receipt\s*([0-9a-f]{6,})/i)||[])[1])||"—";
+  $("win").innerHTML='<div class="badge"><b>You won: control you can prove.</b><br>'
+    +'One real action went all the way — and you can show who allowed it.<br>'
+    +'<span class="mono">action '+act+' · receipt '+rec+' · control score '+score+'/'+STEPS.reduce((a,s)=>a+s.pts,0)+'</span><br>'
+    +'<button class="gold" id="copyRec" style="margin-top:9px">Copy the receipt</button> '
+    +'<button id="again">Play again</button></div>';
+  const c=$("copyRec"); if(c) c.onclick=()=>{ navigator.clipboard&&navigator.clipboard.writeText("TENET action "+act+" · receipt "+rec+" · allowed before execution"); c.textContent="Copied ✓"; };
+  const g=$("again"); if(g) g.onclick=()=>{ step=1; render(); };
 }
 $("go").onclick=()=>{ intent=$("intent").value.trim(); if(!intent){ $("intent").focus(); return; } step=2; render(); };
 $("next").onclick=()=>{ if(step<STEPS.length-1){ step++; render(); } };
 $("back").onclick=()=>{ if(step>0){ step--; render(); } };
 $("replay").onclick=()=>speak(STEPS[step].s);
-$("voiceToggle").onclick=()=>{ voiceOn=!voiceOn; speechSynthesis.cancel(); $("voiceToggle").textContent=voiceOn?"Voice on":"Voice off"; chip(); };
-function chip(){ const v=pickVoice(); $("voiceChip").textContent="voice — "+(v?v.name+(voiceOn?"":" (muted)"):"unavailable"); }
+$("soundToggle").onclick=()=>{ soundOn=!soundOn; if(!soundOn&&("speechSynthesis" in window)) speechSynthesis.cancel(); soundChip(); };
 $("mic").onclick=()=>{
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  $("heard").style.display="block";
-  if(!SR){ $("heard").textContent="This browser cannot transcribe speech. Type it instead — the walkthrough is the same."; return; }
-  if(rec){ try{rec.stop();}catch(e){} rec=null; $("mic").textContent="🎙 Speak"; return; }
-  rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=false;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition; const h=$("heard"); h.style.display="block";
+  if(!SR){ h.textContent="This browser cannot transcribe speech. Type it instead — the walkthrough is the same."; return; }
+  if(rec){ try{rec.stop();}catch(e){} rec=null; $("mic").textContent="🎙 Speak"; charState("idle"); return; }
+  rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=false; charState("listen");
   rec.onresult=ev=>{ let t=""; for(let i=0;i<ev.results.length;i++) t+=ev.results[i][0].transcript;
-    heard=t; $("heard").textContent="I heard: "+t; $("intent").value=t; };
-  rec.onend=()=>{ rec=null; $("mic").textContent="🎙 Speak"; };
-  rec.onerror=()=>{ $("heard").textContent="The microphone was blocked. Type the intent — the walkthrough is the same."; };
+    $("heard").textContent="Nadia heard: "+t; $("intent").value=t; };
+  rec.onend=()=>{ rec=null; $("mic").textContent="🎙 Speak"; charState("idle"); };
+  rec.onerror=()=>{ h.textContent="The microphone was blocked. Type the intent — the walkthrough is the same."; charState("idle"); };
   $("mic").textContent="⏹ Stop"; rec.start();
 };
-if("speechSynthesis" in window){ speechSynthesis.onvoiceschanged=chip; }
-$("note").textContent="Every step calls the live control plane at "+B+" — the answer and the receipt below are real records, not a script.";
-chip(); render();
+$("startSound").onclick=()=>{ soundOn=true; $("gate").style.display="none"; step=0; render(); };
+$("startSilent").onclick=()=>{ soundOn=false; $("gate").style.display="none"; step=0; render(); };
+if("speechSynthesis" in window) speechSynthesis.onvoiceschanged=soundChip;
+buildMap(); soundChip(); chipLabel(); paintChips();
+$("note").textContent="Every step calls the live control plane at "+B+" — the answer and the receipt are real records, not a script.";
 </script></body></html>
