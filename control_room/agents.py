@@ -154,13 +154,20 @@ def _propose_action(tool: str, base: str = "EUR", symbols: str = "USD",
     # "Contacted" means the upstream answered with a status. A permitted call whose transport
     # failed leaves none, and claiming a crossing anyway is the one thing this product forbids.
     contacted = bool(crossing.get("http_status")) and word in ("allow", "redact")
+    # The proven consequence travels with the verdict. An allowed call that reached the far
+    # side must be able to answer the user's own question - "what is the rate" ends in a number,
+    # not in "the kernel approved the read". Only fields the record itself carries are copied:
+    # nothing is derived, completed by hand or invented when the record is silent.
+    proven = ({k: crossing[k] for k in ("outcome", "http_status", "value", "rows", "endpoint",
+                                        "latency_ms", "response_sha256") if k in crossing}
+              if contacted else {})
     return json.dumps({"submitted": True, "proposed_by": "deepseek", "authority": "tenet-kernel",
                        "llm_authority": False, "agent": agent_id, "tool": tool,
                        "resource": str(detail.get("resource") or ""), "run_id": run_id,
                        "action_id": action_id, "decision": word, "reason": reason,
                        "executed": bool(executed), "upstream_contacted": contacted,
                        "receipt": record.get("receipt") or (receipt or {}).get("id"),
-                       "rationale": rationale}, default=str)
+                       "rationale": rationale, "result": proven}, default=str)
 
 
 def build_specialists(model: Any = None) -> tuple[Any, Any, Any]:
@@ -227,7 +234,12 @@ def build_orchestrator(specialists: tuple[Any, Any, Any], model: Any = None) -> 
                       "propose_action with a tool id from the live set (fx.read_rate, "
                       "equity.read_snapshot) and report the kernel's verdict verbatim, "
                       "including a denial; never describe an action as allowed, denied or "
-                      "executed unless that tool result says so."),
+                      "executed unless that tool result says so. When the verdict is allow and "
+                      "the tool result carries a 'result' block, ANSWER THE OPERATOR'S OWN "
+                      "QUESTION with the value recorded there (for a rate read: the rate and "
+                      "the receipt that proves it) - an answer that refuses while the value "
+                      "sits in the result is a failed answer. Never state a value the 'result' "
+                      "block does not carry; when it is absent, say exactly that."),
         tools=tools,
         model=model,
     )

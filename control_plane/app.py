@@ -839,21 +839,41 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
 
 
 def _referenced_action(result: Any) -> Optional[str]:
-    """The action_id an answer cited, if any - taken from the real evidence, never invented."""
+    """The action_id an answer cited - the NEWEST one - taken from the real evidence.
+
+    An answer about a call it just proposed also cites the state it read before proposing, so
+    both ids appear. Returning the older one for the newer call is a one-field lie a reader
+    sees immediately; the newest cited id wins. Nothing is invented: only ids the evidence
+    actually carries are considered.
+    """
+    found: list[str] = []
+
+    def _take(candidate: Any) -> None:
+        text = str(candidate or "").strip()
+        if text:
+            found.append(text)
+
     for e in result.evidence:
-        if getattr(e, "action_id", None):
-            return e.action_id
+        _take(getattr(e, "action_id", None))
         value = getattr(e, "value", None)
         if isinstance(value, str) and '"action_id"' in value:
             try:
                 import json as _json
 
                 parsed = _json.loads(value)
-                if isinstance(parsed, dict) and parsed.get("action_id"):
-                    return str(parsed["action_id"])
             except Exception:  # noqa: BLE001
                 continue
-    return None
+            if isinstance(parsed, dict):
+                _take(parsed.get("action_id"))
+                rows = parsed.get("actions")
+                if isinstance(rows, list) and rows and isinstance(rows[-1], dict):
+                    _take(rows[-1].get("action_id"))
+
+    def _rank(action_id: str) -> tuple[int, str]:
+        digits = "".join(ch for ch in action_id if ch.isdigit())
+        return (int(digits) if digits else -1, action_id)
+
+    return max(found, key=_rank) if found else None
 
 
 async def _json_body(request: Request) -> dict[str, Any]:
