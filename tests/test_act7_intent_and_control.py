@@ -326,9 +326,42 @@ def _base_payloads(events=None, ask_body=None, pending=None, state=None, live_tr
     state = state if state is not None else {}
     by_id = {ALLOW_ACTION_ID: _ALLOW_TRACE, DENY_ACTION_ID: _DENY_TRACE, HOLD_ACTION_ID: _HOLD_TRACE}
 
+    def _composed(action_id):
+        """The kernel's one composer for one action - its CURRENT ledger row, not a frozen one.
+
+        The real kernel composes ``k.live_trace(action_id)`` from the ledger at read time, so after a
+        human approves/denies a held action the composed trace carries the RESOLVED state (decision
+        allow/deny, ``executed`` true, upstream contacted). The harness mirrors that: a held action is
+        composed as HOLD until ``state["resolved"]``, then as the decided state - so a test can assert
+        the human's decision really becomes visible, not a stale HOLD.
+        """
+        trace = by_id.get(action_id)
+        if trace is None:
+            return None
+        if action_id == HOLD_ACTION_ID and state.get("resolved"):
+            trace = dict(trace)
+            if state.get("resolved_verb") == "deny":
+                trace["decision"] = "deny"
+                trace["reason"] = "denied by the operator console"
+                trace["state"] = "denied"
+                trace["executed"] = False
+                trace["upstream"] = {"contacted": False, "http_status": None, "endpoint": None,
+                                     "value": None, "response_sha256": None, "latency_ms": None}
+            else:
+                trace["decision"] = "allow"
+                trace["reason"] = "approved by the operator console"
+                trace["state"] = "approved"
+                trace["executed"] = True
+                trace["upstream"] = {"contacted": True, "http_status": 200,
+                                     "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+                                     "value": {"EUR": 1.0, "USD": 1.1225},
+                                     "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef3",
+                                     "latency_ms": 22.78}
+        return trace
+
     def live_trace(req):
         action_id = (req.query or {}).get("action_id")
-        return {"trace": by_id.get(action_id) if action_id else (live_trace_body or _ALLOW_TRACE),
+        return {"trace": _composed(action_id) if action_id else (live_trace_body or _ALLOW_TRACE),
                 "authority_source": "tenet-kernel", "llm_authority": False, "mode": "live"}
 
     def ask(_req):
@@ -364,11 +397,13 @@ def _base_payloads(events=None, ask_body=None, pending=None, state=None, live_tr
         lower = {k.lower() for k in req.headers.keys()}
         authorised = "x-warrnt-admin" in lower or "authorization" in lower
         held = bool(state.get("held"))
+        verb = req.path.rstrip("/").rsplit("/", 1)[-1]  # "approve" or "deny"
         if authorised:
             state["held"] = False
             state["resolved"] = True
+            state["resolved_verb"] = verb
             return {"ok": True, "action_id": HOLD_ACTION_ID, "state": "decided",
-                    "decision": "allow", "resolved_by": "operator-1"}
+                    "decision": "allow" if verb == "approve" else "deny", "resolved_by": "operator-1"}
         return {"__status__": 401, "ok": False, "error": "missing operator token",
                 "action_id": HOLD_ACTION_ID, "state": "pending" if held else "unknown"}
 
@@ -668,10 +703,10 @@ def test_t5_token_approve_resolves_and_shows_execution():
         # the request carries the name the operator DECLARED, not a fabricated constant
         assert "anna.kowalska" in choices[0]["body"], (
             "the %s request did not carry the declared operator name: %r" % (press, choices[0]["body"]))
-        # the page re-read the action after the attempt
+        # the page re-read the RESULTING STATE from the kernel's own composer after the attempt
         rereads = [c for c in rec.calls if c["method"] == "GET"
-                   and c["path"] == "/api/actions/" + HOLD_ACTION_ID]
-        assert rereads, "the page did not RE-READ the action after %s" % press
+                   and c["path"] == "/api/live-trace" and c["query"].get("action_id") == HOLD_ACTION_ID]
+        assert rereads, "the page did not RE-READ the resulting state after %s" % press
         assert state.get("resolved") is True, "%s did not resolve the hold with a valid token" % press
         card = _text(dom, "actionCard").lower() + " " + _text(dom, "controlBlock").lower()
         assert "receipt" in card or "9c0ffee0" in card, "no receipt surfaced after %s" % press
@@ -777,3 +812,132 @@ def test_act7b_approve_without_a_declared_name_sends_nothing_and_says_so():
         msg = _text(dom, "controlMsg").lower()
         assert "name" in msg and ("no request" in msg or "declare" in msg), (
             "the page did not say plainly why the unnamed %s was not sent: %r" % (press, msg[:300]))
+
+
+# ===================================================== ACT-7c: the decision's RESULT is shown
+# Defect (found by the live video pass): after a human approves or denies a held action the console
+# NEVER showed the resulting state. ``resolve`` re-read ``GET /api/actions/<id>`` and required a
+# ``trace`` field that route does not carry, so the else-branch always ran and the human who decided
+# saw "the resulting state is not shown" while the kernel had really committed the change (state
+# approved / executed, upstream_contacted, a real upstream call). The kernel's one composer is
+# ``GET /api/live-trace?action_id=<id>`` (``control_plane/app.py``, ``k.live_trace(action_id)``), which
+# returns ``{"trace": <composed>, ...}`` - the exact object the page already renders on the run path.
+# The fix: ``resolve`` re-reads that route, so the human sees the state change, the receipt and
+# whether anything left TENET - from the kernel's own evidence or an honest failure, never invented.
+# These four drive the RENDERED page and assert on the DOM and the bytes the page actually sent;
+# each one FAILS before the change and PASSES after it.
+
+def _reread(calls, action_id):
+    """The kernel-composer re-read the page made for ``action_id`` (never the old detail route)."""
+    return [c for c in calls if c["method"] == "GET" and c["path"] == "/api/live-trace"
+            and c["query"].get("action_id") == action_id]
+
+
+def _confirmation(dom):
+    """The confirmation the human sees after deciding.
+
+    Rendering the resolved state retires the control block (a resolved action is no longer "human"),
+    so ``#controlMsg`` lives inside it; the page mirrors the same sentence onto the durable
+    ``#operatorNotice``. The product meaning is that the human SEES the result and who decided it, so
+    this reads both, joined - never a state that was not rendered.
+    """
+    return (_text(dom, "controlMsg") + " || " + _text(dom, "operatorNotice")).strip(" |")
+
+
+def test_act7c_approve_names_the_operator_and_shows_the_resulting_state():
+    """AC1 - after a named approve the console shows the kernel's re-read state, not 'not shown'.
+
+    The page must re-read the resulting state from the kernel's own composer
+    (``GET /api/live-trace?action_id=...``), render that trace, and say who decided it. It must never
+    leave the human on the "resulting state is not shown" sentence (the defect).
+    """
+    state = {"held": True}
+    payloads = _base_payloads(events=[_feed_event(_HOLD_TRACE)],
+                              pending=[_feed_event(_HOLD_TRACE)], state=state)
+    dom, rec = _render(payloads, who="fx-auditor", press="approve", token="operator-token",
+                       operator="anna.kowalska")
+
+    assert _reread(rec.calls, HOLD_ACTION_ID), (
+        "the page did not re-read the resulting state from the kernel composer after approve")
+
+    msg = _confirmation(dom)
+    assert "anna.kowalska" in msg, "the control message does not name the operator who decided: %r" % msg
+    assert "not shown" not in msg.lower(), (
+        "the human is still told the resulting state is not shown after a real approve: %r" % msg)
+
+    # the card shows the RESULTING state the kernel recorded, with the receipt and the boundary fact
+    card = (_text(dom, "actionCard") + " " + _text(dom, "controlBlock")).lower()
+    assert HOLD_ACTION_ID.lower() in card, (
+        "the resulting card does not carry the action it re-read: %r" % card[:300])
+    assert "receipt" in card or "9c0ffee0" in card, "no receipt surfaced after approve: %r" % card[:300]
+    assert "data leaves tenet" in card, (
+        "the card does not show that the approved call left TENET: %r" % card[:400])
+
+
+def test_act7c_deny_names_the_operator_and_shows_the_denied_state():
+    """AC2 - after a named deny the console shows the kernel's re-read denied state, not 'not shown'."""
+    state = {"held": True}
+    payloads = _base_payloads(events=[_feed_event(_HOLD_TRACE)],
+                              pending=[_feed_event(_HOLD_TRACE)], state=state)
+    dom, rec = _render(payloads, who="fx-auditor", press="deny", token="operator-token",
+                       operator="anna.kowalska")
+
+    assert _reread(rec.calls, HOLD_ACTION_ID), (
+        "the page did not re-read the resulting state from the kernel composer after deny")
+
+    msg = _confirmation(dom)
+    assert "anna.kowalska" in msg, "the control message does not name the operator who decided: %r" % msg
+    assert "not shown" not in msg.lower(), (
+        "the human is still told the resulting state is not shown after a real deny: %r" % msg)
+    assert _text(dom, "actionCard"), "no action card was rendered for the denied state after deny"
+
+    card = (_text(dom, "actionCard") + " " + _text(dom, "controlBlock")).lower()
+    assert "deny" in card, "the resulting card does not show the denied decision: %r" % card[:300]
+
+
+def test_act7c_no_operator_name_sends_no_request():
+    """AC3 - with no declared name nothing is sent, so no re-read happens (existing rule stays)."""
+    state = {"held": True}
+    payloads = _base_payloads(events=[_feed_event(_HOLD_TRACE)],
+                              pending=[_feed_event(_HOLD_TRACE)], state=state)
+    dom, rec = _render(payloads, who="fx-auditor", press="approve", token="operator-token")
+
+    posts = [c for c in rec.calls if c["method"] == "POST" and c["path"].endswith("/approve")]
+    assert not posts, "the page sent an unattributed approve anyway: %r" % posts
+    assert state.get("resolved") is not True, "an unnamed approve moved the held action"
+    assert not _reread(rec.calls, HOLD_ACTION_ID), (
+        "the page re-read a state for an approve it never sent")
+    msg = _text(dom, "controlMsg").lower()
+    assert "name" in msg and ("no request" in msg or "declare" in msg), (
+        "the page did not say plainly why the unnamed approve was not sent: %r" % msg[:300])
+
+
+def test_act7c_no_trace_on_the_reread_is_reported_honestly():
+    """AC4 - when the kernel composer holds no trace the console says so and invents nothing."""
+    state = {"held": True}
+    payloads = _base_payloads(events=[_feed_event(_HOLD_TRACE)],
+                              pending=[_feed_event(_HOLD_TRACE)], state=state)
+
+    def _trace_without_a_body(_req):
+        # a successful POST, but the composer's re-read carries no trace at all
+        return {"trace": None, "authority_source": "tenet-kernel", "llm_authority": False,
+                "mode": "live"}
+
+    payloads["/api/live-trace"] = _trace_without_a_body
+    dom, rec = _render(payloads, who="fx-auditor", press="approve", token="operator-token",
+                       operator="anna.kowalska")
+
+    assert [c for c in rec.calls if c["path"].endswith("/approve")], (
+        "no approve attempt was made against the real route")
+
+    msg = _confirmation(dom).lower()
+    assert "not shown" in msg or "no trace" in msg or "nothing to show" in msg, (
+        "the page did not honestly report that the re-read held no trace: %r" % msg[:300])
+    # nothing invented: the re-read held no trace, so the card may only still show the state that was
+    # really rendered before it (the HOLD/waiting card) - never a resolved state the kernel never sent.
+    card = (_text(dom, "actionCard") + " " + _text(dom, "controlBlock")).lower()
+    assert "not been sent" in card or "nothing has been sent" in card, (
+        "the page replaced the honest waiting state with an invented resolved state: %r" % card[:400])
+    assert "data leaves tenet" not in card, (
+        "the page showed the approved call crossing the boundary from a trace that was never read: %r"
+        % card[:400])

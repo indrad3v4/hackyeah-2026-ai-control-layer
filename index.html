@@ -332,6 +332,10 @@ $("whoGo").onclick=async()=>{const agent=$("whoActs").value;$("proposalText").te
  * cannot name the person who decided it is refused client-side (and by the routes too), exactly
  * the way an unattributed approve is refused. No literal placeholder is ever sent as `by`. */
 function declaredOperator(){const el=$("operatorName");return el?String(el.value||"").trim():""}
+/* The human who approved or denied must SEE the result of their decision and who it is attributed
+ * to. Rendering the re-read state replaces #controlMsg with the resolved card, so this writes the
+ * message there when it still exists and always mirrors it onto the durable #operatorNotice. */
+function resolveMsg(text,by){const m=$("controlMsg");if(m)m.textContent=text;const n=$("operatorNotice");if(n)n.textContent=by?text:("Resolved by an unnamed operator. "+text)}
 async function resolve(verb){const t=acTrace;if(!t||!t.action_id)return;const token=localStorage.getItem("warrnt_admin")||"";
   if(!token){$("controlMsg").textContent="This action is protected. Approve and Deny need the authenticated operator console (no operator token is present).";return}
   const by=declaredOperator();
@@ -340,9 +344,13 @@ async function resolve(verb){const t=acTrace;if(!t||!t.action_id)return;const to
   try{const r=await fetch("/api/actions/"+encodeURIComponent(t.action_id)+"/"+verb,{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:by})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok){$("controlMsg").textContent="The control plane answered HTTP "+r.status+(data.error?": "+data.error:"")+" — nothing changed.";return}
-    const rr=await fetch("/api/actions/"+encodeURIComponent(t.action_id));const rd=await rr.json().catch(()=>({}));
-    if(rr.ok&&rd.trace){renderActionCard(rd.trace);$("controlMsg").textContent="Resolved by "+by+". This is the action's re-read state."}
-    else{$("controlMsg").textContent="Resolved, but the re-read returned HTTP "+rr.status+" — the resulting state is not shown."}
+    const rr=await fetch("/api/live-trace?action_id="+encodeURIComponent(t.action_id));const rd=await rr.json().catch(()=>({}));
+    /* Render the RESULTING state from the kernel's own composer (GET /api/live-trace?action_id=…);
+     * rendering it replaces the control block, so the confirmation is written to #controlMsg when it
+     * still exists and always mirrored to the durable #operatorNotice — the human who decided must
+     * see that their decision took effect and who it is attributed to, even once the controls retire. */
+    if(rr.ok&&rd.trace){renderActionCard(rd.trace);resolveMsg("Resolved by "+by+". This is the action's re-read state.",by)}
+    else{resolveMsg("Resolved, but the re-read returned HTTP "+rr.status+" — the resulting state is not shown.",by)}
   }catch(err){$("controlMsg").textContent="The "+verb+" attempt failed: "+err.message}}
 
 refresh();setInterval(refresh,2000);
