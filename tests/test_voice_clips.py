@@ -44,7 +44,9 @@ def test_the_voice_route_refuses_anything_that_is_not_a_clip():
 def test_the_page_plays_tenet_first_and_keeps_the_device_voice_as_a_fallback():
     with TestClient(create_app(seed=True)) as client:
         body = client.get("/onboarding").text
-    assert '"/audio/gate.mp3"' in body and '"/audio/win.mp3"' in body, "the page must ask for TENET's clips"
+    assert '"audio/gate.mp3"' in body and '"audio/win.mp3"' in body, (
+        "the page must ask for TENET's clips — host-relative, so the GitHub Pages subpath resolves too"
+    )
     assert "new Audio(clip)" in body, "a clip must be played, not just mapped"
     assert "greeting=true" in body, "the door line must be spoken before the first beat"
     assert "function speakDevice(" in body, "the device voice must survive as the fallback"

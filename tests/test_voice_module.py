@@ -28,6 +28,15 @@ def test_the_voice_module_is_served_as_javascript():
         assert r.content == VOICE.read_bytes(), "the route must serve the file, not a paraphrase"
 
 
+def test_assets_are_host_relative():
+    """Railway serves at /, GitHub Pages at /<repo>/ — an absolute path breaks one of them."""
+    module = VOICE.read_text(encoding="utf-8")
+    assert '"/audio/' not in module, "the clip paths must resolve on both hosts"
+    assert 'audio/gate.mp3' in module
+    console = CONSOLE.read_text(encoding="utf-8")
+    assert 'src="voice.js"' in console
+
+
 def test_the_loop_carries_the_state_it_was_missing():
     """A transport failure leaves no kernel record, so the character may not speak a verdict."""
     src = VOICE.read_text(encoding="utf-8")
@@ -47,7 +56,7 @@ def test_provenance_comes_from_playback_not_from_a_static_lookup():
 
 def test_every_surface_loads_the_one_module():
     console = CONSOLE.read_text(encoding="utf-8")
-    assert '<script src="/voice.js"></script>' in console, "the console must load the module"
+    assert '<script src="voice.js"></script>' in console, "the console must load the module"
     assert 'id="voiceChip"' in console and 'id="voiceGate"' in console
     assert "Turn on the sound." in console, "the console carries the onboarding's gate copy"
     assert "notEvaluated" in ONBOARDING.read_text(encoding="utf-8"), (

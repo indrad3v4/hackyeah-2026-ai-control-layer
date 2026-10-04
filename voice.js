@@ -15,9 +15,9 @@
  */
 (function () {
   const CLIPS = {
-    gate: "/audio/gate.mp3", SAY: "/audio/say.mp3", SEE: "/audio/see.mp3",
-    UNDERSTAND: "/audio/understand.mp3", DECIDE: "/audio/decide.mp3",
-    WITNESS: "/audio/witness.mp3", PROVE: "/audio/prove.mp3", WIN: "/audio/win.mp3"
+    gate: "audio/gate.mp3", SAY: "audio/say.mp3", SEE: "audio/see.mp3",
+    UNDERSTAND: "audio/understand.mp3", DECIDE: "audio/decide.mp3",
+    WITNESS: "audio/witness.mp3", PROVE: "audio/prove.mp3", WIN: "audio/win.mp3"
   };
   // The character's own lines, keyed to the real state.
   const LINES = {

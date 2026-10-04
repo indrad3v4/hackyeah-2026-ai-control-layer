@@ -193,7 +193,7 @@ function pickVoice(){
   return vs.find(v=>/^en/i.test(v.lang))||vs[0];
 }
 let voiceAudio=null, pendingLine="", greeting=false;
-const CLIPS={gate:"/audio/gate.mp3",SAY:"/audio/say.mp3",SEE:"/audio/see.mp3",UNDERSTAND:"/audio/understand.mp3",DECIDE:"/audio/decide.mp3",WITNESS:"/audio/witness.mp3",PROVE:"/audio/prove.mp3",WIN:"/audio/win.mp3"};
+const CLIPS={gate:"audio/gate.mp3",SAY:"audio/say.mp3",SEE:"audio/see.mp3",UNDERSTAND:"audio/understand.mp3",DECIDE:"audio/decide.mp3",WITNESS:"audio/witness.mp3",PROVE:"audio/prove.mp3",WIN:"audio/win.mp3"};
 function clipFor(){ const b=BEATS[step]; return (b&&CLIPS[b.k])||null; }
 function stopVoice(){ if(voiceAudio){ try{voiceAudio.pause();}catch(e){} voiceAudio=null; } }
 function speak(txt){
