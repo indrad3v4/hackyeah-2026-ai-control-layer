@@ -323,10 +323,17 @@ $("intentGo").onclick=async()=>{const q=($("intentInput").value||"").trim();if(!
   try{const r=await fetch("/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q:q})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok){$("proposalText").textContent=(data.error||("The proposal path answered HTTP "+r.status))+" — nothing was authorized.";return}
-    const answer=data.answer||"",v=findVerdict(data.evidence);
-    $("proposalText").textContent="PROPOSAL (the model proposes, it holds no authority — llm_authority: "+String(data.llm_authority===true)+"). "+(answer||"No answer text returned.");
-    if(v){renderActionCard(verdictTrace(v,v.agent,v.tool))}
-    else{$("proposalText").textContent+=" No decision was produced for this intent — the surface will not invent one.";acHide();renderControl(null)}
+    const answer=data.answer||"",ai=data.ai||{};
+    const aiState=ai.model_called?(ai.model_completed?"AI ANSWER":"AI CALL FAILED"):"NO AI CALL";
+    const tokenText=ai.token_status==="not_applicable"?"0 tokens — no model call":ai.token_status==="reported"?fmt(ai.total_tokens)+" tokens":"token usage not reported";
+    $("proposalText").textContent=aiState+" · "+tokenText+". "+(answer||"No answer text returned.");
+    $("calls").textContent=fmt(ai.model_calls||0);
+    $("tokens").textContent=ai.total_tokens==null?"—":fmt(ai.total_tokens);
+    $("io").textContent=(ai.input_tokens==null||ai.output_tokens==null)?"—":fmt(ai.input_tokens)+" / "+fmt(ai.output_tokens);
+    $("trace").textContent=ai.trace_id?"DeepSeek trace · "+ai.trace_id:(ai.model_called?"DeepSeek call completed · trace not recorded":"No DeepSeek call in this run");
+    $("modelNote").textContent=ai.model_called?(ai.model_completed?"Run-scoped evidence · model proposed only · kernel remains the authority":"Provider call started but did not complete"):"No model invocation occurred for this run";
+    if(data.action_id){try{const lt=await get("/api/live-trace?action_id="+encodeURIComponent(data.action_id));if(lt.trace){renderActionCard(lt.trace)}else{acHide();renderControl(null)}}catch(err){acHide();renderControl(null);$("proposalText").textContent+=" The action record could not be re-read, so no decision is shown."}}
+    else{$("proposalText").textContent+=" No action was produced for this intent.";acHide();renderControl(null)}
   }catch(err){$("proposalText").textContent="The proposal path failed: "+err.message+" — nothing was authorized."}}
 $("whoGo").onclick=async()=>{const agent=$("whoActs").value;$("proposalText").textContent="Asking the kernel to decide for "+agent+" …";acHide();renderControl(null);
   /* On the real control plane /api/demo/run is guarded by the operator token (app.py:691,
