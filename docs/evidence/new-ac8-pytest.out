@@ -1,0 +1,111 @@
+[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+..............................................................................................................................................................................................................[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+....[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+....[deepseek] {"base_url": "https://api.deepseek.com", "event": "deepseek.request.started", "has_authorization_header": true, "messages": 2, "model_requested": "deepseek-chat", "path": "/chat/completions", "prompt_sha256": "e3743c3246c57242cd9f332067bf85256ef4552f1505394dd84c0ec696fc93dc", "provider": "deepseek", "run_id": "50a54dbd-6011-4eb1-8cab-db9e183a6820", "stream": false, "tools_offered": 4}
+[deepseek] {"authority_source": "tenet-kernel", "base_url": "https://api.deepseek.com", "event": "deepseek.request.completed", "finish_reason": null, "has_authorization_header": true, "input_tokens": null, "latency_ms": 279, "llm_authority": false, "messages": 2, "model_requested": "deepseek-chat", "model_served": null, "output_tokens": null, "path": "/chat/completions", "prompt_sha256": "e3743c3246c57242cd9f332067bf85256ef4552f1505394dd84c0ec696fc93dc", "provider": "deepseek", "provider_response_id": null, "request_id": "5c395cd4b783b0f60a29c611953b4143", "response_sha256": "d417603a92c73656bc5fd28ffaae27c65c5d07a6978718f3e3bd1da8d817ad17", "run_id": "50a54dbd-6011-4eb1-8cab-db9e183a6820", "status": 401, "stream": false, "tools_offered": 4, "total_tokens": null}
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+...[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.......................................................[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+......[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+..[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+..................
+--- NEW-AC1 captured card HTML ---
+<h3>Action under control</h3><div class="acRow"><div class="acLabel">What your AI wants to do</div><div class="acVal">tool payments.transfer <span class="mono">· tool payments.transfer</span></div></div><div class="acRow"><div class="acLabel">Who is asking</div><div class="acVal">fin-reconcile</div></div><div class="acRow"><div class="acLabel">What this person may do</div><div class="acVal">payments.read · payments.transfer</div></div><div class="acRow"><div class="acLabel">What this agent may do</div><div class="acVal">payments.read · ≤ 50,000 PLN · read-only</div></div><div class="acRow"><div class="acLabel">What it reaches</div><div class="acVal"><span class="mono">payments.transfer</span> · irreversible</div></div><div class="acRow"><div class="acLabel">Why TENET decided this</div><div class="acVal">tool 'payments.transfer' is not covered by warrant scope · scope payments.read · ≤ 50,000 PLN · read-only</div></div><div class="acRow"><div class="acLabel">What happens outside TENET</div><div class="acVal"><b>Nothing left TENET. The upstream was not contacted.</b></div></div><div class="acRow"><div class="acLabel">What actually happened</div><div class="acVal">Not recorded.</div></div><div class="acRow"><div class="acLabel">Proof</div><div class="acVal">receipt 9c0ffee1 · action A-0101</div></div><details class="tech"><summary>Technical details</summary><div class="techBody"><div class="tr"><div class="tl2">Trace id</div><div class="tv">not recorded</div></div><div class="tr"><div class="tl2">Decision</div><div class="tv">DENY</div></div><div class="tr"><div class="tl2">Ac
+--- end capture ---
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+....[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.....[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+curl -s http://127.0.0.1:34825/ | grep -c 'href="' -> 1
+curl -s http://127.0.0.1:34825/onboarding | grep -c 'href="' -> 1
+curl -s http://127.0.0.1:34645/ | grep -c 'href="' -> 1
+curl -s http://127.0.0.1:34645/onboarding | grep -c 'href="' -> 1
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+..[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+..[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+.[tenet] WARRNT_ADMIN_TOKEN is unset - generated for this process only:
+[tenet]   <process-local dev token, masked>
+[tenet] mutating routes need the header x-warrnt-admin: <token>
+......
+337 passed in 36.80s

@@ -1,0 +1,21 @@
+# hosts serving THIS branch (control-plane host = Procfile shape, local uvicorn; static host = Pages-shaped resolver)
+$ curl -s http://127.0.0.1:8111/ | grep -c 'href="'
+1
+$ curl -s http://127.0.0.1:8111/ | grep -o 'href="[^"]*"' | sort -u | tr '\n' ' '
+href="/onboarding" 
+
+$ curl -s http://127.0.0.1:8111/onboarding | grep -c 'href="'
+1
+$ curl -s http://127.0.0.1:8111/onboarding | grep -o 'href="[^"]*"' | sort -u | tr '\n' ' '
+href="/" 
+
+$ curl -s http://127.0.0.1:8112/ | grep -c 'href="'
+1
+$ curl -s http://127.0.0.1:8112/ | grep -o 'href="[^"]*"' | sort -u | tr '\n' ' '
+href="/onboarding" 
+
+$ curl -s http://127.0.0.1:8112/onboarding | grep -c 'href="'
+1
+$ curl -s http://127.0.0.1:8112/onboarding | grep -o 'href="[^"]*"' | sort -u | tr '\n' ' '
+href="/" 
+

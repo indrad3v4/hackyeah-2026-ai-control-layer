@@ -1,0 +1,21 @@
+# the two PUBLIC hosts, measured 2026-10-04 (they serve origin/main c3704f8, before this branch)
+$ curl -s https://hackyeah-2026-ai-control-layer-production.up.railway.app/ | grep -c 'href="'
+0
+$ curl -s https://hackyeah-2026-ai-control-layer-production.up.railway.app/ | grep -o 'href="[^"]*"' | sort -u | tr '\n' ' '
+
+
+$ curl -s https://hackyeah-2026-ai-control-layer-production.up.railway.app/onboarding | grep -c 'href="'
+0
+$ curl -s https://hackyeah-2026-ai-control-layer-production.up.railway.app/onboarding | grep -o 'href="[^"]*"' | sort -u | tr '\n' ' '
+
+
+$ curl -s https://indrad3v4.github.io/hackyeah-2026-ai-control-layer/ | grep -c 'href="'
+0
+$ curl -s https://indrad3v4.github.io/hackyeah-2026-ai-control-layer/ | grep -o 'href="[^"]*"' | sort -u | tr '\n' ' '
+
+
+$ curl -s https://indrad3v4.github.io/hackyeah-2026-ai-control-layer/onboarding | grep -c 'href="'
+0
+$ curl -s https://indrad3v4.github.io/hackyeah-2026-ai-control-layer/onboarding | grep -o 'href="[^"]*"' | sort -u | tr '\n' ' '
+
+
