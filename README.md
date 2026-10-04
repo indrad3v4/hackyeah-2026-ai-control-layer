@@ -304,6 +304,25 @@ before any technical identifier; the empty state explains TENET and offers a way
 with `retry_after_s` renders `Rate limited · retrying in Ns` with the real N). Where chromium is
 absent the test **skips** with a reason — it never claims a render it did not perform.
 
+### Measured limits — seen live, still open (04.10.2026)
+
+Named here because they were observed on the deployed instance, not because they were guessed.
+Two of the five that were found are closed; the rest are known and not yet fixed.
+
+| # | Limit as measured | Status |
+|---|---|---|
+| 1 | A multi-symbol read had no machine-readable value in the record, so the answer's numbers existed only in the model's arithmetic. Seen live: `A-0002` (`PLN` → `EUR,USD`) carried `rates_returned` but no `value`. | **Closed** — the record now keeps the upstream's `rates` map verbatim (`Amendment 6`, `c23c407`); the answer's digits re-check against the receipt. |
+| 2 | An absent value with no explanation read as a broken tool. Seen live: asked for a rate in a currency it had not named, the assistant reported only "the result block carries no rate". | **Closed** — the crossing now names `value_symbol` and `rates_returned` (`Amendment 5`, `d816578`). |
+| 3 | Action ids restart from `A-0001` on every boot, so a receipt quoted two deploys apart can mean a different call. Observed: `A-0001` after each deploy. | Open |
+| 4 | The action ledger lives with the container, so a deploy starts an empty history — an audit trail a deploy erases is not yet an audit trail. Observed: the ledger reset to one startup action after a deploy. | Open |
+| 5 | The `/api/ask` evidence list can point at an action that is not the one the run created (seen: evidence naming `A-0001` while the run created `A-0002`). | Open |
+
+Two more, in the code rather than the deployment: fields are dropped silently by design
+(`if v is not None`, `if k in crossing`) — honest about absence, but a reader cannot tell
+"the upstream did not send it" from "we did not file it"; and `/api/ask` shows token usage per
+run, while the answer text itself remains the only unverified channel — every number in it
+should be traceable to a record.
+
 
 ## Demo sentence
 
@@ -316,7 +335,7 @@ The front door is `/`, so run the control plane — the same command the platfor
 ```bash
 uvicorn control_plane.app:app --host 127.0.0.1 --port 8099
 # open http://127.0.0.1:8099/            the Control Room (the front door)
-#      http://127.0.0.1:8099/onboarding  the guide the console links to
+#      http://127.0.0.1:8099/onboarding  -> 307 to / (the guide is a layer of the console, not a second page)
 #      http://127.0.0.1:8099/observer    the read-only room
 ```
 
