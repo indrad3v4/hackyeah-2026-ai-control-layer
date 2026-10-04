@@ -5,7 +5,10 @@ laptop happened to have, which meant the character in the film and the character
 were two different women. The journey now plays TENET's own locked clips (Grok Ara — the film's
 character), one per beat, served as files; the device voice survives only as the fallback for a
 browser that refuses to play audio. These tests pin that: the clips exist, they are served as
-audio, the route refuses anything that is not a clip, and the page asks for TENET first.
+audio, the route refuses anything that is not a clip, and the single page asks for TENET first.
+
+Since the merge (04.10.2026) the map and the player live in ONE module (`/voice.js`): the guide
+used to carry a second copy of both, which is how two voices got into one product.
 """
 from __future__ import annotations
 
@@ -43,15 +46,19 @@ def test_the_voice_route_refuses_anything_that_is_not_a_clip():
 
 def test_the_page_plays_tenet_first_and_keeps_the_device_voice_as_a_fallback():
     with TestClient(create_app(seed=True)) as client:
-        body = client.get("/onboarding").text
-    assert '"audio/gate.mp3"' in body and '"audio/win.mp3"' in body, (
-        "the page must ask for TENET's clips — host-relative, so the GitHub Pages subpath resolves too"
+        body = client.get("/").text
+        module = client.get("/voice.js").text
+    assert '<script src="voice.js"></script>' in body, (
+        "the one page must load the one module — the voice engine lives in exactly one file")
+    assert '"audio/gate.mp3"' in module and '"audio/win.mp3"' in module, (
+        "the module must ask for TENET's clips — host-relative, so the Pages subpath resolves too"
     )
-    assert "new Audio(clip)" in body, "a clip must be played, not just mapped"
-    assert "greeting=true" in body, "the door line must be spoken before the first beat"
-    assert "function speakDevice(" in body, "the device voice must survive as the fallback"
-    assert "u.rate=0.94" in body and "u.pitch=0.85" in body, "the fallback keeps the character direction"
+    assert "new Audio(clip)" in module, "a clip must be played, not just mapped"
+    assert "greeting = true" in module, "the door line must be spoken before the first beat"
+    assert "function speakDevice(" in module, "the device voice must survive as the fallback"
+    assert "u.rate = 0.94" in module and "u.pitch = 0.92" in module, (
+        "the fallback keeps the character direction")
     # NEW-AC7 — the claim: "which voice speaks" is the chip that reports what actually PLAYED, not a
     # sentence at the foot of the page (see tests/test_new_ac7_the_claim.py for the choice recorded).
     assert 'id="voiceChip"' in body, "the page must not hide which voice speaks — the chip says so"
-    assert 'playedOrigin==="locked-clip"' in body, "the chip reads the real playback origin"
+    assert 'lastOrigin = "locked-clip"' in module, "the chip reads the real playback origin, not a lookup"

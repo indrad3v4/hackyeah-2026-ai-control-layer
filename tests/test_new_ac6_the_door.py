@@ -1,4 +1,4 @@
-"""NEW-AC6 — the door (the corridor between the two rooms, brief 2026-10-04).
+"""NEW-AC6 — the door (originally the corridor between two rooms; re-cut 04.10.2026 to ONE room).
 
 Measured on both live hosts before this commit, verbatim: `curl -s <url> | grep -c 'href="'` returned
 **0** for the console and **0** for the guide, on Railway and on Pages alike. Two rooms, each complete
@@ -8,16 +8,18 @@ a person can walk it, and a walk that needs the URL bar is not a walk.
 The fix is deliberate and small: ONE plain `<a href>` in each page's markup. Not a JS listener, not a
 button wired in a script block — plain markup, so it survives a text-only fetch and a `curl` sees it.
 
-Three tests:
+The merge then removed the corridor by removing the second room: two rooms meant two beat machines and
+two copies of the character's voice engine, which is how one product ended up speaking with two voices.
 
-* each room carries exactly one plain link to the other, in the markup (not inside a `<script>`), with
-  visible text, and no `onclick` / `javascript:` anywhere near it;
-* the brief's own check, run verbatim as a shell pipeline - `curl -s <url> | grep -c 'href="'` - passes
-  four times: both pages on a control-plane host (what Railway runs) and both pages on a static host
-  that resolves extensionless paths (what GitHub Pages does, `/onboarding` -> `onboarding.html`);
-* the README names exactly ONE front door, that door is the console, and the page it names is the one
-  that really carries the link onward - the README's claim is checked against the served bytes, not
-  believed.
+Four tests, on the one room:
+
+* the console carries the guide BY ITSELF, in the markup a text-only fetch sees - the layer, its rail
+  and the character's name - and carries no link to a second surface and no second voice engine;
+* `/onboarding` is a redirect (307 -> `/`), not a surface, and the file that used to serve it is gone;
+* the brief's own shell check (`curl -s <url> | grep -c 'href="'`) passes on the one path on both hosts,
+  and the second path is closed on both: 307 on the control plane, not-200 on a Pages-shaped host;
+* the README names exactly ONE front door, that door is the console, and the page it names really does
+  carry the guide - the README's claim is checked against the served bytes, not believed.
 """
 from __future__ import annotations
 
@@ -45,7 +47,9 @@ GUIDE = "/onboarding"
 CONSOLE_DOOR = 'href="/onboarding"'
 GUIDE_DOOR = 'href="/"'
 
-PAGES = {"/": "index.html", GUIDE: "onboarding.html", "/observer": "observer.html"}
+# What a Pages-shaped static host would serve from the repo root. /onboarding is deliberately absent:
+# no file, no second path. (/observer is a different audience, read-only — not part of this merge.)
+PAGES = {"/": "index.html", "/observer": "observer.html"}
 
 _ANCHOR = re.compile(r"<a\b[^>]*>(?:.*?)</a>", re.S)
 
@@ -159,54 +163,57 @@ def _served(path: str) -> str:
     return r.text
 
 
-def test_new_ac6_each_room_carries_one_plain_link_to_the_other():
-    """The door is markup: one anchor each way, outside every <script>, with text, no listener."""
-    console, guide = _served(CONSOLE), _served(GUIDE)
-    doors = _doors(console, GUIDE)
-    assert len(doors) == 1, (
-        "the console must carry exactly ONE plain link to the guide, found %d: %r" % (len(doors),
-                                                                                      doors))
-    back = _doors(guide, CONSOLE)
-    assert len(back) == 1, (
-        "the guide must carry exactly ONE plain link back to the console, found %d: %r" % (
-            len(back), back))
-    for where, door in (("console", doors[0]), ("guide", back[0])):
-        low = door.lower()
-        assert "onclick" not in low and "javascript:" not in low, (
-            "the %s door is a JS listener, not a link: %r" % (where, door))
-        assert "addlistener" not in low, "the %s door is wired by a listener: %r" % (where, door)
-        text = re.sub(r"<[^>]+>", "", door).strip()
-        assert text, "the %s door has no visible text: %r" % (where, door)
-    # And the doors are nowhere in a script block: a text-only fetch (no JS) still carries them.
-    for body, href in ((console, GUIDE), (guide, CONSOLE)):
-        assert _doors(body, href), "the door is not in the markup a text-only fetch carries"
-        assert re.search(r"<script\b.*?href=\"%s\"" % re.escape(href), body, re.S) is None, (
-            "the door appears inside a <script> block; it would not survive a text-only fetch")
+
+def test_new_ac6_one_room_carries_the_guide_and_no_corridor():
+    """The merge: the console IS the guide's room — the layer in markup, no link to a second surface.
+
+    A text-only fetch must carry the guide (no JS needed to see it), and must carry no second path and
+    no second voice engine. That last pair is the whole reason the corridor was removed.
+    """
+    console = _served(CONSOLE)
+    assert CONSOLE_DOOR not in console, (
+        "the console still links to a second surface: one path means the guide is not a link away")
+    assert 'id="guideStrip"' in console, (
+        "the console must carry the guide's layer in the markup a text-only fetch sees")
+    assert "TENET · your guide" in console, "the layer must name the character, not just narrate"
+    assert 'id="journeyRail"' in console, "the layer must stand on the same rail, not beside it"
+    for forbidden in ("speechSynthesis", "function pickVoice", "function clipFor("):
+        assert forbidden not in console, (
+            "a second voice engine came back with the layer (%r): one product, one voice" % forbidden)
 
 
-def test_new_ac6_the_four_checks_of_the_brief_pass_on_both_hosts(hosts):
-    """`curl -s <url> | grep -c 'href="'` > 0: both pages, both hosts - four checks, run verbatim."""
+def test_new_ac6_the_second_path_is_a_redirect_and_the_file_is_gone():
+    """/onboarding keeps working and stops being a surface: 307 -> /, and nothing on disk to serve."""
+    with TestClient(create_app(seed=True)) as client:
+        r = client.get(GUIDE, follow_redirects=False)
+    assert r.status_code == 307, "GET %s must redirect, not serve: HTTP %s" % (GUIDE, r.status_code)
+    assert r.headers.get("location") == CONSOLE, (
+        "the redirect must land on the one path: %r" % (r.headers.get("location"),))
+    assert not (REPO / "onboarding.html").exists(), (
+        "the second page is still on disk: a file is a second path waiting to be linked again")
+
+
+
+def test_new_ac6_the_brief_check_passes_on_the_one_path_and_the_second_path_is_closed(hosts):
+    """`curl -s <url> | grep -c 'href="'` > 0 on the one path, both hosts - run verbatim.
+
+    The old brief asked for four checks (two pages x two hosts). There is one page now, so the check
+    runs twice and the second path is verified CLOSED instead of served: 307 on the control plane and
+    not-200 on a Pages-shaped host (no file, nothing to link to).
+    """
     live, static = hosts
-    checks = (
-        ("the control-plane host (what Railway runs)", live + CONSOLE, GUIDE),
-        ("the control-plane host (what Railway runs)", live + GUIDE, CONSOLE),
-        ("the static host (Pages-shaped: /onboarding -> onboarding.html)", static + CONSOLE, GUIDE),
-        ("the static host (Pages-shaped: /onboarding -> onboarding.html)", static + GUIDE, CONSOLE),
-    )
-    seen = []
-    for host, url, want in checks:
+    for host, url in (("the control-plane host (what Railway runs)", live + CONSOLE),
+                      ("the static host (Pages-shaped, one path)", static + CONSOLE)):
         code = _http_code(url)
         assert code == 200, "%s served %s as HTTP %s" % (host, url, code)
         count = _brief_check(url)
-        seen.append((url, count))
         assert count > 0, (
-            "the brief's check fails: `curl -s %s | grep -c 'href=\"'` returned %d" % (url, count))
-        assert want in _hrefs(url), (
-            "%s carries an href, but not the door to the other room (%r missing)" % (url, want))
-    assert len(seen) == 4, "the brief asks for FOUR checks; %d ran" % len(seen)
-    # The evidence line, verbatim: the four checks and the number each one printed.
-    for url, count in seen:
-        print("curl -s %s | grep -c 'href=\"' -> %d" % (url, count))
+            'the brief\'s check fails: `curl -s %s | grep -c \'href="\'` returned %d' % (url, count))
+        print('curl -s %s | grep -c \'href="\' -> %d' % (url, count))
+    assert _http_code(live + GUIDE) == 307, (
+        "the control plane must redirect %s, not serve a second surface" % GUIDE)
+    assert _http_code(static + GUIDE) != 200, (
+        "a Pages-shaped host still serves %s: a second path is reachable again" % GUIDE)
 
 
 def test_new_ac6_the_readme_names_one_front_door_and_it_is_the_page_that_links_onward():
@@ -222,5 +229,6 @@ def test_new_ac6_the_readme_names_one_front_door_and_it_is_the_page_that_links_o
             "a second surface is named as a door: %r" % line)
     # The door the README names really is the one that carries the corridor onward.
     door_page = _served(CONSOLE)
-    assert _doors(door_page, GUIDE), (
-        "the README names / as the front door, but / carries no link to the guide")
+    assert 'id="guideStrip"' in door_page, (
+        "the README names / as the front door, so the guide must be carried BY that page, "
+        "not one link away from it")

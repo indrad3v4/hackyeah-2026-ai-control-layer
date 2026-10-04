@@ -30,7 +30,7 @@ from control_plane.app import create_app
 
 REPO = Path(__file__).resolve().parents[1]
 INDEX = REPO / "index.html"
-ONBOARDING = REPO / "onboarding.html"
+# No ONBOARDING path: since 04.10.2026 the guide is a layer of index.html (one path in the app).
 NODE = shutil.which("node")
 
 

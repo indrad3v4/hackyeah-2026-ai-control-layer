@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import Body, FastAPI, Header, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 
 from . import config
 from .kernel import (Kernel, KernelUnavailable, R1_REFUSAL, build_kernel,
@@ -246,12 +246,16 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             return HTMLResponse("<h1>TENET</h1><p>Control Room page missing</p>", status_code=500)
         return HTMLResponse(INDEX_HTML.read_text(encoding="utf-8"))
 
-    @app.get("/onboarding", response_class=HTMLResponse, include_in_schema=False)
-    def onboarding() -> HTMLResponse:
-        """The voice-guided walkthrough: the guide moves with the operator through the flow."""
-        if not ONBOARDING_HTML.exists():
-            return HTMLResponse("<h1>TENET</h1><p>Guided walkthrough page missing</p>", status_code=500)
-        return HTMLResponse(ONBOARDING_HTML.read_text(encoding="utf-8"))
+    @app.get("/onboarding", include_in_schema=False)
+    def onboarding() -> RedirectResponse:
+        """One path in the app (04.10.2026): the guide lives INSIDE the Control Room.
+
+        It used to be a second page — its own HTML, its own beat machine and its own copy of the
+        voice engine, which is how one product ended up speaking with two voices. The guide is now
+        the Control Room's own layer over the same rail, so this URL keeps working and sends the
+        visitor to the single surface. A redirect, not a second surface.
+        """
+        return RedirectResponse(url="/", status_code=307)
 
     @app.get("/observer", response_class=HTMLResponse, include_in_schema=False)
     def observer() -> HTMLResponse:
@@ -1169,7 +1173,8 @@ app = create_app(seed=True)
 
 
 INDEX_HTML = REPO_ROOT / "index.html"
-ONBOARDING_HTML = REPO_ROOT / "onboarding.html"
+# The guide is no longer a file of its own: it is a layer of index.html (04.10.2026). There is no
+# ONBOARDING_HTML constant on purpose — a second page is exactly what the merge removed.
 # The observer's room (NEW-AC4): the read-only surface for someone who must see what is waiting
 # for a person without being able to decide it.
 OBSERVER_HTML = REPO_ROOT / "observer.html"

@@ -31,8 +31,11 @@ from fastapi.testclient import TestClient
 from control_plane.app import create_app
 
 REPO = Path(__file__).resolve().parents[1]
-GUIDE = "/onboarding"
 CONSOLE = "/"
+# The guide is a layer of the console since 04.10.2026: there is no second page to fetch. The
+# redirect is checked where it belongs (tests/test_onboarding_page.py); here only the surfaces that
+# carry words are read.
+GUIDE = "/"
 
 # The three claims the deleted sentences made, assembled so this file carries none of them itself.
 NEEDLES = {
@@ -68,7 +71,6 @@ def _tree_hits(needle: str) -> list[str]:
 def _pages() -> dict[str, str]:
     with TestClient(create_app(seed=True)) as client:
         return {"the console (/)": client.get(CONSOLE).text,
-                "the guide (/onboarding)": client.get(GUIDE).text,
                 "the one voice module (/voice.js)": client.get("/voice.js").text}
 
 
@@ -79,8 +81,8 @@ def test_neither_deleted_sentence_remains_in_the_working_tree():
         assert hits == [], "%s is still in the tree: %s" % (what, ", ".join(hits))
 
 
-def test_neither_sentence_reaches_a_person_on_either_surface():
-    """The visitor's view: a text-only fetch of both pages carries neither claim."""
+def test_neither_sentence_reaches_a_person_on_any_surface():
+    """The visitor's view: a text-only fetch of every surface carries neither claim."""
     for where, body in _pages().items():
         for what, needle in NEEDLES.items():
             assert needle not in body, "%s still shows %s" % (where, what)
@@ -89,29 +91,33 @@ def test_neither_sentence_reaches_a_person_on_either_surface():
 def test_the_deleted_note_left_no_dead_container_behind():
     """The container the note was written into is gone with it - no placeholder for a lost line."""
     pages = _pages()
-    assert 'id="note"' not in pages["the guide (/onboarding)"], (
+    assert 'id="note"' not in pages["the console (/)"], (
         "an empty container is a placeholder for the sentence that was removed")
 
 
-def test_resolved_as_a_the_console_carries_the_same_chip_the_guide_carries():
-    """Choice (a), pinned: the chip is the replacement, both surfaces carry it, both read playback.
+def test_resolved_as_a_the_single_page_consumes_the_one_module_that_owns_the_words():
+    """Choice (a), pinned: the chip is the replacement, and the vocabulary has exactly ONE home.
 
-    The console loads the one served module that owns the vocabulary; the guide keeps its own chip
-    and reads the real playback origin; either way the label is evidence of what actually played,
-    and the fallback names the device voice instead of hiding it.
+    Before the merge the console and the guide each carried a chip, each with its own engine — two
+    implementations of one character, which is how they drifted. Now the page carries the element and
+    the module owns the words: the label is evidence of what actually played, and the fallback names
+    the device voice instead of hiding it.
     """
     pages = _pages()
-    console, guide, module = (pages["the console (/)"], pages["the guide (/onboarding)"],
-                              pages["the one voice module (/voice.js)"])
-    for where, body in (("the console", console), ("the guide", guide)):
-        assert 'id="voiceChip"' in body, "%s must carry the sound chip" % where
-        assert "sound — " in body, "%s must label the chip with a playback state" % where
+    console, module = pages["the console (/)"], pages["the one voice module (/voice.js)"]
+    assert 'id="voiceChip"' in console, "the page must carry the sound chip"
+    assert "sound — " in console, "the page must label the chip with a playback state"
     assert 'lastOrigin = "locked-clip"' in module, (
         "the module the console loads must name the origin from playback, not from a lookup")
-    assert 'playedOrigin==="locked-clip"' in guide, (
-        "the guide's chip must read the playback origin, not clipFor()")
+    assert 'lastOrigin = "locked-clip"' in module, (
+        "the chip must read the playback origin, not a static lookup")
     label = "TENET · studio voice"
-    assert label in module and label in guide, "one vocabulary: both surfaces name the same label"
-    assert "device voice" in module and "device voice" in guide, (
-        "the fallback must be named on both surfaces - a chip may never claim the studio voice while "
-        "the device is speaking")
+    assert label in module, "the module owns the label"
+    assert label not in console, (
+        "a second copy of the vocabulary on the page is a second source of truth: the guide's "
+        "inline engine is exactly what this merge removed")
+    assert "device voice" in module, (
+        "the fallback must be named - a chip may never claim the studio voice while the device speaks")
+    for forbidden in ("speechSynthesis", "function pickVoice", "function clipFor("):
+        assert forbidden not in console, (
+            "the page carries a second voice engine (%r): one product, one voice" % forbidden)

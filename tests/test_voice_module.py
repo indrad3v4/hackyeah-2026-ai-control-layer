@@ -5,6 +5,10 @@ asked to cover EVERY surface — but a second copy of the lines is a second sour
 chip that says "studio voice" while the device is speaking is exactly the class of untrue claim
 TENET exists to prevent. So: one served module, the missing `notEvaluated` state in it, provenance
 derived from playback and never from a static lookup, and the console actually loading it.
+
+The merge (04.10.2026) finished the job the module started: the guide's inline copy of the engine is
+gone, so the app now holds exactly ONE implementation of the voice — this file. `test_one_engine`
+pins that, because a second copy is exactly what drifted before.
 """
 from __future__ import annotations
 
@@ -17,7 +21,12 @@ from control_plane.app import create_app
 REPO = Path(__file__).resolve().parents[1]
 VOICE = REPO / "voice.js"
 CONSOLE = REPO / "index.html"
-ONBOARDING = REPO / "onboarding.html"
+GUIDE_LAYER = REPO / "index.html"  # the guide is a layer of the console since 04.10.2026
+
+
+def module_src(repo):
+    """The one voice module's source, read once for the checks that must name it."""
+    return (repo / "voice.js").read_text(encoding="utf-8")
 
 
 def test_the_voice_module_is_served_as_javascript():
@@ -59,18 +68,30 @@ def test_every_surface_loads_the_one_module():
     assert '<script src="voice.js"></script>' in console, "the console must load the module"
     assert 'id="voiceChip"' in console and 'id="voiceGate"' in console
     assert "Turn on the sound." in console, "the console carries the onboarding's gate copy"
-    assert "notEvaluated" in ONBOARDING.read_text(encoding="utf-8"), (
-        "the walkthrough keeps its own line map and must carry the same missing state"
+    assert "notEvaluated" in module_src(REPO), (
+        "the state the surfaces report must have a line in the one module"
     )
+
+
+def test_one_engine_the_guide_keeps_no_copy_of_the_voice():
+    """The merge's whole point: a second implementation of the voice is what drifted, so there is none.
+
+    The console may only CONSUME the module. If `speechSynthesis`, `pickVoice` or `clipFor` appears in
+    index.html again, a second engine has been reintroduced and the two will disagree.
+    """
+    console = CONSOLE.read_text(encoding="utf-8")
+    for forbidden in ("speechSynthesis", "function pickVoice", "function clipFor(", "new Audio("):
+        assert forbidden not in console, (
+            "index.html carries a second voice engine (%r) — the app must hold exactly one" % forbidden)
+    assert 'src="voice.js"' in console, "the console must consume the one module"
 
 
 def test_both_surfaces_claim_the_same_sound_label_vocabulary():
-    """One vocabulary, two consumers: the module owns the labels, the walkthrough keeps its map."""
+    """One vocabulary, two consumers: the module owns the labels, the page only consumes them."""
     module = VOICE.read_text(encoding="utf-8")
     assert "TENET · studio voice" in module, "the module owns the studio-voice label"
     assert "sound — " in module and "device voice" in module
-    onboard = ONBOARDING.read_text(encoding="utf-8")
-    assert "TENET · studio voice" in onboard
-    assert 'playedOrigin==="locked-clip"' in onboard, (
-        "the walkthrough's chip must read the playback origin, not clipFor()"
-    )
+    console = CONSOLE.read_text(encoding="utf-8")
+    assert "TENET · studio voice" not in console, (
+        "the page must not restate the label: the module owns the vocabulary")
+    assert "sound — " in console, "the chip is the page's element, filled by the module"
