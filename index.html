@@ -118,6 +118,11 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
 .voiceChip{font:600 11.5px/1 ui-monospace,Menlo,monospace;color:#9fb3c6;border:1px solid #2b3a4a;border-radius:999px;padding:5px 10px;background:#0d141c;white-space:nowrap}
 #soundToggle{font:600 12px ui-monospace,Menlo,monospace;color:#cfe0ee;border:1px solid #2b3a4a;border-radius:999px;padding:5px 10px;background:#0d141c;cursor:pointer;margin-left:2px}
 </style></head><body><div class="app">
+<div id="voiceGate"><div class="box"><div class="smile">🙂</div><h2>I'm TENET.</h2>
+<p><b>Turn on the sound.</b> I'll stay with you while your AI acts — your words, your AI's proposal, the kernel's decision, and the proof. You keep the controls.</p>
+<div class="row"><button class="primary" id="gateSound">🔊 Turn on sound &amp; start</button><button id="gateSilent">Read instead</button></div>
+<div class="note">Your browser needs one tap before any voice can play — that tap is this button. Nothing else starts.</div>
+</div></div>
 <header><div class="brand"><div class="mark">T</div><div><h1>TENET Control Room</h1><div class="sub">Control what your AI can do — when it acts on real people, you stay in control.</div></div></div><div class="status"><span class="dot"></span><span id="live">Connecting…</span><span class="voiceChip" id="voiceChip" title="what actually played — never what might have">sound — silent</span><button id="soundToggle" title="Voice on — click to mute">🔊</button></div></header>
 <section class="card pad" id="askSection"><div class="eyebrow">00 · Ask your AI — say it in your own words</div>
 <h2 class="actionTitle" style="margin:7px 0 2px">What should your AI do?</h2>
@@ -135,13 +140,11 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
 <section class="content"><!-- 03 · Live agent activity: retained as a machine-readable layout contract; visible copy is human-first. --><!-- 04 · Why this happened: retained as a machine-readable layout contract; visible copy is human-first. --><article class="card"><div class="head"><h3>04 · Actions on the record</h3><span class="sub" id="count">0 events</span></div><div class="feed" id="feed"><div class="pad" style="color:#718196">Reading the kernel…</div></div></article>
 <aside class="card"><div class="head"><h3>05 · Inspect this action</h3><span class="sub" id="eventState">—</span></div><div class="rows" id="details"><div class="pad" style="color:#718196">Select an action.</div></div><div class="timeline" id="timeline"></div><div class="actions"><button class="btn" id="refresh">Refresh evidence</button></div></aside></section>
 <footer><span>TENET · Control Plane → Enforcement Kernel → upstream</span><span id="footer">Evidence only · no credentials exposed</span></footer></div>
-<div id="voiceGate"><div class="box"><div class="smile">🙂</div><h2>I'm TENET.</h2>
-<p><b>Turn on the sound.</b> I'll stay with you while your AI acts — your words, your AI's proposal, the kernel's decision, and the proof. You keep the controls.</p>
-<div class="row"><button class="primary" id="gateSound">🔊 Turn on sound &amp; start</button><button id="gateSilent">Read instead</button></div>
-<div class="note">Your browser needs one tap before any voice can play — that tap is this button. Nothing else starts.</div>
-</div></div>
 <script src="voice.js"></script>
 <script>
+/* Bound up front: every renderer below may speak, and an isolated harness that evals one
+   function alone must not meet a free identifier it was never given. */
+var V=(typeof window!=="undefined"&&window.TENETVoice)?window.TENETVoice:null;
 const $=id=>document.getElementById(id);let events=[],selected=null,usage=null,trace=null,cardTrace=null,cardPinned=false,llm_authority=null,authority_source=null,upstream_configured=null,live_mode=null;
 /* cardTrace is the trace the HEADLINE CARD shows: null means "follow the latest action"
  * (the default on load). selectEvent() repoints it at the selected record's own trace, fetched
@@ -321,7 +324,7 @@ function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();r
       techRow("Latency",up.latency_ms!=null?esc(String(up.latency_ms))+" ms":"not recorded")+
     `</div></details>`;
   /* The voice renders the state the record proves — never a verdict the card did not receive. */
-  if(V){const st=contacted===true?"crossed":(t.executed===true?"crossed":(state==="pending"||dec==="human")?"wait":(dec==="deny")?"denyAfter":(dec==="allow")?"allow":(dec==="redact")?"canCross":null);if(st)V.say(st)}
+  if(typeof V!=="undefined"&&V){const st=contacted===true?"crossed":(t.executed===true?"crossed":(state==="pending"||dec==="human")?"wait":(dec==="deny")?"denyAfter":(dec==="allow")?"allow":(dec==="redact")?"canCross":null);if(st)V.say(st)}
   renderControl(t)}
 /* The class comes from the SAME evaluated evidence the why-line renders (the verdict's `reason`,
  * whose "class <name>" phrase the kernel's evaluation wrote), never from a second source that is
@@ -367,11 +370,11 @@ function askFailure(r,data,err){
   return {state:"not_evaluated",status:status,
     text:"Not evaluated — the path answered HTTP "+status+". No verdict was produced and no record exists."};
 }
-function setAskFailure(f){ askFailureState=f; if(V)V.say("notEvaluated");
+function setAskFailure(f){ askFailureState=f; if(typeof V!=="undefined"&&V)V.say("notEvaluated");
   $("proposalText").textContent=f.text+(f.status?" (transport: HTTP "+f.status+(f.allow?", allow: "+f.allow:"")+")":"");
   try{acHide();renderControl(null);}catch(e){}}
 $("intentGo").onclick=async()=>{const q=($("intentInput").value||"").trim();if(!q){$("proposalText").textContent="Type what your AI should do first.";return}
-  $("proposalText").textContent="Asking the model to propose… (the kernel will decide)";if(V)V.say("proposes");acHide();renderControl(null);
+  $("proposalText").textContent="Asking the model to propose… (the kernel will decide)";if(typeof V!=="undefined"&&V)V.say("proposes");acHide();renderControl(null);
   try{const r=await fetch("/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q:q})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok){setAskFailure(askFailure(r,data));return}
@@ -421,7 +424,7 @@ async function resolve(verb){const t=acTrace;if(!t||!t.action_id)return;const to
      * rendering it replaces the control block, so the confirmation is written to #controlMsg when it
      * still exists and always mirrored to the durable #operatorNotice — the human who decided must
      * see that their decision took effect and who it is attributed to, even once the controls retire. */
-    if(V)V.say(verb==="approve"?"canCross":"denyAfter");
+    if(typeof V!=="undefined"&&V)V.say(verb==="approve"?"canCross":"denyAfter");
     if(rr.ok&&rd.trace){renderActionCard(rd.trace);resolveMsg("Resolved by "+by+". This is the action's re-read state.",by)}
     else{resolveMsg("Resolved, but the re-read returned HTTP "+rr.status+" — the resulting state is not shown.",by)}
   }catch(err){$("controlMsg").textContent="The "+verb+" attempt failed: "+err.message}}
@@ -431,7 +434,6 @@ refresh();setInterval(refresh,2000);
  * The onboarding defined the pattern; the console carries it. voice.js renders states the kernel
  * really produced, reports what ACTUALLY played, and says "not evaluated" where the transport
  * failed — never a verdict the record does not carry (D5/D11/D12). */
-const V=window.TENETVoice||null;
 (function bootGuide(){
   if(!V)return;
   V.init({chip:"voiceChip",soundOn:false});
