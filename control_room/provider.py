@@ -176,6 +176,39 @@ class _EvidenceTransport:
         return response
 
 
+
+def summarize_events(events: list[dict]) -> dict[str, Any]:
+    """Summarize one run's provider events without turning missing usage into zero."""
+    completed = [e for e in events if e.get("event") == "deepseek.request.completed"]
+    started = [e for e in events if e.get("event") == "deepseek.request.started"]
+    failed = [e for e in events if e.get("event") == "deepseek.request.failed"]
+    fields = ("input_tokens", "output_tokens", "total_tokens")
+    usage_reported = bool(completed) and all(
+        all(e.get(field) is not None for field in fields) for e in completed
+    )
+    if not started:
+        token_status = "not_applicable"
+        tokens: dict[str, int | None] = {field: 0 for field in fields}
+    elif usage_reported:
+        token_status = "reported"
+        tokens = {field: sum(int(e.get(field) or 0) for e in completed) for field in fields}
+    else:
+        token_status = "not_reported"
+        tokens = {field: None for field in fields}
+    latest = completed[-1] if completed else (failed[-1] if failed else None)
+    return {
+        "model_called": bool(started),
+        "model_completed": bool(completed),
+        "model_calls": len(started),
+        "calls_completed": len(completed),
+        "calls_failed": len(failed),
+        **tokens,
+        "token_status": token_status,
+        "model_requested": MODEL,
+        "model_served": (latest or {}).get("model_served"),
+        "trace_id": (latest or {}).get("request_id"),
+    }
+
 def key_present() -> bool:
     """PRESENT / ABSENT only. The value never leaves this expression."""
     return bool(os.environ.get(KEY_ENV, "").strip())
