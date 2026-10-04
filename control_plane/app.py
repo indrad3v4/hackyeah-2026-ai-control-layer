@@ -807,6 +807,7 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         When the provider or the kernel is unavailable the body is a refusal carrying the
         kernel record as evidence - never an invented answer, never an allow (AC2/AC7).
         """
+        from control_room.agents import action_for_run
         from control_room.agents import answer as run_orchestrator
 
         body = await _json_body(request)
@@ -819,7 +820,10 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         run_id = result.run_id
         # Correlate the agent trace with a security trace without merging them (TASK.5):
         # the run record carries the action_id it referenced, if the answer named one.
-        action_id = _referenced_action(result)
+        # The run's OWN action first: a run that proposed a call is about that call, and the
+        # payload must not name the state the run read before proposing (found live: the answer
+        # was about A-0002 while the payload named A-0001).
+        action_id = action_for_run(run_id) or _referenced_action(result)
         app.state.runs[run_id] = {"run_id": run_id, "action_id": action_id,
                                   "question": question, "ts": __import__("time").time()}
         payload = {

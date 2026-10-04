@@ -119,3 +119,24 @@ def test_run_record_names_the_newest_action_not_the_state_read_before_it():
 
 def test_run_record_is_none_when_the_answer_cited_nothing():
     assert _referenced_action(_FakeResult([_FakeEvidence(value="no action in the record")])) is None
+
+
+def test_a_run_is_about_the_action_it_created_not_the_state_it_read():
+    """The run record must name the action the run itself created.
+
+    Live: the payload reported A-0001 while the answer was about A-0002, because the
+    evidence only carried the state read before the proposal. The run's own action wins.
+    """
+    from control_room.provider import set_run_id
+
+    agents._RUN_ACTIONS.clear()
+    previous = _with_kernel(_FakeKernel())
+    try:
+        set_run_id("run-live-1")
+        agents._propose_action("fx.read_rate", "EUR", "USD")
+        assert agents.action_for_run("run-live-1") == "A-0009"
+        assert agents.action_for_run("some-other-run") == ""
+        assert agents.action_for_run("") == ""
+    finally:
+        agents.bind_kernel(previous)
+        set_run_id("")

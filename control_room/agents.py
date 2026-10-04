@@ -34,6 +34,15 @@ CONTROL_PLANE_URL = os.environ.get("TENET_CONTROL_PLANE_URL", "http://127.0.0.1:
 
 SPECIALISTS = ["governance_agent", "kernel_agent", "control_plane_agent"]
 
+# The action a run itself created, by run id. A run that proposed a call is about THAT call,
+# and the record sent to the caller must name it - not the state the run read before proposing.
+_RUN_ACTIONS: dict[str, str] = {}
+
+
+def action_for_run(run_id: str) -> str:
+    """The action id this run itself created, or "" when the run created none."""
+    return _RUN_ACTIONS.get(str(run_id or ""), "")
+
 # The agent whose live warrant carries the orchestrator's proposals. It is read from the
 # kernel's own registry inside this process - the token the kernel issued for it is used here
 # and never becomes part of a tool argument, a tool result or the model's context. A caller may
@@ -148,6 +157,8 @@ def _propose_action(tool: str, base: str = "EUR", symbols: str = "USD",
     word = decision.value if hasattr(decision, "value") else str(decision)
     detail = detail if isinstance(detail, dict) else {}
     action_id = str(detail.get("action_id") or (detail.get("action") or {}).get("id") or "")
+    if run_id and action_id:
+        _RUN_ACTIONS[run_id] = action_id
     record = _KERNEL.action(action_id) if action_id else None
     record = record if isinstance(record, dict) else {}
     crossing = record.get("execution_result") or {}
