@@ -140,3 +140,42 @@ def test_a_run_is_about_the_action_it_created_not_the_state_it_read():
     finally:
         agents.bind_kernel(previous)
         set_run_id("")
+
+    
+def test_zero_provider_calls_mean_no_model_invocation_and_zero_tokens():
+    from control_room.provider import summarize_events
+    out = summarize_events([])
+    assert out["model_called"] is False
+    assert out["model_calls"] == 0
+    assert out["input_tokens"] == 0
+    assert out["output_tokens"] == 0
+    assert out["total_tokens"] == 0
+    assert out["token_status"] == "not_applicable"
+
+
+def test_started_model_call_without_usage_is_not_zero_tokens():
+    from control_room.provider import summarize_events
+    out = summarize_events([{"event": "deepseek.request.started", "run_id": "r1"}])
+    assert out["model_called"] is True
+    assert out["model_calls"] == 1
+    assert out["input_tokens"] is None
+    assert out["output_tokens"] is None
+    assert out["total_tokens"] is None
+    assert out["token_status"] == "not_reported"
+
+
+def test_completed_model_call_with_usage_reports_real_tokens():
+    from control_room.provider import summarize_events
+    out = summarize_events([{
+        "event": "deepseek.request.started", "run_id": "r1",
+    }, {
+        "event": "deepseek.request.completed", "run_id": "r1",
+        "model_served": "deepseek-flash", "request_id": "ds-1",
+        "input_tokens": 100, "output_tokens": 25, "total_tokens": 125,
+    }])
+    assert out["model_called"] is True
+    assert out["model_completed"] is True
+    assert out["model_calls"] == 1
+    assert out["total_tokens"] == 125
+    assert out["token_status"] == "reported"
+    assert out["trace_id"] == "ds-1"
