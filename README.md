@@ -194,6 +194,59 @@ Internal `warrnt/*` names remain only where compatibility requires them. The pro
 
 > **The UI cannot manufacture a cleaner story than the evidence supports.**
 
+## Run everything yourself
+
+One command runs every check this submission owes, and ends with a verdict. A SKIP is never
+counted as a pass: if something cannot run here, the script says so and prints the one line that
+would make it run.
+
+```bash
+pip install -r node/requirements.txt        # the mirrored node's dependencies
+bash scripts/run_all_checks.sh
+```
+
+```
+STATE  CHECK                                  TIME    WHY IT MATTERS
+PASS   console: inline JavaScript parses      0.7s    a syntax error blanks the whole page
+PASS   console: layout invariants            0.1s     grid rows, kill-switch floor, responsive fallback
+PASS   console: 15 viewports                  1.9s    no overlap or clipped text at any size
+FAIL   mirror: matches the pinned commit      5.0s    node/ must equal the canonical repo or judges read stale code
+FAIL   node: the test suite                   8.8s    positive and negative cases per control (D10)
+PASS   node: proof gates                      5.9s    console, security boundaries, live vector, demo path
+------------------------------------------
+passed 4   failed 2   skipped 0
+VERDICT: FAIL - at least one check did not hold.
+```
+
+**Two known failures, neither of them hidden.** The script reports them rather than skipping them,
+which is the point of having it:
+
+| failure | cause | status |
+|---|---|---|
+| `mirror: matches the pinned commit` | six lines in `node/warrnt/proxy.py` were edited in the mirror instead of upstream, so the mirror no longer equals the commit it pins | the change needs a pull request in the canonical repository, then a pin bump here |
+| `node: the test suite` | two tests assert POSIX file modes and `chmod` is a no-op on Windows, so they are red on a Windows checkout and green on CI's Linux | the fix travels with the node's own open pull request |
+
+Everything else passes, including the console across all fifteen viewports.
+
+Useful variants:
+
+| | |
+|---|---|
+| `SKIP_NETWORK=1` | skip the checks that clone the canonical node repo |
+| `SKIP_NODE=1` | skip the mirrored node's tests and gates (fast, console only) |
+| `PYTHON=/path/to/python` | use a specific interpreter (a virtualenv, say) |
+
+Two further scripts back the documents:
+
+```bash
+python3 scripts/benchmark_scale.py          # the tables in docs/complexity-and-scale.md
+python3 scripts/doc_qa.py                   # every claim in the documents, turned into a check
+```
+
+`scripts/console_layout_sweep.py` drives the console through fifteen viewports from 400×600 to
+3840×2160 and reads the verdict the page computes about itself; it exits `2` (SKIP) when no browser
+is installed, because an unchecked sweep must never look like a sweep that passed.
+
 ## Demo
 
 The canonical demo is intentionally one story:
