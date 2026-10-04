@@ -46,6 +46,9 @@ def test_it_asks_the_live_control_plane_never_a_script():
     assert '"/api/ask"' in body or "/api/ask" in body
     assert "/api/actions" in body
     assert "real records, not a script" in body
+    # The evidence line must show THIS run's record: the list is newest-first, so taking the
+    # last row names the oldest action (found live on the deployed page).
+    assert "this run" in body and "replace(/[^0-9]/g" in body
 
 
 def test_the_operator_keeps_control_of_the_flow():

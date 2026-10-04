@@ -119,8 +119,12 @@ async function runAsk(){
     speak("It was allowed. The call really went out, and the receipt proves it. You can read the answer and the receipt on screen.");
     fetch(B+"/api/actions").then(x=>x.json()).then(a=>{
       const rows=Array.isArray(a)?a:(a.actions||[]); if(!rows.length) return;
-      const n=rows[rows.length-1];
-      box.innerHTML+='<div class="ev mono">record · '+(n.action_id)+' · '+(n.agent||"—")+' → '+(n.tool||"—")+' · decision '+(n.decision||"—")+' · receipt '+(n.receipt||"—")+' · state '+(n.state||"—")+'</div>';
+      // The list is newest-first, so "the last row" is the OLDEST action - the page must show
+      // the record of THIS run. Prefer the row whose id matches the payload, else the highest id.
+      const num=r=>parseInt(String(r.action_id||"").replace(/[^0-9]/g,""),10)||-1;
+      const own=rows.find(r=>r.action_id===d.action_id);
+      const n=own||rows.reduce((m,r)=>num(r)>num(m)?r:m,rows[0]);
+      box.innerHTML+='<div class="ev mono">record · '+(n.action_id)+(own?" (this run)":"")+' · '+(n.agent||"—")+' → '+(n.tool||"—")+' · decision '+(n.decision||"—")+' · receipt '+(n.receipt||"—")+' · state '+(n.state||"—")+'</div>';
     }).catch(()=>{});
   }catch(e){ box.innerHTML='<div class="out bad">The control plane did not answer. Nothing was executed.</div>'; }
 }
