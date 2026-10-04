@@ -117,3 +117,21 @@ comment can cite them.
 
 
 - **Amendment 4 — D13, `/api/ask` AI execution evidence, 2026-10-04. Reason:** the production Control Room could display a real-looking kernel result beside an ambiguous “no decision” message while the model/resource strip could show zero calls and zero tokens. That conflates three different facts: whether an LLM was invoked, whether the kernel decided an action, and whether the upstream was contacted. **Exact change:** extend the existing `/api/ask` response with one additive `ai` object carrying run-scoped model-call evidence: `answer_origin`, `model_called`, `model_completed`, `model_calls`, `input_tokens`, `output_tokens`, `total_tokens`, `token_status`, `model_requested`, `model_served`, and `trace_id`. Token values are zero only when no model call occurred; when a model call occurred but usage was not reported, token values are `null` and `token_status` is `not_reported`. The response also carries the authoritative `action_id` already present in the route, and the Control Room resolves the action from `/api/live-trace?action_id=...` rather than relying on a pre-run evidence list. **Consumers updated:** `control_room/models.py`, `control_room/agents.py`, `control_plane/app.py`, `index.html`, and tests. **Unchanged:** the kernel remains the only authority; model output never becomes a decision; upstream contact is still proven only by execution evidence.
+
+- **Amendment 5 — D13, `execution_result` fields `value_symbol` and `rates_returned`, 2026-10-04.
+  Reason:** the crossing filed `value` but, when the upstream's reply did not carry the symbol
+  the caller asked for, the record went silent: diagnostics (endpoint, status, digest) present,
+  the rate absent and no field saying why. Found live on `/api/ask`: asked for a rate in a
+  currency it did not name, the console could only report "the result block carries no rate" —
+  a true sentence that hid a fixable cause (a symbol mismatch), so the tool read as broken when
+  it had answered honestly. **Exact change:** two fields added to the action's
+  `execution_result` — `value_symbol` (the symbol the upstream's reply states it answered, verbatim)
+  and `rates_returned` (the sorted symbols the reply's `rates` object carries). Both come from the
+  upstream's own reply; nothing is derived, and a field the reply does not carry stays absent
+  (never `null`-invented), so the record shows "the reply carried CHF, USD" instead of silence.
+  No field removed or renamed; no verdict, gate, entitlement, policy, warrant, SoD, budget or
+  API-shape change. **Consumers updated:** `control_plane/kernel.py` (`_record_crossing`),
+  `control_room/agents.py` (the assistant's proven-field list), and
+  `tests/test_missing_symbol_is_named.py` (positive and negative), recorded here as their own
+  commit per D13. **Unchanged by this amendment:** the kernel remains the only authority; the
+  assistant may still quote only what the record carries.
