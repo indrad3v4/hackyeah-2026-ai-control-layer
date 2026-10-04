@@ -54,6 +54,9 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;ma
 .walker{position:absolute;top:-26px;left:0;transition:left .45s ease;transform:translateX(-50%)}
 /* controls + evidence */
 .row{display:flex;gap:8px;flex-wrap:wrap}
+/* ACT NEW-AC6 — the door back: ONE plain <a href> to the Control Room, markup not a listener, so a
+ * text-only fetch of the guide carries the way back to the console. */
+.row .door{color:var(--acc);text-decoration:none;border-bottom:1px solid #7fd4c155;align-self:center;font-size:12px;white-space:nowrap}
 input[type=text]{flex:1;min-width:210px;background:#0a1220;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 12px;font-size:14px}
 button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#132133;color:var(--ink);padding:10px 14px;font-size:13px}
 button.primary{background:linear-gradient(145deg,#1c6f5e,#14584a);border-color:#1c6f5e;font-weight:650}
@@ -86,7 +89,7 @@ button:disabled{opacity:.45;cursor:default}
 <header>
   <div class="brand"><div class="mark">T</div><div><h1>TENET · the guide</h1>
   <div class="sub">AI moves with the human, not around the human.</div></div></div>
-  <div class="row"><span class="role" id="voiceChip">sound —</span><button id="soundToggle">🔊 Sound on</button></div>
+  <div class="row"><span class="role" id="voiceChip">sound —</span><button id="soundToggle">🔊 Sound on</button><a class="door" href="/">← The Control Room</a></div>
 </header>
 
 <section class="card">

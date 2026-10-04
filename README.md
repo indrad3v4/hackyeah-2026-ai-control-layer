@@ -6,6 +6,12 @@ TENET is an enforcement resource for agentic systems. It sits between an AI agen
 
 **Live Control Room:** https://hackyeah-2026-ai-control-layer-production.up.railway.app/
 
+**One front door:** `/` — the Control Room. It is the only entry point this README names, and it is the
+page that links onward: the console carries a plain `<a href="/onboarding">The guide →</a>`, and the
+guide carries a plain `<a href="/">← The Control Room</a>` back, so the corridor between the two rooms
+is walkable by a text-only fetch (`curl -s <url> | grep -c 'href="'` is at least 1 on both pages). The
+`/observer` read-only room carries its own doors back to both rooms.
+
 ## Watch the story
 
 [![▶ Watch the 42-second TENET happy path](docs/tenet-happy-path-poster.png)](docs/tenet-happy-path.mp4)
@@ -305,10 +311,18 @@ absent the test **skips** with a reason — it never claims a render it did not 
 
 ## Run locally
 
+The front door is `/`, so run the control plane — the same command the platform runs — and walk from it:
+
 ```bash
-python -m http.server 8099
-# open http://127.0.0.1:8099/index.html
+uvicorn control_plane.app:app --host 127.0.0.1 --port 8099
+# open http://127.0.0.1:8099/            the Control Room (the front door)
+#      http://127.0.0.1:8099/onboarding  the guide the console links to
+#      http://127.0.0.1:8099/observer    the read-only room
 ```
+
+A bare static server (`python -m http.server 8099`) serves the console file only: `/onboarding` is a
+control-plane route, and GitHub Pages is the static host that resolves it (Pages maps `/onboarding` to
+`onboarding.html`). The link itself is plain markup on both hosts either way.
 
 Tests: `python -m pytest tests/ -q`
 

@@ -9,6 +9,10 @@ header{display:flex;align-items:center;justify-content:space-between;gap:20px;pa
 h1{font-size:21px;margin:0;letter-spacing:-.03em}
 .sub{color:var(--muted);font-size:12px}
 .status{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}
+/* ACT NEW-AC6 — the door: ONE plain <a href> to the guide, in the markup, so the corridor between
+ * the two rooms is walkable by a text-only fetch (no JS listener is needed to walk it). */
+.status .door{color:var(--green);text-decoration:none;border-bottom:1px solid #42d39255;padding-bottom:1px;white-space:nowrap}
+.status .door:hover{color:#8ef0c2}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px #42d392}
 .card{background:rgba(13,18,24,.95);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .pad{padding:18px}
@@ -130,7 +134,7 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
 <div class="row"><button class="primary" id="gateSound">🔊 Turn on sound &amp; start</button><button id="gateSilent">Read instead</button></div>
 <div class="note">Your browser needs one tap before any voice can play — that tap is this button. Nothing else starts.</div>
 </div></div>
-<header><div class="brand"><div class="mark">T</div><div><h1>TENET Control Room</h1><div class="sub">Control what your AI can do — when it acts on real people, you stay in control.</div></div></div><div class="status"><span class="dot"></span><span id="live">Connecting…</span><span class="voiceChip" id="voiceChip" title="what actually played — never what might have">sound — silent</span><button id="soundToggle" title="Voice on — click to mute">🔊</button></div></header>
+<header><div class="brand"><div class="mark">T</div><div><h1>TENET Control Room</h1><div class="sub">Control what your AI can do — when it acts on real people, you stay in control.</div></div></div><div class="status"><span class="dot"></span><span id="live">Connecting…</span><span class="voiceChip" id="voiceChip" title="what actually played — never what might have">sound — silent</span><button id="soundToggle" title="Voice on — click to mute">🔊</button><a class="door" href="/onboarding">The guide →</a></div></header>
 <section class="card pad" id="askSection"><div class="eyebrow">00 · Ask your AI — say it in your own words</div>
 <h2 class="actionTitle" style="margin:7px 0 2px">What should your AI do?</h2>
 <p class="actionLead" style="margin-bottom:10px">Ask in plain words — <span class="mono">check today's EUR/USD rate for me</span>. Your AI proposes; TENET answers before anything runs: allowed, not allowed, or waiting for you. What you read below is the proposal — TENET's answer is the one that counts.</p>
