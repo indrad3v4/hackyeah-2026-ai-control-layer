@@ -489,11 +489,30 @@ function renderRail(){const el=$("journeyRail"),note=$("railNote");if(!el)return
   const beats=journeyBeats(t,railNotEvaluated);
   el.innerHTML=BEAT_ORDER.map(k=>{const st=beats[k];
     const word=st==="done"?"done":st==="current"?"you are here":st==="not_evaluated"?"not evaluated":"not yet";
-    return `<div class="beat" data-beat="${k}" data-state="${st}"><span class="bk">${k}</span><span class="bs">${esc(BEAT_WORD[k])} · ${word}</span></div>`}).join("");
+    return `<div class="beat" data-beat="${k}" data-state="${st}" role="button" tabindex="0" style="cursor:pointer" title="Open the evidence for ${k}"><span class="bk">${k}</span><span class="bs">${esc(BEAT_WORD[k])} · ${word}</span></div>`}).join("");
+  /* ACT NEW-AC7 — the rail is a way IN, not a scoreboard. Every beat opens the evidence it names:
+   * the proven ones open the proof and the chain, the earlier ones open the card's own record. A
+   * beat that is only a label is a dead end, and a dead end looks like a freeze. */
+  el.querySelectorAll(".beat").forEach(b=>{const go=()=>beatClick(b.dataset.beat);
+    b.onclick=go;b.onkeydown=(e)=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}}});
   if(!note)return;
   if(railNotEvaluated){note.textContent="The action record could not be re-read, so the rail shows not evaluated and no step is marked done. A transport failure is not a verdict."}
   else if(!t){note.textContent="The loop has not started: say what your AI should do, and TENET answers before anything runs."}
-  else{const c=BEAT_ORDER.find(k=>beats[k]==="current");note.textContent=c?("You are at "+c+" — "+BEAT_WORD[c]+"."):"No step is proven done yet."}}
+  else{const c=BEAT_ORDER.find(k=>beats[k]==="current"),stall=stallOf(t,beats);
+    note.textContent=stall?stall:(c?("You are at "+c+" — "+BEAT_WORD[c]+"."):"No step is proven done yet.")}}
+/* ACT NEW-AC7 — WHY THE RAIL STOPS, SAID OUT LOUD. A receipt the record holds but the chain this
+ * page read does not list leaves WITNESS marked and PROVE not marked: that is a fact about the
+ * read, not a verdict, and it must not look like a freeze. One sentence names it, and the beat
+ * opens the chain so the operator can re-read it. Nothing here invents a verdict. */
+function stallOf(t,beats){if(!t||beats.WITNESS!=="current")return null;
+  const r=t.receipt_id;
+  if(!r)return "You are at WITNESS — no receipt was recorded, so there is no proof to open.";
+  if(!receiptInChain(r))return "You are at WITNESS — it happened. PROVE did not follow because the chain this page read does not list this action's receipt; open the chain to re-read it.";
+  return null}
+function beatClick(k){const card=$("actionCard");
+  if(k==="WITNESS"||k==="PROVE"||k==="WIN"){nsOpenReceipt=(k!=="WITNESS");nsOpenChain=true;renderNextStep();
+    const box=$("nsChainView");if(box)box.scrollIntoView({block:"nearest"});return}
+  if(card){const d=card.querySelector("details.tech");if(d)d.open=true;card.scrollIntoView({block:"nearest"})}}
 /* ---- ONE NAMED NEXT STEP, EVERY OUTCOME (AC2) ---------------------------------------------------
  * Exactly one sentence in the operator's language and one control that performs it, for each of the
  * four terminal outcomes. The evidence is the ONE place the card, the rail and this line all read

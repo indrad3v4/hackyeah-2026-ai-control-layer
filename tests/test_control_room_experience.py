@@ -483,3 +483,47 @@ def test_ac6e_card_prints_the_upstream_url_once_escaped_never_double_escaped():
     assert card.count("base=EUR&symbols=USD") >= 2, \
         f"the URL is not printed identically in every row that shows it: {card!r}"
 
+
+
+# ------------------------------------------- ACT NEW-AC7: the rail is a way in, and it says why it stops
+def _chain_payload(receipt):
+    chain = {"ok": True, "length": 1, "head": receipt,
+             "proof": {"correlation": [{"receipt_id": receipt}]}}
+    return {"chain": chain}
+
+
+def test_rail_beats_open_their_evidence_and_the_stall_is_named():
+    """Every beat is a control, and a WITNESS that cannot advance names the reason.
+
+    The trace holds a receipt, but this server serves no ``/api/state``, so the chain the page
+    read knows nothing about it. The rail must not look frozen: the note says the chain does not
+    list the receipt and offers the chain as the way to re-read it.
+    """
+    payloads = _api_payloads(trace=dict(_TRACE_OBJECT_VALUE))
+    with _Served(payloads) as url:
+        dom = _rendered_dom(url)
+    beats = [b for b in re.findall(r'<div class="beat"[^>]*>', dom) if "${k}" not in b]
+    assert len(beats) == 7, f"the rail did not render seven beats: {beats!r}"
+    assert all('role="button"' in b for b in beats), f"a beat is not a control: {beats!r}"
+    assert all("cursor:pointer" in b for b in beats), f"a beat does not look clickable: {beats!r}"
+    assert all('data-beat=' in b for b in beats), beats
+    note = _text(dom, "railNote")
+    assert "does not list" in note, f"the stall is not named: {note!r}"
+    assert "chain" in note.lower(), f"the stall names no way out: {note!r}"
+
+
+def test_rail_reaches_the_proof_when_the_chain_lists_the_receipt():
+    """The same trace WITH the chain listing the receipt must advance past WITNESS.
+
+    Positive half of the pair: nothing about the stall sentence may appear when the proof is
+    actually in the chain the page read.
+    """
+    receipt = _TRACE_OBJECT_VALUE["receipt_id"]
+    payloads = _api_payloads(trace=dict(_TRACE_OBJECT_VALUE))
+    payloads["/api/state"] = (lambda _r, _c=_chain_payload(receipt): _c)
+    with _Served(payloads) as url:
+        dom = _rendered_dom(url)
+    note = _text(dom, "railNote")
+    assert "does not list" not in note, f"the chain lists the receipt yet the rail stalls: {note!r}"
+    assert "You are at" in note, note
+    assert "PROVE" in note or "WIN" in note, f"the rail never reached the proof: {note!r}"
