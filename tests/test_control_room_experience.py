@@ -264,6 +264,26 @@ def test_ac3d_rate_limited_state_reads_as_waiting_with_real_retry_after():
         "Rate limited · retrying in " in PAGE, "the page no longer carries the exact wording"
 
 
+# --------------------------------------------------- ACT-7b T6: the page invents no operator
+def test_t6_index_html_fabricates_no_operator_identity_for_a_control_route():
+    """ACT-7b T6 - the page never sends an invented `by` to a control route.
+
+    A control action must carry the identity the human declared. A hardcoded placeholder such as
+    ``{by:"operator"}`` is a fabricated decision-maker, so it must not appear anywhere in the
+    served page — not on the revoke route, not on the approve/deny route.
+    """
+    # no literal `by:"..."` constant of any kind is sent as the control body
+    fabricated = re.findall(r'by\s*:\s*"[^"$+]*"', PAGE)
+    assert not fabricated, "the page still sends a fabricated operator identity: %r" % fabricated
+    # the declared-name seam exists and both doors read it
+    assert "operatorName" in PAGE, "the page has no operator-name field to carry the real identity"
+    assert "declaredOperator" in PAGE, "the page does not read a declared operator name"
+    assert PAGE.count("declaredOperator()") >= 2, \
+        "both the revoke and the approve/deny doors must use the declared name"
+    # and no control body is attributed to a made-up placeholder name
+    assert '"operator"' not in PAGE, "the literal placeholder identity `\"operator\"` is still present"
+
+
 # --------------------------------------------------------- ACT-6 AC3/AC4: the card follows selection
 # Two actions on the record, same resource, two agents, two verdicts (the screen's whole point).
 # The parameterless call returns the LATEST (the ALLOW); the query call returns THAT action. The

@@ -657,8 +657,9 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
 
         Same receipts, same state change - there is no second code path to drift (D3). The
         operator token is the kernel's own (``WARRNT_ADMIN_TOKEN``): an anonymous control plane
-        is a control plane anyone can drive. The optional ``{"by": "name"}`` body names the
-        person pulling the brake for the record; it changes no decision.
+        is a control plane anyone can drive. The ``{"by": "name"}`` body names the person
+        pulling the brake, exactly as approve/deny require: a human decision without a name on
+        it is not a decision, so an unattributed halt is refused (422), never committed.
         """
         return _revoke(app, agent_id, x_warrnt_admin, str((body or {}).get("by") or "").strip())
 
@@ -668,7 +669,8 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         """Compatibility alias the Control Room page's kill button posts to.
 
         Same single revoke path as ``/api/agents/{id}/revoke`` - the page's ``{agent: id}``
-        body is translated here and nothing else changes.
+        body is translated here and nothing else changes. It carries the same named-person
+        requirement as the canonical route.
         """
         agent_id = str(body.get("agent") or "").strip()
         if not agent_id:
@@ -878,11 +880,14 @@ def _require_admin(app: FastAPI, supplied: str) -> Optional[JSONResponse]:
 
 
 def _revoke(app: FastAPI, agent_id: str, supplied_token: str, by: str = "") -> JSONResponse:
-    """The one revoke path: check the token, then delegate to the kernel. Nothing else.
+    """The one revoke path: check the token, require a name, then delegate to the kernel.
 
-    ``by`` names the person pulling the brake. It is optional (the kernel already privileges
-    the admin token) and purely auditable: it never decides anything, it is echoed back so an
-    external driver can record a named human, exactly as approve/deny already do.
+    Two things are required, exactly as approve/deny require them: the operator token (an
+    anonymous control plane is a control plane anyone can drive) and a named person (a human
+    decision without a name on it is not a decision). ``by`` names the person pulling the
+    brake; the halt is a control decision like any other, so an empty ``by`` is refused with
+    the same 422 the approve door uses - before the kernel runs, so no revoke is committed and
+    no receipt is created for an unattributed halt.
     """
     denied = _require_admin(app, supplied_token)
     if denied:
@@ -890,6 +895,9 @@ def _revoke(app: FastAPI, agent_id: str, supplied_token: str, by: str = "") -> J
     k, unavailable = _kernel_or_503(app)
     if unavailable:
         return unavailable
+    if not by:
+        return JSONResponse({"error": "a named person is required", "field": "by"},
+                            status_code=422)
     t0 = k.revoke(agent_id)
     if t0 is None:
         return JSONResponse({"error": "unknown agent or already halted", "agent": agent_id},

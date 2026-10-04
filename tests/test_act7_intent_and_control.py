@@ -183,6 +183,11 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             status = int(data.pop("__status__", 200))
             out = json.dumps(data).encode("utf-8")
             ctype = "application/json"
+        elif re.fullmatch(r"/api/agents/[^/]+/revoke", parsed.path):
+            data = dict(payloads["__agent_revoke__"](self))
+            status = int(data.pop("__status__", 200))
+            out = json.dumps(data).encode("utf-8")
+            ctype = "application/json"
         else:
             out, status, ctype = b"{}", 404, "application/json"
         self.send_response(status)
@@ -375,6 +380,24 @@ def _base_payloads(events=None, ask_body=None, pending=None, state=None, live_tr
         trace["executed"] = bool(state.get("resolved"))
         return {"trace": trace, "authority_source": "tenet-kernel", "llm_authority": False}
 
+    def agent_revoke(req):
+        # Mirrors the real route (control_plane/app.py, _revoke): the operator token is required
+        # (401 without it) AND a named person is required (422 without one) - the halt is refused
+        # before anything is committed. The name the page sent is echoed back in `by`.
+        lower = {k.lower() for k in req.headers.keys()}
+        if "x-warrnt-admin" not in lower and "authorization" not in lower:
+            return {"__status__": 401, "error": "operator token required"}
+        raw = req.body or ""
+        try:
+            body = json.loads(raw) if raw else {}
+        except ValueError:
+            body = {}
+        by = str((body or {}).get("by") or "").strip()
+        if not by:
+            return {"__status__": 422, "error": "a named person is required", "field": "by"}
+        state["revoked_by"] = by
+        return {"agent": body.get("agent") or "fx-trader", "state": "halted", "by": by}
+
     return {
         "/api/live-trace": live_trace,
         "/api/overview": (lambda _r: {"mode": "live", "upstream_configured": True}),
@@ -388,6 +411,7 @@ def _base_payloads(events=None, ask_body=None, pending=None, state=None, live_tr
         "/api/demo/run": demo_run,
         "__action_control__": action_control,
         "__action_detail__": action_detail,
+        "__agent_revoke__": agent_revoke,
     }
 
 
@@ -411,10 +435,14 @@ _DRIVER = """
     report[prefix][id] = !!document.getElementById(id); }); }
   function run() {
     try {
+      window.confirm = function () { return true; };  // the human would click OK; the driver records the request
       if (window.__token__) { localStorage.setItem('warrnt_admin', window.__token__); }
       else { localStorage.removeItem('warrnt_admin'); }
+      if (window.__operator__ !== null && window.__operator__ !== undefined) {
+        set('operatorName', window.__operator__);
+      }
       snap('ctl', ['intentInput', 'intentGo', 'proposalText', 'actionCard', 'whoActs', 'whoGo',
-                   'approveBtn', 'denyBtn', 'traceBody']);
+                   'approveBtn', 'denyBtn', 'traceBody', 'operatorName', 'revoke']);
       if (window.__intent__) {
         set('intentInput', window.__intent__);
         click('intentGo');
@@ -431,7 +459,20 @@ _DRIVER = """
         setTimeout(function () {
           if (window.__press__ === 'approve') { click('approveBtn'); }
           if (window.__press__ === 'deny') { click('denyBtn'); }
-          setTimeout(function () { log(report); }, 900);
+          if (window.__press__ === 'revoke') { click('revoke'); }
+          // A refusal is written synchronously before the click handler's first await, but the page
+          // polls /api/live-trace every 2s and re-paints #footer — so sample it early, before a poll
+          // can clobber it. The resolve message on #controlMsg is written after the round-trip, so
+          // sample that late.
+          setTimeout(function () {
+            var f = document.getElementById('footer');
+            report.act.footer = f ? f.textContent.replace(/\\s+/g, ' ').trim() : '';
+          }, 150);
+          setTimeout(function () {
+            var m = document.getElementById('controlMsg');
+            report.act.controlMsg = m ? m.textContent.replace(/\\s+/g, ' ').trim() : '';
+            log(report);
+          }, 1500);
         }, 1400);
       }, 1400);
     } catch (err) { report.error = String(err); log(report); }
@@ -443,22 +484,23 @@ _DRIVER = """
 """
 
 
-def _driver(intent=None, who=None, press=None, token=None):
+def _driver(intent=None, who=None, press=None, token=None, operator=None):
     """The config script plus the interaction script, both appended to the served page."""
-    cfg = {"__intent__": intent, "__who__": who, "__press__": press, "__token__": token}
+    cfg = {"__intent__": intent, "__who__": who, "__press__": press, "__token__": token,
+           "__operator__": operator}
     return "<script>window.__cfg__ = %s; %s</script>" % (
         json.dumps(cfg),
         "".join("window.%s = %s;" % (k, json.dumps(v)) for k, v in cfg.items())) + _DRIVER
 
 
-def _render(payloads, intent=None, who=None, press=None, token=None):
+def _render(payloads, intent=None, who=None, press=None, token=None, operator=None):
     """Serve the page with a driver that performs one interaction; return (dom, recorder).
 
     ``payloads`` is the canned API surface; the driver config is added under ``__driver__``. The
     recorder outlives the server so a test can inspect every request the page made.
     """
     body = dict(payloads)
-    body["__driver__"] = _driver(intent=intent, who=who, press=press, token=token)
+    body["__driver__"] = _driver(intent=intent, who=who, press=press, token=token, operator=operator)
     served = _Served(body)
     url = served.__enter__()
     try:
@@ -607,13 +649,15 @@ def test_t5_token_approve_resolves_and_shows_execution():
 
     The page must POST /api/actions/{id}/approve WITH the operator token, RE-READ the action, and
     render the resulting executed state plus a receipt. Approve and Deny are both proven (two
-    renders) so the pair is exercised.
+    renders) so the pair is exercised. The operator declares a name, as ACT-7b requires: the page
+    sends the declared name, never an invented one.
     """
     for press in ("approve", "deny"):
         state = {"held": True}
         payloads = _base_payloads(events=[_feed_event(_HOLD_TRACE)],
                                   pending=[_feed_event(_HOLD_TRACE)], state=state)
-        dom, rec = _render(payloads, who="fx-auditor", press=press, token="operator-token")
+        dom, rec = _render(payloads, who="fx-auditor", press=press, token="operator-token",
+                           operator="anna.kowalska")
 
         choices = [c for c in rec.calls if c["path"].endswith("/" + press)]
         assert choices, "pressing %s never POSTed to the real /api/actions/{id}/%s route" % (press, press)
@@ -621,6 +665,9 @@ def test_t5_token_approve_resolves_and_shows_execution():
             "the %s request did not carry the operator token" % press)
         assert HOLD_ACTION_ID in choices[0]["path"], (
             "the control did not target the held action id: %r" % choices[0]["path"])
+        # the request carries the name the operator DECLARED, not a fabricated constant
+        assert "anna.kowalska" in choices[0]["body"], (
+            "the %s request did not carry the declared operator name: %r" % (press, choices[0]["body"]))
         # the page re-read the action after the attempt
         rereads = [c for c in rec.calls if c["method"] == "GET"
                    and c["path"] == "/api/actions/" + HOLD_ACTION_ID]
@@ -642,7 +689,8 @@ def test_t6_approve_on_unknown_action_does_not_fabricate_success():
 
     payloads = _base_payloads(events=[], pending=[], state={"held": True})
     payloads["__action_control__"] = unknown_control
-    dom, rec = _render(payloads, who="fx-auditor", press="approve", token="operator-token")
+    dom, rec = _render(payloads, who="fx-auditor", press="approve", token="operator-token",
+                       operator="anna.kowalska")
 
     approvals = [c for c in rec.calls if c["path"].endswith("/approve")]
     assert approvals, "no approve attempt was made against the real route"
@@ -673,3 +721,59 @@ def test_defect_deny_card_shows_one_honest_sentence():
     assert "{}" not in body, "the empty technical fallback {} is still rendered: %r" % body[:400]
     assert "no action-class detail was recorded" in body.lower(), (
         "the honest sentence for an unrecorded class is missing: %r" % body[:400])
+
+
+# ============================================================ ACT-7b: the page invents no operator
+# Requirement 5: approve, deny and revoke must send the name the operator DECLARED in the console.
+# If no name is declared the control action is not sent at all and the page says so plainly.
+# These drive the RENDERED page and assert on the bytes it actually POSTed.
+
+def test_act7b_revoke_sends_the_declared_operator_name():
+    """revoke with a declared name posts that exact name to the real revoke route."""
+    state = {"held": False}
+    payloads = _base_payloads(events=[_feed_event(_ALLOW_TRACE)], state=state)
+    dom, rec = _render(payloads, press="revoke", token="operator-token", operator="indradev_")
+
+    posts = [c for c in rec.calls if c["method"] == "POST" and c["path"].endswith("/revoke")]
+    assert posts, "pressing Stop agent never POSTed to the real /api/agents/{id}/revoke route"
+    assert "indradev_" in posts[0]["body"], (
+        "the revoke request did not carry the declared operator name: %r" % posts[0]["body"])
+    assert state.get("revoked_by") == "indradev_", "the declared name never reached the route"
+    assert "operator\"" not in posts[0]["body"], "the page sent a fabricated constant identity"
+    notice = _text(dom, "operatorNotice").lower()
+    assert "indradev_" in notice and "halted" in notice, (
+        "the page did not confirm the halt and name the decider: %r" % notice[:300])
+
+
+def test_act7b_revoke_without_a_declared_name_sends_nothing_and_says_so():
+    """revoke with no declared name sends NO request and explains why, in the message area."""
+    state = {"held": False}
+    payloads = _base_payloads(events=[_feed_event(_ALLOW_TRACE)], state=state)
+    dom, rec = _render(payloads, press="revoke", token="operator-token")  # no operator name
+
+    posts = [c for c in rec.calls if c["method"] == "POST" and c["path"].endswith("/revoke")]
+    assert not posts, "the page sent an unattributed revoke anyway: %r" % posts
+    assert state.get("revoked_by") is None, "an unnamed revoke reached the route"
+    # The refusal is durable (the 2s refresh poll owns #footer), so the page carries it on its own
+    # operator-notice line as well as the footer.
+    notice = _text(dom, "operatorNotice").lower()
+    footer = _text(dom, "footer").lower()
+    said = notice + " || " + footer
+    assert "name" in said and "no request was sent" in said, (
+        "the page did not say plainly why the unattributed halt was not sent: %r" % said[:300])
+
+
+def test_act7b_approve_without_a_declared_name_sends_nothing_and_says_so():
+    """approve/deny with no declared name sends NO request and says so in controlMsg."""
+    for press in ("approve", "deny"):
+        state = {"held": True}
+        payloads = _base_payloads(events=[_feed_event(_HOLD_TRACE)],
+                                  pending=[_feed_event(_HOLD_TRACE)], state=state)
+        dom, rec = _render(payloads, who="fx-auditor", press=press, token="operator-token")
+
+        posts = [c for c in rec.calls if c["method"] == "POST" and c["path"].endswith("/" + press)]
+        assert not posts, "the page sent an unattributed %s anyway: %r" % (press, posts)
+        assert state.get("resolved") is not True, "an unnamed %s moved the held action" % press
+        msg = _text(dom, "controlMsg").lower()
+        assert "name" in msg and ("no request" in msg or "declare" in msg), (
+            "the page did not say plainly why the unnamed %s was not sent: %r" % (press, msg[:300]))

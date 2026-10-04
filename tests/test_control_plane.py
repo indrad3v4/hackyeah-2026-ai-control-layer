@@ -183,7 +183,7 @@ def test_revoke_expires_a_pending_action(client):
     tok = _tokens(client)["report-bot"]
     aid = _mcp(client, "report-bot", tok, "crm.bulk_export",
                {"table": "customers", "rows": 250}).json()["error"]["data"]["action_id"]
-    rv = client.post("/api/agents/report-bot/revoke", headers=_admin())
+    rv = client.post("/api/agents/report-bot/revoke", json={"by": "anna.kowalska"}, headers=_admin())
     assert rv.status_code == 200 and rv.json()["state"] == "halted"
     one = client.get(f"/api/actions/{aid}").json()
     # `expired` is a STATE, not a decision - the decision stays `human`.
@@ -193,8 +193,137 @@ def test_revoke_expires_a_pending_action(client):
 
 
 def test_revoke_is_idempotent_and_409s_when_already_halted(client):
-    assert client.post("/api/agents/report-bot/revoke", headers=_admin()).status_code == 200
-    assert client.post("/api/agents/report-bot/revoke", headers=_admin()).status_code == 409
+    named = {**_admin(), "Content-Type": "application/json"}
+    assert client.post("/api/agents/report-bot/revoke", json={"by": "anna.kowalska"},
+                       headers=named).status_code == 200
+    assert client.post("/api/agents/report-bot/revoke", json={"by": "anna.kowalska"},
+                       headers=named).status_code == 409
+
+
+# ---------------------------------------------------------- ACT-7b: revoke is attributed
+# The halt is a control decision like any other: it must name the person who decided it, exactly
+# as approve/deny do. These four tests are the contract section 3's T1..T4 for the revoke door.
+def test_t1_revoke_with_a_named_operator_is_recorded_with_that_name(client):
+    """T1 - revoke with a valid token AND a name succeeds, and the record carries that exact name."""
+    tok = _tokens(client)["report-bot"]
+    aid = _mcp(client, "report-bot", tok, "crm.bulk_export",
+               {"table": "customers", "rows": 250}).json()["error"]["data"]["action_id"]
+
+    rv = client.post("/api/agents/report-bot/revoke", json={"by": "indradev_"}, headers=_admin())
+    assert rv.status_code == 200
+    body = rv.json()
+    assert body["state"] == "halted"
+    assert body["by"] == "indradev_", "the record did not carry the named operator: %r" % body
+    # the named halt really took effect: the pending hold is gone and the warrant is revoked
+    one = client.get(f"/api/actions/{aid}").json()
+    assert one["state"] == "expired" and one["upstream_contacted"] is False
+
+
+def test_t2_revoke_without_a_name_is_refused_and_records_nothing(client):
+    """T2 - an empty/missing `by` is a validation failure (422) and NO receipt is created.
+
+    The refusal happens before the kernel runs, so nothing is committed: the agent stays
+    revocable and the registry carries no revoke receipt for the unattributed halt.
+    """
+    k = client.app.state.kernel
+    before = len(k.registry_recent(500))
+
+    for payload in ({}, {"by": ""}, {"by": "   "}):
+        r = client.post("/api/agents/report-bot/revoke", json=payload, headers=_admin())
+        assert r.status_code == 422, "an unattributed revoke was accepted: %r -> %s" % (payload, r.status_code)
+        assert r.json()["field"] == "by"
+
+    # no revoke receipt, no state change: the agent is still live and revocable
+    revokes = [e for e in k.registry_recent(500)
+               if e.get("decision") == "revoked" or e.get("tool") == "/revoke"]
+    assert not revokes, "an unattributed revoke was committed into the record: %r" % revokes
+    assert len(k.registry_recent(500)) == before, "the refused revoke still appended to the chain"
+    bot = [a for a in client.get("/api/agents").json() if a["id"] == "report-bot"][0]
+    assert bot["state"] == "active", "the refused revoke still halted the agent"
+
+    # and the door still works once a name is given
+    ok = client.post("/api/agents/report-bot/revoke", json={"by": "indradev_"}, headers=_admin())
+    assert ok.status_code == 200 and ok.json()["by"] == "indradev_"
+
+
+def test_t3_revoke_without_the_operator_token_is_still_401(client):
+    """T3 - the 401 for a token-less revoke is unchanged, name or no name."""
+    assert client.post("/api/agents/report-bot/revoke",
+                       json={"by": "indradev_"}).status_code == 401
+    assert client.post("/api/agents/report-bot/revoke",
+                       json={}).status_code == 401
+    # the compat alias keeps the same rule
+    assert client.post("/revoke", json={"agent": "report-bot", "by": "indradev_"}).status_code == 401
+
+
+def test_t3b_compat_revoke_alias_requires_a_name_too(client):
+    """T3b - `/revoke` (the page's kill route) carries the same named-person requirement."""
+    no_name = client.post("/revoke", json={"agent": "report-bot"}, headers=_admin())
+    assert no_name.status_code == 422 and no_name.json()["field"] == "by"
+    named = client.post("/revoke", json={"agent": "report-bot", "by": "indradev_"}, headers=_admin())
+    assert named.status_code == 200 and named.json()["by"] == "indradev_"
+
+
+def test_t4_approve_named_and_unnamed_behaviour_is_unchanged(client):
+    """T4 - the approve door is untouched: a name resolves (200), no name is refused (422)."""
+    def hold(rows):
+        tok = _tokens(client)["report-bot"]
+        return _mcp(client, "report-bot", tok, "crm.bulk_export",
+                    {"table": "customers", "rows": rows}).json()["error"]["data"]["action_id"]
+
+    named_id = hold(200)
+    ok = client.post(f"/api/actions/{named_id}/approve", json={"by": "anna.kowalska"}, headers=_admin())
+    assert ok.status_code == 200 and ok.json()["executed"] is True
+
+    unnamed_id = hold(210)
+    bad = client.post(f"/api/actions/{unnamed_id}/approve", json={}, headers=_admin())
+    assert bad.status_code == 422 and bad.json()["field"] == "by"
+    # the unnamed approve left the hold untouched
+    assert client.get(f"/api/actions/{unnamed_id}").json()["state"] == "pending"
+
+
+def test_t5_full_vocabulary_stays_green_allow_deny_hold_and_human_control(client):
+    """T5 - the whole decision vocabulary is unchanged by ACT-7b.
+
+    ALLOW (in scope), DENY (no entitlement), HOLD (require-human), then the two human controls
+    (approve-from-HOLD, deny-from-HOLD) and the named revoke. Nothing here is a new capability;
+    it is the proof that the attributed-revoke change touched nothing else.
+    """
+    tokens = _tokens(client)
+
+    # ALLOW - the reconciliation agent reads payments, in scope
+    allow = _mcp(client, "fin-reconcile", tokens["fin-reconcile"], "payments.read",
+                 {"limit": 1}).json()
+    assert allow["result"]["decision"] in ("allow", "redact")
+    assert allow["result"]["executed"] is True
+
+    # DENY - the deploy agent has no entitlement to deploy
+    deny = _mcp(client, "deploy-agent", tokens["deploy-agent"], "deploy.service",
+                {"service": "core-api"}).json()
+    assert deny["error"]["data"]["decision"] == "deny"
+    assert deny["error"]["data"]["executed"] is False
+
+    # HOLD - a mass export needs a person; approve-from-HOLD resolves it
+    def hold():
+        return _mcp(client, "report-bot", tokens["report-bot"], "crm.bulk_export",
+                    {"table": "customers", "rows": 260}).json()["error"]["data"]["action_id"]
+
+    approved_id = hold()
+    ap = client.post(f"/api/actions/{approved_id}/approve",
+                     json={"by": "anna.kowalska"}, headers=_admin())
+    assert ap.status_code == 200 and ap.json()["state"] == "approved"
+    assert ap.json()["upstream_contacted"] is True
+
+    # HOLD - deny-from-HOLD never contacts the upstream
+    denied_id = hold()
+    dn = client.post(f"/api/actions/{denied_id}/deny",
+                     json={"by": "anna.kowalska"}, headers=_admin())
+    assert dn.status_code == 200 and dn.json()["upstream_contacted"] is False
+
+    # and the named revoke still halts and is attributed
+    rv = client.post("/api/agents/support-copilot/revoke", json={"by": "anna.kowalska"}, headers=_admin())
+    assert rv.status_code == 200 and rv.json()["state"] == "halted"
+    assert rv.json()["by"] == "anna.kowalska"
 
 
 def test_bad_token_on_mcp_is_a_deny_not_an_allow(client):
