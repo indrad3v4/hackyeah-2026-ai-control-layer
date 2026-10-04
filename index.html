@@ -96,9 +96,27 @@ h3{margin:0;font-size:13px;letter-spacing:.04em}
 footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-size:10px;padding:14px 2px 0}
 @media(max-width:950px){.hero,.content{grid-template-columns:1fr}.actRow,.row,.techBody .tr{grid-template-columns:1fr;gap:4px}.app{overflow:auto;max-height:none}}
 @media(max-width:600px){.app{padding:12px}.actionTitle{font-size:22px}}
+.intentRow{display:flex;gap:9px;margin:10px 0}.intentInput{flex:1;padding:11px 13px;border-radius:10px;border:1px solid #26374d;background:#0d1726;color:#e8eef6;font-size:14px}
+.proposal{margin:10px 0;padding:12px 14px;border-radius:10px;background:#0d1726;border:1px solid #1d2b3d;color:#c9d6e6;font-size:13px;line-height:1.5}
+.whoRow{display:flex;gap:9px;align-items:center;margin:12px 0 4px}.whoLabel{font-size:12px;color:var(--muted)}.whoActs{padding:9px 11px;border-radius:9px;border:1px solid #26374d;background:#0d1726;color:#e8eef6}
+.actionCard{margin:12px 0;padding:14px;border-radius:12px;border:1px solid #1d2b3d;background:#0c1522}
+.actionCard h3{margin:0 0 10px;font-size:15px}.acRow{display:flex;gap:10px;padding:7px 0;border-top:1px solid #16202e}.acRow:first-of-type{border-top:0}
+.acLabel{min-width:180px;color:#8ea0b4;font-size:12px}.acVal{flex:1;color:#e8eef6;font-size:13px;line-height:1.45}
+.controlBlock{margin:12px 0 0;padding:13px 14px;border-radius:12px;border:1px solid #3a2c12;background:#191307;color:#f0d9a8;font-size:13px}
+.controlBlock .pendingLine{font-weight:750;color:#ffd27a;margin-bottom:9px}.controlBtns{display:flex;gap:9px}
 @media(max-height:900px){.app{overflow:auto;max-height:none}}
 </style></head><body><div class="app">
 <header><div class="brand"><div class="mark">T</div><div><h1>TENET Control Room</h1><div class="sub">One AI action, before it happens: what it wants, whose data it is, who it acts for, where the data would go, what TENET decided, and whether it actually happened.</div></div></div><div class="status"><span class="dot"></span><span id="live">Connecting…</span></div></header>
+<section class="card pad" id="askSection"><div class="eyebrow">00 · Ask your AI — intent entry</div>
+<h2 class="actionTitle" style="margin:7px 0 2px">What should your AI do?</h2>
+<p class="actionLead" style="margin-bottom:10px">Type an intent. Your AI proposes a tool call, and TENET decides before anything runs. The answer you read below is a PROPOSAL — it is never a permission.</p>
+<div class="intentRow"><input id="intentInput" class="intentInput" type="text" placeholder="Check today's EUR/USD rate for me." autocomplete="off"><button class="btn" id="intentGo">Ask TENET</button></div>
+<div class="proposal" id="proposalText">No intent yet. The next proposal appears here.</div>
+<div id="actionCard" style="display:none"></div>
+<div class="whoRow"><label for="whoActs" class="whoLabel">Who should act?</label><select id="whoActs" class="whoActs"><option value="fx-trader">fx-trader</option><option value="support-copilot">support-copilot</option><option value="fx-auditor">fx-auditor</option></select><button class="btn" id="whoGo">Let them try</button></div>
+<div id="controlBlock"></div>
+</section>
+
 <section class="hero"><article class="card pad" id="traceCard"><div class="eyebrow">01 · The action under control</div><div class="titleRow"><div><h2 class="actionTitle" id="actionTitle">Waiting for a real agent action</h2><p class="actionLead" id="actionLead">The last action TENET intercepted, in the order the questions are asked.</p></div><span class="modeBadge unk" id="modeBadge">mode —</span></div><div class="path" id="traceBody"></div><div id="outcome"></div><div id="proof"></div><details class="tech" id="techDetails"><summary>Technical details</summary><div class="techBody" id="techBody"></div></details><div class="empty" id="emptyState" style="display:none"><h2>TENET has enforced nothing yet</h2><p>TENET sits between an AI agent and the tools it wants to use. Before any tool runs it checks identity, entitlement, warrant and policy, reaches a verdict, and writes a receipt. Nothing executes until that verdict allows it, and a denied action never reaches the far side of the boundary.</p><p>To put the first real action on this screen:</p><ol><li>Point TENET at a live tool server (the <span class="mono">WARRNT_UPSTREAM</span> environment variable) so a real crossing is possible.</li><li>Press <b>Run the paired allow / deny scenario</b> below: the same request is made by two agents and the kernel reaches two different verdicts.</li><li>Or let a real agent call the control plane and watch its own action appear here.</li></ol><button class="btn" id="selfCheck">Run the paired allow / deny scenario</button><div class="mono" id="selfCheckMsg" style="margin-top:9px;color:#718196"></div></div></article>
 <aside class="card pad"><div class="eyebrow">02 · Who decides</div><div style="font-size:21px;font-weight:850;margin:7px 0 2px" id="authoritySource">tenet-kernel</div><div class="note" id="authorityNote" style="color:var(--muted);font-size:11px">The kernel decides, before execution. The model proposes and holds no authority (llm_authority: false).</div><div class="mono" id="modeLine" style="margin-top:13px;color:#718196">mode —</div><div class="mono" id="modeNote" style="margin-top:8px;color:#718196;font-size:11px"></div><div class="killmid"><button class="btn red" id="revoke" disabled>Stop agent</button></div></aside></section>
 <div class="resourceStrip" id="resourceStrip"><span class="eyebrow" style="color:#93a5b8">03 · Models &amp; resources</span><span class="sep">·</span><span><b id="calls">—</b> calls</span><span class="sep">·</span><span><b id="tokens">—</b> tokens</span><span class="sep">·</span><span><b id="io">—</b> in/out</span><span class="sep">·</span><span><b id="latency">—</b> ms max</span><span class="mono" id="trace">No DeepSeek trace yet</span><span class="side" id="modelNote">Reasoning is evidence. The TENET kernel remains the authority.</span></div>
@@ -184,7 +202,7 @@ const argsKeysHtml=Array.isArray(ap.args?.keys)?`keys [${ap.args.keys.map(esc).j
 const argsHtml=dash(ap.args)?`<span class="mono">${esc(JSON.stringify(ap.args))}</span>`:"";
 body.innerHTML=
   actRow("What it wants to do",`${esc(t.action?.intent||tool)} <span class="mono">· tool ${esc(tool)}</span>`)+
-  actRow("Data involved",`${esc(ap.class||"action class not recorded")}${argsKeysHtml?` <span class="mono">· ${argsKeysHtml}</span>`:""}${argsHtml?` ${argsHtml}`:""}`)+
+  actRow("Data involved",(dash(ap.class)||argsKeysHtml||argsHtml)?`${esc(ap.class||"action class not recorded")}${argsKeysHtml?` <span class="mono">· ${argsKeysHtml}</span>`:""}${argsHtml?` ${argsHtml}`:""}`:`<span class="unk">No action-class detail was recorded for this decision.</span>`)+
   actRow("Who is acting",esc(t.agent??"—")+(t.agent_role?` <span class="mono">· ${esc(t.agent_role)}</span>`:""))+
   actRow("Who it acts for",dashHtml(t.principal,"principal not recorded")+(t.on_behalf_of?` · on behalf of ${esc(t.on_behalf_of)}`:" · on behalf of not recorded"))+
   actRow("Where the data would go",`${dash(up.endpoint)?esc(up.endpoint):"upstream not contacted — no destination in this record"} <span class="mono">· upstream reached: ${esc(yn(bc))}</span>`)+
@@ -238,5 +256,88 @@ function rateLimited(n){return "Rate limited · retrying in "+n+"s — the kerne
 $("refresh").onclick=refresh;
 $("revoke").onclick=async()=>{if(!selected)return;const e=events.find(x=>x.event_id===selected);if(!e?.agent)return;const token=localStorage.getItem("warrnt_admin")||"";if(!token){$("footer").textContent="Stop agent is protected. Use the authenticated operator console.";return}if(!confirm("Stop "+e.agent+"? This revokes its authority."))return;try{await get("/api/agents/"+encodeURIComponent(e.agent)+"/revoke",{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:"operator"})});await refresh()}catch(err){$("footer").textContent="Revoke failed: "+err.message}};
 $("selfCheck").onclick=async()=>{const b=$("selfCheck");b.disabled=true;$("selfCheckMsg").textContent="Running the paired allow / deny scenario…";try{const r=await fetch("/api/scenario/self-check",{method:"POST"});const data=await r.json().catch(()=>({}));if(!r.ok){$("selfCheckMsg").textContent=data.retry_after_s?rateLimited(data.retry_after_s):(data.error||("HTTP "+r.status));return}llm_authority=data.llm_authority;authority_source=data.authority_source;trace=data.trace||null;renderTrace();renderAuthority();$("authoritySource").textContent=data.authority_source||"tenet-kernel";await refresh();$("selfCheckMsg").textContent="Done — the action card above is the live record."}catch(err){$("selfCheckMsg").textContent="Scenario failed: "+err.message}finally{b.disabled=false}};
+/* ---- 00 · INTENT ENTRY + ACTION CARD + REAL HUMAN CONTROL (ACT-7) -----------------------------
+ * The intent box uses the REAL proposal path (POST /api/ask); the "who acts" selector uses the
+ * REAL POST /api/demo/run; the human control uses the REAL approve/deny routes. Nothing here
+ * invents a lifecycle: every state shown is a verdict the kernel really produced. The model
+ * proposes and holds no authority; the UI is never an authority either.
+ */
+let acTrace=null; /* the trace the ACTION CARD is painted from (ask verdict or demo/run) */
+const TOOL_SENTENCE={"fx.read_rate":"Read today's EUR/USD exchange rate"};
+function toolSentence(tool){return TOOL_SENTENCE[tool]||("Use "+esc(tool||"a tool"))}
+function acRow(label,value){return `<div class="acRow"><div class="acLabel">${esc(label)}</div><div class="acVal">${value}</div></div>`}
+function acHide(){const c=$("actionCard");c.style.display="none";c.innerHTML=""}
+function renderControl(t){const box=$("controlBlock");if(!t||String(t.decision).toLowerCase()!=="human"){box.innerHTML="";box.style.display="none";return}
+  box.style.display="";box.innerHTML=`<div class="pendingLine">The request has NOT been sent yet. This action is waiting for you.</div><div class="controlBtns"><button class="btn" id="approveBtn">Approve</button><button class="btn red" id="denyBtn">Deny</button></div><div class="mono" id="controlMsg" style="margin-top:8px;color:#c9b98a"></div>`;
+  $("approveBtn").onclick=()=>resolve("approve");$("denyBtn").onclick=()=>resolve("deny")}
+function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();return}
+  const up=t.upstream||{},dec=String(t.decision||"").toLowerCase(),contacted=up.contacted;
+  const consequence=dec==="allow"&&contacted===true?`Data leaves TENET: the request was sent upstream.${up.value?` The far side answered ${esc(jsonSafe(up.value))}.`:""}`
+    :dec==="deny"?`Nothing left TENET. The upstream was not contacted.`
+    :dec==="human"?`Nothing has been sent yet. This action is waiting for you.`
+    :`Not proven in the record.`;
+  const happened=t.executed===true?`Yes — it ran.${up.value?` Real value: ${esc(jsonSafe(up.value))}.`:""}`
+    :t.executed===false?`No — it did not run.`:`Not recorded.`;
+  c.style.display="";
+  c.innerHTML=`<h3>Action under control</h3>`+
+    acRow("What your AI wants to do",`${esc(toolSentence(t.action&&t.action.tool))} <span class="mono">· tool ${esc((t.action&&t.action.tool)||"—")}</span>`)+
+    acRow("Who is asking",esc(t.agent??"—"))+
+    acRow("What it reaches",`<span class="mono">${esc((t.action&&t.action.tool)||"—")}</span> · ${esc((t.action&&t.action.class)||"no class recorded")}`)+
+    acRow("Why TENET decided this",esc(t.reason??"reason not recorded"))+
+    acRow("What happens outside TENET",`<b>${esc(consequence)}</b>`)+
+    acRow("What actually happened",esc(happened))+
+    acRow("Proof",`receipt ${esc(t.receipt_id??"not present")} · action ${esc(t.action_id??"not recorded")}`)+
+    `<details class="tech"><summary>Technical details</summary><div class="techBody">`+
+      techRow("Trace id",esc(t.trace_id??"not recorded"))+
+      techRow("Decision",esc(String(t.decision??"recorded").toUpperCase()))+
+      techRow("Action class",esc((t.action&&t.action.class)??"not recorded"))+
+      techRow("Raw arguments",(t.action&&t.action.args)?`<span class="mono">${esc(jsonSafe(t.action.args))}</span>`:"<span class='unk'>not recorded</span>")+
+      techRow("Upstream contact",`${esc(up.endpoint||"endpoint not recorded")} · reached ${esc(yn(contacted))}`)+
+      techRow("Response sha256",esc(up.response_sha256??"not recorded"))+
+      techRow("Latency",up.latency_ms!=null?esc(String(up.latency_ms))+" ms":"not recorded")+
+    `</div></details>`;
+  renderControl(t)}
+function verdictTrace(v,agent,tool){/* map the propose_action / demo.run verdict into the card shape */
+  const dec=(v.decision||"").toLowerCase(),contacted=v.upstream_contacted===true,ex=v.execution_result;
+  return {agent:agent||v.agent,action:{tool:tool||v.tool||v.resource,class:v.action_class||null,args:v.args||null,intent:v.intent},
+    decision:dec,reason:v.reason,receipt_id:v.receipt||v.receipt_id||null,action_id:v.action_id||null,
+    executed:v.executed===true||(dec==="allow"&&contacted),trace_id:v.trace_id||null,
+    upstream:{contacted:contacted,http_status:ex?ex.http_status:null,endpoint:ex?ex.endpoint:null,
+      value:ex?ex.value:null,response_sha256:ex?ex.response_sha256:null,latency_ms:ex?ex.latency_ms:null}}}
+function findVerdict(evidence){if(!Array.isArray(evidence))return null;
+  for(const ev of evidence){if(ev&&ev.source==="propose_action"){try{return JSON.parse(ev.value)}catch(e){return null}}}return null}
+$("intentGo").onclick=async()=>{const q=($("intentInput").value||"").trim();if(!q){$("proposalText").textContent="Type what your AI should do first.";return}
+  $("proposalText").textContent="Asking the model to propose… (the kernel will decide)";acHide();renderControl(null);
+  try{const r=await fetch("/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q:q})});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok){$("proposalText").textContent=(data.error||("The proposal path answered HTTP "+r.status))+" — nothing was authorized.";return}
+    const answer=data.answer||"",v=findVerdict(data.evidence);
+    $("proposalText").textContent="PROPOSAL (the model proposes, it holds no authority — llm_authority: "+String(data.llm_authority===true)+"). "+(answer||"No answer text returned.");
+    if(v){renderActionCard(verdictTrace(v,v.agent,v.tool))}
+    else{$("proposalText").textContent+=" No decision was produced for this intent — the surface will not invent one.";acHide();renderControl(null)}
+  }catch(err){$("proposalText").textContent="The proposal path failed: "+err.message+" — nothing was authorized."}}
+$("whoGo").onclick=async()=>{const agent=$("whoActs").value;$("proposalText").textContent="Asking the kernel to decide for "+agent+" …";acHide();renderControl(null);
+  /* On the real control plane /api/demo/run is guarded by the operator token (app.py:691,
+     _require_admin) and needs a live upstream configured; the agent token is read server-side, so
+     the page sends the operator token when it has one and never fabricates a verdict otherwise. */
+  const token=localStorage.getItem("warrnt_admin")||"";
+  try{const headers={"content-type":"application/json"};if(token){headers["x-warrnt-admin"]=token}
+    const r=await fetch("/api/demo/run",{method:"POST",headers:headers,body:JSON.stringify({agent:agent})});
+    const data=await r.json().catch(()=>({}));
+    if(r.status===401){$("proposalText").textContent="This path needs the authenticated operator console"+(token?" (the stored operator token was rejected)":"")+" — no attempt was made, and nothing was authorized.";return}
+    if(!r.ok){$("proposalText").textContent=(data.error||("The demo path answered HTTP "+r.status))+" — nothing was authorized.";return}
+    $("proposalText").textContent="The kernel decided "+String(data.decision||"recorded").toUpperCase()+" for "+agent+" on "+String(data.tool||"the resource")+".";
+    renderActionCard(verdictTrace(data,agent,data.tool))}catch(err){$("proposalText").textContent="The decision path failed: "+err.message}}
+async function resolve(verb){const t=acTrace;if(!t||!t.action_id)return;const token=localStorage.getItem("warrnt_admin")||"";
+  if(!token){$("controlMsg").textContent="This action is protected. Approve and Deny need the authenticated operator console (no operator token is present).";return}
+  $("controlMsg").textContent="Submitting "+verb+" …";
+  try{const r=await fetch("/api/actions/"+encodeURIComponent(t.action_id)+"/"+verb,{method:"POST",headers:{"content-type":"application/json","x-warrnt-admin":token},body:JSON.stringify({by:"operator"})});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok){$("controlMsg").textContent="The control plane answered HTTP "+r.status+(data.error?": "+data.error:"")+" — nothing changed.";return}
+    const rr=await fetch("/api/actions/"+encodeURIComponent(t.action_id));const rd=await rr.json().catch(()=>({}));
+    if(rr.ok&&rd.trace){renderActionCard(rd.trace);$("controlMsg").textContent="Resolved by "+(data.resolved_by||"operator")+". This is the action's re-read state."}
+    else{$("controlMsg").textContent="Resolved, but the re-read returned HTTP "+rr.status+" — the resulting state is not shown."}
+  }catch(err){$("controlMsg").textContent="The "+verb+" attempt failed: "+err.message}}
+
 refresh();setInterval(refresh,2000);
 </script></body></html>

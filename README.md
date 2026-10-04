@@ -229,6 +229,17 @@ The internal Python namespace remains `warrnt` where compatibility with the cano
   upstream's own `sent` counter on both sides of each call. Executed result: allow `sent` +1 with
   a real `https://api.frankfurter.dev/v1/latest?...` crossing (`value 1.1225`), deny `sent` +0 with
   `upstream.contacted: false`.
+- the Control Room's end-user journey, a real first-step entry point: an **intent box**
+  ("What should your AI do?") posts the real proposal path `POST /api/ask` and renders the model's
+  answer as a **proposal that is never a permission** (the kernel's own verdict, when present, is
+  shown as the action card; when it is absent, no decision is invented). A separate, visible
+  **"Who should act?"** selector drives the real `POST /api/demo/run` for the same resource
+  (`fx.read_rate`) so `fx-trader` → ALLOW, `support-copilot` → DENY and `fx-auditor` → HOLD are the
+  three real verdicts, not three mock-ups. A HOLD shows the real **human control** — "The request
+  has NOT been sent yet." with Approve / Deny that POST the real `/api/actions/{id}/approve|deny`
+  route behind the operator token and then **re-read** the action to show the state the kernel
+  actually reached; with no token the control says plainly that it is protected instead of
+  pretending to work. The page never fabricates a receipt, an action id or a crossing.
 
 ## Deliberately not claimed
 
