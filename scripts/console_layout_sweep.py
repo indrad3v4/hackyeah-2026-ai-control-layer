@@ -31,24 +31,84 @@ DEFAULT_SIZES = ["400x600", "768x1024", "1024x768", "1150x700", "1262x568", "136
 FIELDS = ("ok", "mode", "overlaps", "revokeOverTarget", "cut", "squeezed")
 
 
+def wait_for_page(page, timeout_ms: int = 9000) -> None:
+    """Wait for whatever this console publishes as its verdict - and carry on if it publishes
+    none. The measurement below does not depend on the page's cooperation."""
+    page.wait_for_load_state("load")
+    try:
+        page.wait_for_function(
+            """() => Boolean(
+                   window.__TENET_QA__ ||
+                   document.querySelector('#qa-report[data-ok]') ||
+                   (document.body && document.body.dataset && document.body.dataset.ok !== undefined)
+               )""", timeout=timeout_ms)
+    except Exception:                              # noqa: BLE001 - a silent page is measured anyway
+        page.wait_for_timeout(1500)
+
+
+MEASURE = """() => {
+  const flow = [...document.body.children].filter(e => {
+    const s = getComputedStyle(e);
+    return s.position !== 'fixed' && s.display !== 'none' &&
+           e.tagName !== 'SCRIPT' && e.id !== 'qa-report';
+  });
+  const rects = flow.map(e => e.getBoundingClientRect());
+  const overlaps = [];
+  for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+    const A = rects[i], B = rects[j];
+    if (Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top) > 4 &&
+        Math.min(A.right, B.right) - Math.max(A.left, B.left) > 4)
+      overlaps.push(flow[i].tagName.toLowerCase() + '/' + flow[j].tagName.toLowerCase());
+  }
+  const rv = document.getElementById('revoke'), tg = document.getElementById('target');
+  let revokeOverTarget = false;
+  if (rv && tg) {
+    const a = rv.getBoundingClientRect(), c = tg.getBoundingClientRect();
+    revokeOverTarget = a.top < c.bottom && a.bottom > c.top && a.left < c.right && a.right > c.left;
+  }
+  const cut = [...document.querySelectorAll('.tile,.taxo,footer,main,section')].filter(el => {
+    const s = getComputedStyle(el);
+    return (s.overflow === 'hidden' || s.overflowY === 'hidden') &&
+           (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2);
+  }).map(el => el.tagName.toLowerCase() + '.' + (el.className || ''));
+  const squeezed = [...document.querySelectorAll('footer *,.holds *,.taxo .cell *')].filter(e => {
+    const r = e.getBoundingClientRect();
+    return r.width > 0 && r.height > 26 && r.height / Math.max(1, r.width) > 1.6 && e.children.length < 3;
+  }).length;
+  const de = document.documentElement;
+  /* The page's own claim, in the three shapes consoles in this repo publish it. */
+  const qa = window.__TENET_QA__ || null;
+  const report = {viewport: innerWidth + 'x' + innerHeight,
+                  mode: (qa && qa.layout) || (getComputedStyle(document.body).display),
+                  overlaps: overlaps.length, overlap_list: overlaps,
+                  revokeOverTarget: revokeOverTarget, cut: cut.length, cut_list: cut,
+                  squeezed: squeezed,
+                  page_claim: qa && typeof qa.ok === 'boolean' ? qa.ok
+                              : (document.body.dataset.ok !== undefined
+                                 ? document.body.dataset.ok === 'true' : null),
+                  scrolls: de.scrollHeight > de.clientHeight + 2,
+                  scrollH: de.scrollHeight, innerH: innerHeight};
+  /* An overlap or unreadable content fails HERE, whoever the page says is fine. */
+  report.ok = report.overlaps === 0 && !report.revokeOverTarget &&
+              report.cut === 0 && report.squeezed === 0;
+  return report;
+}"""
+
+
 def load_page(page, url: str, width: int, height: int) -> dict:
     page.set_viewport_size({"width": width, "height": height})
     page.goto(url, wait_until="load")
-    page.wait_for_selector("#qa-report", timeout=8000)
-    report = page.eval_on_selector("#qa-report", """el => {
-        const out = {};
-        for (const k of ['ok','mode','overlaps','revokeOverTarget','cut','squeezed'])
-            out[k] = el.dataset[k];
-        out.text = el.textContent;
-        out.publishes_verdict = el.dataset.ok !== undefined;
-        return out;
-    }""")
+    wait_for_page(page)
+    report = page.evaluate(MEASURE)
     report["viewport"] = f"{width}x{height}"
-    report["ok"] = str(report.get("ok")).lower() == "true"
-    if not report.get("publishes_verdict"):
-        report["text"] = ("the page renders a #qa-report but publishes no verdict on it - the QA "
-                          "hook has no data-ok/dataset fields. A page that cannot be judged "
-                          "fails, it does not pass: " + str(report.get("text"))[:160])
+    report["ok"] = bool(report.get("ok"))
+    # A page that claims to be fine while the geometry says otherwise is the worst outcome, not a
+    # detail: the claim is what a reviewer reads in the browser.
+    if report.get("page_claim") is True and not report["ok"]:
+        report["contradiction"] = True
+        report["text"] = (f"the page reports ok=true while the measurement finds "
+                          f"{report['overlaps']} overlap(s) {report['overlap_list'][:3]}, "
+                          f"{report['cut']} unreadable region(s) {report['cut_list'][:2]}")
     return report
 
 
@@ -98,9 +158,10 @@ def main(argv: list[str] | None = None) -> int:
     width = max(len(r["viewport"]) for r in rows)
     for row in rows:
         verdict = "OK " if row.get("ok") else "BAD"
-        detail = (f"mode={row.get('mode')} overlaps={row.get('overlaps')} "
+        claim = {True: "page says ok", False: "page says NOT ok", None: "page publishes none"}
+        detail = (f"layout={str(row.get('mode'))[:22]:22s} overlaps={row.get('overlaps')} "
                   f"revokeOverTarget={row.get('revokeOverTarget')} unreachable={row.get('cut')} "
-                  f"squeezed={row.get('squeezed')}")
+                  f"squeezed={row.get('squeezed')}  [{claim.get(row.get('page_claim'))}]")
         print(f"{verdict}  {row['viewport'].ljust(width)}  {detail}")
         if not row.get("ok"):
             print(f"       {str(row.get('text'))[:220]}")
