@@ -191,6 +191,13 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             return HTMLResponse("<h1>TENET</h1><p>Control Room page missing</p>", status_code=500)
         return HTMLResponse(INDEX_HTML.read_text(encoding="utf-8"))
 
+    @app.get("/onboarding", response_class=HTMLResponse, include_in_schema=False)
+    def onboarding() -> HTMLResponse:
+        """The voice-guided walkthrough: the guide moves with the operator through the flow."""
+        if not ONBOARDING_HTML.exists():
+            return HTMLResponse("<h1>TENET</h1><p>Guided walkthrough page missing</p>", status_code=500)
+        return HTMLResponse(ONBOARDING_HTML.read_text(encoding="utf-8"))
+
     @app.get("/health")
     def health() -> dict[str, Any]:
         k = app.state.kernel
@@ -986,3 +993,4 @@ app = create_app(seed=True)
 
 
 INDEX_HTML = REPO_ROOT / "index.html"
+ONBOARDING_HTML = REPO_ROOT / "onboarding.html"

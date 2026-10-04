@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TENET · guided walkthrough</title>
+<style>
+:root{--bg:#080d15;--card:#0c1522;--line:#1d2b3d;--ink:#e8eef6;--mut:#8ea0b4;--acc:#7fd4c1;--warn:#ffd27a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:880px;margin:0 auto;padding:26px 18px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+.mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(145deg,#14324a,#0d2033);display:grid;place-items:center;font-weight:800;color:var(--acc)}
+.brand{display:flex;gap:11px;align-items:center}.brand h1{font-size:16px;margin:0}
+.sub{color:var(--mut);font-size:12px}
+.card{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:18px;margin:14px 0}
+.eyebrow{color:var(--acc);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+h2{margin:8px 0 6px;font-size:20px}
+.lead{color:var(--mut);margin:0 0 12px}
+.dots{display:flex;gap:7px;margin:0 0 14px}
+.dot{width:26px;height:4px;border-radius:3px;background:#1b2a3c}.dot.on{background:var(--acc)}
+.row{display:flex;gap:9px;flex-wrap:wrap}
+input[type=text]{flex:1;min-width:220px;background:#0a1220;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 12px;font-size:14px}
+button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#132133;color:var(--ink);padding:10px 14px;font-size:13px}
+button.primary{background:linear-gradient(145deg,#1c6f5e,#14584a);border-color:#1c6f5e;font-weight:650}
+button.mic{background:#20182a;border-color:#3a2c4a}
+button:disabled{opacity:.45;cursor:default}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.said{border-left:2px solid var(--acc);padding:8px 12px;margin:10px 0;color:#cfe9e1}
+.heard{border-left:2px solid #6f7fd4;padding:8px 12px;margin:10px 0;color:#cfd6f5}
+.out{white-space:pre-wrap;background:#0a1220;border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px}
+.ev{margin-top:10px;color:var(--mut);font-size:12px}
+.note{color:#718196;font-size:11.5px;margin-top:12px}
+.modeRow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:11.5px;color:var(--mut)}
+.ok{color:var(--acc)}.bad{color:#ff9b9b}.wait{color:var(--warn)}
+</style></head><body><div class="wrap">
+<header>
+  <div class="brand"><div class="mark">T</div><div><h1>TENET · guided walkthrough</h1>
+  <div class="sub">One action, from your words to a receipt — with a voice that walks you through it.</div></div></div>
+  <div class="modeRow"><span class="chip" id="voiceChip">voice —</span><button id="voiceToggle">Voice on</button></div>
+</header>
+
+<section class="card">
+  <div class="eyebrow">Your guide</div>
+  <div class="dots" id="dots"></div>
+  <h2 id="title">—</h2>
+  <p class="lead" id="lead">—</p>
+  <div class="said" id="said">—</div>
+
+  <div class="row" id="inputRow" style="display:none">
+    <input id="intent" type="text" placeholder="check today's EUR/USD rate for me" autocomplete="off">
+    <button class="mic" id="mic">🎙 Speak</button>
+    <button class="primary" id="go">Walk with me</button>
+  </div>
+  <div class="heard" id="heard" style="display:none"></div>
+
+  <div id="result" style="display:none"></div>
+
+  <div class="row" style="margin-top:14px">
+    <button id="back">← Back</button>
+    <button id="next">Next →</button>
+    <button id="replay">🔈 Replay voice</button>
+  </div>
+  <div class="note" id="note"></div>
+</section>
+
+<footer class="sub">Voice here is your browser's own on-device voice (free). A studio voice (ElevenLabs) is a paid upgrade — ask before spending.</footer>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const B=location.origin;
+let step=0, intent="", heard="", voiceOn=true, rec=null, willing=false;
+
+const STEPS=[
+ {t:"Your AI can already act — so can it do it behind your back?",
+  l:"I am TENET's guide. I will walk you through one real action, end to end, and show you where you stay in control.",
+  s:"Hi. I am TENET's guide. Together we will walk one real action, from your words to a signed receipt. I will say what happens at every step, and you can stop me at any point. Tell me what you want your AI to do — type it, or press the microphone and say it."},
+ {t:"Say what you want — in your own words",
+  l:"Ask like you would ask a colleague. Your AI turns it into one concrete tool call; TENET decides before anything runs.",
+  s:"Say it the way you would say it to a colleague. For example: check today's EUR USD rate for me. Once you send it, your AI proposes exactly one tool call, and TENET decides before anything runs."},
+ {t:"Your AI proposes — TENET decides",
+  l:"Not your AI's call. Not the model's. The kernel answers one of three things: allowed, not allowed, or waiting for you.",
+  s:"Now the important part. Your AI does not act on its own. It asks: may I make this call, with this scope, right now. The kernel answers allowed, not allowed, or waiting for a person. The answer you see is a proposal. The kernel's answer is the one that counts."},
+ {t:"What actually happened",
+  l:"If it was allowed, the call really went out — and you get the receipt that proves it.",
+  s:"Here is what really happened — taken from the kernel's own record, not from the model's words."},
+ {t:"You stayed in control",
+  l:"Your words → one tool call → a verdict before execution → a receipt. That chain is the product.",
+  s:"And that is the whole chain: your words, one tool call, a verdict before anything runs, and a receipt you can hand to an auditor. You stayed in control the entire way."}
+];
+
+function pickVoice(){
+  const vs=speechSynthesis.getVoices();
+  if(!vs.length) return null;
+  const pref=["Samantha","Ava","Serena","Zira","Google US English","Victoria","Karen","Moira","female"];
+  for(const p of pref){const v=vs.find(x=>x.name.toLowerCase().includes(p.toLowerCase())); if(v) return v;}
+  return vs.find(v=>/en/i.test(v.lang))||vs[0];
+}
+function speak(txt){
+  if(!voiceOn||!("speechSynthesis" in window)) return;
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);const v=pickVoice();
+    if(v)u.voice=v; u.rate=1.02; u.pitch=1.06; speechSynthesis.speak(u);}catch(e){}
+}
+function dots(){ $("dots").innerHTML=STEPS.map((_,i)=>`<span class="dot${i<=step?" on":""}"></span>`).join(""); }
+function render(){
+  const s=STEPS[step]; dots();
+  $("title").textContent=s.t; $("lead").textContent=s.l; $("said").textContent=s.s;
+  $("inputRow").style.display = step===1 ? "flex":"none";
+  $("back").disabled = step===0; $("next").disabled = step===STEPS.length-1;
+  $("next").textContent = step===2 ? "Let it run →" : "Next →";
+  speak(s.s);
+  if(step===3) runAsk();
+}
+async function runAsk(){
+  const box=$("result"); box.style.display="block";
+  box.innerHTML='<div class="out mono">asking the kernel…</div>';
+  try{
+    const r=await fetch(B+"/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q:intent||"check today's EUR/USD rate for me"})});
+    const d=await r.json();
+    box.innerHTML='<div class="out">'+(d.answer||"(no answer)")+'</div>'+
+      '<div class="ev mono">payload · action_id '+(d.action_id||"—")+' · run '+(d.run_id||"—")+(d.demo?" · DEMO":"")+'</div>';
+    speak("It was allowed. The call really went out, and the receipt proves it. You can read the answer and the receipt on screen.");
+    fetch(B+"/api/actions").then(x=>x.json()).then(a=>{
+      const rows=Array.isArray(a)?a:(a.actions||[]); if(!rows.length) return;
+      const n=rows[rows.length-1];
+      box.innerHTML+='<div class="ev mono">record · '+(n.action_id)+' · '+(n.agent||"—")+' → '+(n.tool||"—")+' · decision '+(n.decision||"—")+' · receipt '+(n.receipt||"—")+' · state '+(n.state||"—")+'</div>';
+    }).catch(()=>{});
+  }catch(e){ box.innerHTML='<div class="out bad">The control plane did not answer. Nothing was executed.</div>'; }
+}
+$("go").onclick=()=>{ intent=$("intent").value.trim(); if(!intent){ $("intent").focus(); return; } step=2; render(); };
+$("next").onclick=()=>{ if(step<STEPS.length-1){ step++; render(); } };
+$("back").onclick=()=>{ if(step>0){ step--; render(); } };
+$("replay").onclick=()=>speak(STEPS[step].s);
+$("voiceToggle").onclick=()=>{ voiceOn=!voiceOn; speechSynthesis.cancel(); $("voiceToggle").textContent=voiceOn?"Voice on":"Voice off"; chip(); };
+function chip(){ const v=pickVoice(); $("voiceChip").textContent="voice — "+(v?v.name+(voiceOn?"":" (muted)"):"unavailable"); }
+$("mic").onclick=()=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  $("heard").style.display="block";
+  if(!SR){ $("heard").textContent="This browser cannot transcribe speech. Type it instead — the walkthrough is the same."; return; }
+  if(rec){ try{rec.stop();}catch(e){} rec=null; $("mic").textContent="🎙 Speak"; return; }
+  rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=false;
+  rec.onresult=ev=>{ let t=""; for(let i=0;i<ev.results.length;i++) t+=ev.results[i][0].transcript;
+    heard=t; $("heard").textContent="I heard: "+t; $("intent").value=t; };
+  rec.onend=()=>{ rec=null; $("mic").textContent="🎙 Speak"; };
+  rec.onerror=()=>{ $("heard").textContent="The microphone was blocked. Type the intent — the walkthrough is the same."; };
+  $("mic").textContent="⏹ Stop"; rec.start();
+};
+if("speechSynthesis" in window){ speechSynthesis.onvoiceschanged=chip; }
+$("note").textContent="Every step calls the live control plane at "+B+" — the answer and the receipt below are real records, not a script.";
+chip(); render();
+</script></body></html>
