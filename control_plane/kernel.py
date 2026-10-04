@@ -719,12 +719,24 @@ class Kernel:
         decision = action.get("decision") or None
         reason = action.get("reason") or None
 
+        # ---- who decided: a person-resolved hold keeps the name it was decided by; where the
+        # kernel alone decided (allow/deny/redact/revoked with no hold) the kernel names itself.
+        # The row's own ``decided_by`` carries the real resolver - the approve/deny path records
+        # the person there - so a human decision must never be re-attributed to the kernel, and
+        # the kernel must never borrow a person's name it did not receive. No name is invented:
+        # an empty resolver on a human-resolved row is the empty string ruled out below.
+        resolver = str(action.get("decided_by") or "").strip()
+        decided_by = resolver if (resolver and decision == "human") else "tenet-kernel"
+
         # ---- boundary crossing: honest rule (AC2). "contacted" is TRUE only when the action
         # carries an execution result with an http_status - a decision of "allow" alone proves
-        # nothing, and a deny with no attempt yields contacted:false and no http_status.
+        # nothing, and a deny with no attempt yields contacted:false and no http_status. The
+        # EXECUTION RESULT is what proves contact, never the decision label: a person-resolved
+        # hold carries decision == "human" (or the release stays "human" after the call), and
+        # the far side still recorded a real status - so the label must not gate the evidence.
         crossing = action.get("execution_result") or {}
         http_status = crossing.get("http_status")
-        contact_proven = bool(http_status) and decision in ("allow", "redact")
+        contact_proven = bool(http_status)
         upstream_obj = {
             "contacted": contact_proven,
             "http_status": http_status if contact_proven else None,
@@ -774,7 +786,7 @@ class Kernel:
             },
             "decision": decision,
             "reason": reason,
-            "decided_by": "tenet-kernel",
+            "decided_by": decided_by,
             "upstream": upstream_obj,
             "receipt_id": receipt_id,
             "model": model_block,

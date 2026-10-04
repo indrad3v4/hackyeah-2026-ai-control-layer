@@ -429,3 +429,119 @@ def test_ac6_demo_run_still_requires_the_operator_token(client):
     assert client.post("/api/demo/run",
                        headers={"x-warrnt-admin": "wrong"}).status_code == 401
 
+
+# ------------------------------------------------------------------- ACT-7d (composer honesty)
+# The composer must prove a crossing from the EXECUTION RESULT (a real ``http_status`` on the
+# row), never from the decision label, and must name the real resolver of a human hold instead
+# of a hardcoded ``tenet-kernel``. These four drive the real hold / approve / deny path against
+# the repository's own kernel, so the resolver and the state are the ones a real decision wrote.
+def _admin_headers() -> dict[str, str]:
+    return {"x-warrnt-admin": "test-admin-token"}
+
+
+def _hold(client, rows: int = 500) -> str:
+    """Open a real hold: ``report-bot`` exporting the CRM needs a person (decision: human)."""
+    token = _agent_tokens(client)["report-bot"]
+    r = _mcp(client, "report-bot", token, "crm.bulk_export", {"table": "customers", "rows": rows})
+    assert r.status_code == 200
+    return r.json()["error"]["data"]["action_id"]
+
+
+# The crossing facts the far side (Frankfurter) records for one real 200 - the exact fields a
+# live execution files onto the row. Injected through the kernel's own store so the composer is
+# fed what the execution recorded, without a network dependency the test cannot carry.
+_REAL_CROSSING = {
+    "endpoint": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD",
+    "http_status": 200,
+    "value": 1.1225,
+    "response_sha256": "f63f64a5e9b3584bd32e0ea70927ea574bea7ef36df1a28fefb4ed6410400297",
+    "latency_ms": 22.78,
+    "rows": 500,
+    "outcome": "ok",
+}
+
+
+def _file_crossing(client, action_id: str, crossing: dict) -> None:
+    """File the execution result onto the row, exactly as the crossing recorder does on a call."""
+    kernel = client.app.state.kernel
+    action = kernel.proxy.actions.get(action_id)
+    action.execution_result = dict(crossing)
+    kernel.proxy.actions.save(action)
+
+
+def test_act7d_human_approved_crossing_is_proven_and_names_the_person(client):
+    """A person-approved execution that really crossed is reported as a crossing, by name.
+
+    The row carries ``decision == "human"`` (a person resolved the hold) AND an execution result
+    with a real ``http_status``. The decision label must not mask that evidence, and the person
+    who decided must be named in ``decided_by`` - never the kernel.
+    """
+    action_id = _hold(client)
+    ap = client.post(f"/api/actions/{action_id}/approve", json={"by": "indradev_"},
+                     headers=_admin_headers())
+    assert ap.status_code == 200 and ap.json()["executed"] is True
+    _file_crossing(client, action_id, _REAL_CROSSING)
+
+    trace = client.get(f"/api/live-trace?action_id={action_id}").json()["trace"]
+    assert trace["decision"] == "human", "a human-resolved hold must keep the human decision"
+    # D2: the person who decided is named; the kernel is NOT substituted for them.
+    assert trace["decided_by"] == "indradev_", (
+        "the composer erased the human who decided and named the kernel instead: %r"
+        % trace["decided_by"])
+    # D1: contact is proven from the execution result, whatever the decision label.
+    up = trace["upstream"]
+    assert up["contacted"] is True, "a real crossing was reported as no crossing at all"
+    assert up["http_status"] == _REAL_CROSSING["http_status"]
+    assert up["endpoint"] == _REAL_CROSSING["endpoint"]
+    assert up["value"] == _REAL_CROSSING["value"]
+    assert up["response_sha256"] == _REAL_CROSSING["response_sha256"]
+    assert up["latency_ms"] == _REAL_CROSSING["latency_ms"]
+
+
+def test_act7d_human_denied_hold_reports_no_crossing(client):
+    """A person-denied hold never crossed: ``contacted`` false, no status, nothing invented."""
+    action_id = _hold(client, rows=700)
+    dn = client.post(f"/api/actions/{action_id}/deny", json={"by": "indradev_"},
+                     headers=_admin_headers())
+    assert dn.status_code == 200 and dn.json()["upstream_contacted"] is False
+
+    trace = client.get(f"/api/live-trace?action_id={action_id}").json()["trace"]
+    assert trace["decision"] == "human"
+    assert trace["upstream"]["contacted"] is False
+    assert trace["upstream"]["http_status"] is None
+    assert trace["upstream"]["endpoint"] is None
+    assert trace["upstream"]["value"] is None
+    assert trace["upstream"]["response_sha256"] is None
+    assert trace["upstream"]["latency_ms"] is None
+    assert trace["decided_by"] == "indradev_", "the person who denied is not named"
+
+
+def test_act7d_allow_without_execution_result_is_named_incomplete(client):
+    """The honesty rule's other half: a permission with no execution result claims no crossing.
+
+    An ``allow`` with no ``http_status`` on the row stays ``contacted: false`` and names
+    ``upstream.http_status`` in ``incomplete`` - a permission is never rounded up to a crossing.
+    """
+    token = _agent_tokens(client)["fx-trader"]
+    assert _mcp(client, "fx-trader", token, "fx.audit_note",
+                {"note": "desk review"}).status_code == 200
+    trace = client.get("/api/live-trace").json()["trace"]
+    if trace["decision"] not in ("allow", "redact"):
+        # The dead upstream may hold this tool; the rule is asserted on the allow branch it names.
+        assert trace["upstream"]["contacted"] is False
+        return
+    assert trace["upstream"]["contacted"] is False, "an allow with no http_status must not cross"
+    assert trace["upstream"]["http_status"] is None
+    assert "upstream.http_status" in trace["incomplete"]
+
+
+def test_act7d_kernel_decided_action_still_names_the_kernel(client):
+    """Where the kernel alone decided, the trace still names the kernel honestly (no borrowing)."""
+    token = _agent_tokens(client)["fin-reconcile"]
+    assert _mcp(client, "fin-reconcile", token, "payments.read",
+                {"table": "payments", "limit": 2}).status_code == 200
+    trace = client.get("/api/live-trace").json()["trace"]
+    assert trace["decision"] in ("allow", "redact")
+    assert trace["decided_by"] == "tenet-kernel", (
+        "a kernel-decided action must keep the kernel's own attribution: %r" % trace["decided_by"])
+
