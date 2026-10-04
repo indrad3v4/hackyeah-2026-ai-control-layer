@@ -46,6 +46,7 @@
 
   function $(id) { return typeof document !== "undefined" ? document.getElementById(id) : null; }
   function label() {
+    if (!soundOn) return "muted";
     return lastOrigin === "locked-clip" ? "TENET · studio voice"
       : lastOrigin === "device" ? "device voice — no studio clip for this line"
       : lastOrigin === "muted" ? "muted" : "silent";
