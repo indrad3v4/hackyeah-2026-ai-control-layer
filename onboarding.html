@@ -138,7 +138,7 @@ button:disabled{opacity:.45;cursor:default}
   <div class="note" id="note"></div>
 </section>
 
-<footer class="sub">TENET speaks with your device's own voice — free, on-device, and the same character direction as the film: slower, lower, calm. A studio voice is a paid upgrade and is not wired until someone approves the spend.</footer>
+<footer class="sub">TENET speaks with her own locked studio voice — one clip per beat, the same character direction as the film (Grok Ara), approved by the producer. If your browser blocks playback, the device voice takes over as the fallback: slower, lower, calm.</footer>
 </div>
 
 <div class="gate" id="gate">
@@ -192,9 +192,31 @@ function pickVoice(){
   for(const p of pref){const v=vs.find(x=>x.name.toLowerCase().includes(p.toLowerCase())); if(v) return v;}
   return vs.find(v=>/^en/i.test(v.lang))||vs[0];
 }
+let voiceAudio=null, pendingLine="", greeting=false;
+const CLIPS={gate:"/audio/gate.mp3",SAY:"/audio/say.mp3",SEE:"/audio/see.mp3",UNDERSTAND:"/audio/understand.mp3",DECIDE:"/audio/decide.mp3",WITNESS:"/audio/witness.mp3",PROVE:"/audio/prove.mp3",WIN:"/audio/win.mp3"};
+function clipFor(){ const b=BEATS[step]; return (b&&CLIPS[b.k])||null; }
+function stopVoice(){ if(voiceAudio){ try{voiceAudio.pause();}catch(e){} voiceAudio=null; } }
 function speak(txt){
   charState("speak");
-  if(!soundOn||!("speechSynthesis" in window)){ setTimeout(()=>charState(currentStateName()),900); return; }
+  if(!soundOn){ setTimeout(()=>charState(currentStateName()),900); return; }
+  // TENET's own locked voice first: one studio clip per beat, the same character as the film.
+  if(greeting){ pendingLine=txt; return; }
+  const clip=clipFor();
+  if(clip){
+    try{
+      stopVoice();
+      const a=new Audio(clip); voiceAudio=a;
+      a.onended=()=>{ voiceAudio=null; charState(currentStateName()); };
+      a.onerror=()=>{ voiceAudio=null; speakDevice(txt); };
+      const pr=a.play(); if(pr&&pr.catch) pr.catch(()=>{ voiceAudio=null; speakDevice(txt); });
+      return;
+    }catch(e){ voiceAudio=null; }
+  }
+  speakDevice(txt);
+}
+function speakDevice(txt){
+  // Fallback only: the device's own voice, the same character direction (slower, lower).
+  if(!("speechSynthesis" in window)){ setTimeout(()=>charState(currentStateName()),900); return; }
   const v0=pickVoice();
   if(!v0){ setTimeout(()=>charState(currentStateName()),1400); return; }
   try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(txt); u.voice=v0; u.rate=0.94; u.pitch=0.85;
@@ -202,7 +224,7 @@ function speak(txt){
   }catch(e){ charState(currentStateName()); }
 }
 function soundChip(){ const v=pickVoice();
-  $("voiceChip").textContent="sound — "+(v? (soundOn? v.name : "muted") : "unavailable on this device");
+  $("voiceChip").textContent="sound — "+(soundOn? (clipFor()? "TENET · studio voice" : (v? v.name+" (device fallback)" : "unavailable on this device")) : "muted");
   const n=$("voiceName"); if(n) n.textContent = v? v.name : ""; }
 // The character's own lines, keyed to the REAL journey state — never a script read aloud.
 // (Verbatim from the film, so the person who watched it recognises the same TENET.)
@@ -366,7 +388,7 @@ $("go").onclick=()=>{ intent=$("intent").value.trim(); if(!intent){ $("intent").
 $("next").onclick=()=>{ if(step<BEATS.length-1){ step++; render(); } };
 $("back").onclick=()=>{ if(step>0){ step--; render(); } };
 $("replay").onclick=()=>speak(spoken());
-$("soundToggle").onclick=()=>{ soundOn=!soundOn; if(!soundOn&&("speechSynthesis" in window)) speechSynthesis.cancel(); soundChip(); };
+$("soundToggle").onclick=()=>{ soundOn=!soundOn; if(!soundOn){ stopVoice(); if("speechSynthesis" in window) speechSynthesis.cancel(); } soundChip(); };
 $("mic").onclick=()=>{
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition; const h=$("heard"); h.style.display="block";
   if(!SR){ h.textContent="This browser cannot transcribe speech. Type it instead — the journey is the same."; return; }
@@ -378,7 +400,7 @@ $("mic").onclick=()=>{
   rec.onerror=()=>{ h.textContent="The microphone was blocked. Type the intent — the journey is the same."; charState("idle"); };
   $("mic").textContent="⏹ Stop"; rec.start();
 };
-$("startSound").onclick=()=>{ soundOn=true; $("gate").style.display="none"; render(); };
+$("startSound").onclick=()=>{ soundOn=true; $("gate").style.display="none"; greeting=true; stopVoice(); const a=new Audio(CLIPS.gate); voiceAudio=a; charState("speak"); a.onended=()=>{ voiceAudio=null; greeting=false; charState(currentStateName()); const t=pendingLine; pendingLine=""; if(t) speak(t); }; a.onerror=()=>{ voiceAudio=null; greeting=false; }; const pr=a.play(); if(pr&&pr.catch) pr.catch(()=>{ voiceAudio=null; greeting=false; }); render(); };
 $("startSilent").onclick=()=>{ soundOn=false; $("gate").style.display="none"; render(); };
 if("speechSynthesis" in window) speechSynthesis.onvoiceschanged=soundChip;
 buildMap(); soundChip(); render();

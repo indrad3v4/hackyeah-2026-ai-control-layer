@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hmac
 import os
+import re
 import secrets
 import time
 from contextlib import asynccontextmanager
@@ -24,7 +25,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import Body, FastAPI, Header, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from . import config
 from .kernel import Kernel, KernelUnavailable, build_kernel, live_upstream_configured
@@ -197,6 +198,17 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         if not ONBOARDING_HTML.exists():
             return HTMLResponse("<h1>TENET</h1><p>Guided walkthrough page missing</p>", status_code=500)
         return HTMLResponse(ONBOARDING_HTML.read_text(encoding="utf-8"))
+
+    @app.get("/audio/{name}", include_in_schema=False)
+    def audio(name: str) -> Any:
+        """TENET's own voice: one locked clip per beat, the same character as the film."""
+        if not re.fullmatch(r"[a-z0-9_-]{1,32}\.mp3", name):
+            return JSONResponse({"detail": "not found"}, status_code=404)
+        path = AUDIO_DIR / name
+        if not path.is_file():
+            return JSONResponse({"detail": "not found"}, status_code=404)
+        return FileResponse(path, media_type="audio/mpeg",
+                            headers={"Cache-Control": "public, max-age=86400"})
 
     @app.get("/health")
     def health() -> dict[str, Any]:
@@ -994,3 +1006,6 @@ app = create_app(seed=True)
 
 INDEX_HTML = REPO_ROOT / "index.html"
 ONBOARDING_HTML = REPO_ROOT / "onboarding.html"
+# TENET's own voice: the locked studio clips (Grok Ara) the walkthrough plays, served as files
+# so the page stays a page and the voice is one download per line.
+AUDIO_DIR = REPO_ROOT / "audio"
