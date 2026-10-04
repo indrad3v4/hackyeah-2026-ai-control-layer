@@ -133,30 +133,32 @@ TENET DECIDES BEFORE ANYTHING MOVES
         │
         ├─────────────── ALLOW ───────────────┐
         │  value EUR/USD 1.1225               │  same resource
-        │  upstream HTTP 200, 22.8 ms         │  same request
+        │  upstream HTTP 200, 19.2 ms         │  same request
         │  sha256 f63f64a5…                   │
-        │  receipt 1fbb161d                   │
+        │  receipt 332d79d2                   │
         ▼                                     ▼
-  upstream called 1 → 2              support-copilot → fx.read_rate
+  the far side answered            support-copilot → fx.read_rate
+  (a real crossing, HTTP 200)
                                              │
                                              ▼
                                      DENY — no entitlement to
                                      market_data.fx.read
-                                     upstream contacted: NO (still 2 calls)
-                                     receipt bfc7eacc
+                                     upstream contacted: NO
+                                     (calls stay 4, boundary attempts 0)
+                                     receipt a0010008
 ```
 
 Selected timeline (the compact frames in the video):
 
 | t | What the video shows | Where it comes from |
 |---|---|---|
-| 0–3.5 s | the user's request, in plain words | the request the demo route carries |
-| 3.5–8 s | `fx-trader` wants `fx.read_rate` | the agent action the kernel intercepted |
-| 8–13.5 s | identity, entitlement, warrant, policy — then the verdict | kernel decision path |
-| 13.5–19 s | **ALLOW**: the real value arrives (1.1225, HTTP 200, 22.8 ms, sha256, receipt `1fbb161d`) | live Frankfurter response, recorded in `evidence.json` |
-| 19–25 s | `support-copilot` asks for the *same* resource | second agent action |
-| 25–31 s | **DENY**: *Frankfurter was NOT contacted* (upstream calls stay at 2), receipt `bfc7eacc` | kernel denial + upstream call journal |
-| 31–40 s | both outcomes side by side, then the closing line | the two records above |
+| 0–6 s | the insight: your monitoring says the agent works; nothing you own can stop it | the problem the product answers |
+| 6–12 s | an agent with production credentials acts before anyone is watching | the premise of the boundary |
+| 12–18.5 s | TENET stands at the boundary and asks one question before execution | the kernel's single decision point |
+| 18.5–26 s | **ALLOW**: the real value arrives (1.1225, HTTP 200, 19.2 ms, sha256, receipt `332d79d2`) | live Frankfurter response, recorded in `docs/tenet-happy-path-evidence.json` |
+| 32–37.5 s | **HOLD → a named human approves**; only then does the call cross (+1 upstream call, HTTP 200) | operator decision + execution record |
+| 26–32 s | **DENY**: *Frankfurter was NOT contacted* (calls stay 4, boundary attempts 0), receipt `a0010008` | kernel denial + the far side's own call journal |
+| 37.5–42 s | **"No warrant, no action."** + this run's receipts, rate and commit | the recorded run |
 
 The property the video is built around:
 
