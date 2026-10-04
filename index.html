@@ -318,11 +318,44 @@ function verdictTrace(v,agent,tool){/* map the propose_action / demo.run verdict
       value:ex?ex.value:null,response_sha256:ex?ex.response_sha256:null,latency_ms:ex?ex.latency_ms:null}}}
 function findVerdict(evidence){if(!Array.isArray(evidence))return null;
   for(const ev of evidence){if(ev&&ev.source==="propose_action"){try{return JSON.parse(ev.value)}catch(e){return null}}}return null}
+/* Failure states for the ask path. The verdict vocabulary ("authorized", "refused", "denied")
+ * exists ONLY where the kernel wrote a record: D5 makes a denial a recordable event, and D11
+ * makes every decision exportable. A transport failure leaves no record, so it must not borrow
+ * that vocabulary. A 405, a 5xx or a dead network is NOT EVALUATED - never "nothing was
+ * authorized". This is the rule the surface already states below: it does not invent a verdict
+ * where the kernel produced none. */
+let askFailureState=null;
+function askFailure(r,data,err){
+  if(err) return {state:"not_evaluated",status:null,allow:null,
+    text:"Not evaluated — the request did not complete ("+(err.message||"network error")+"). No proposal reached the path and no record was written."};
+  const status=r.status, allow=r.headers.get("allow");
+  if(status===405&&allow==="POST")
+    return {state:"not_evaluated",status:status,method:"OPTIONS",allow:allow,
+      text:"Not evaluated — the request never left the browser. This service accepts POST /api/ask only, and the browser's preflight (OPTIONS) was refused. No proposal was submitted and no record was written."};
+  if(status===405||status===404)
+    return {state:"not_evaluated",status:status,allow:allow,
+      text:"Not evaluated — the path did not accept this request (HTTP "+status+"). No proposal was submitted."};
+  if(status===422)
+    return {state:"not_evaluated",status:status,
+      text:"Not evaluated — the request was rejected as invalid before the path ran"+(data&&data.field?" (field: "+data.field+")":"")+". No proposal was submitted."};
+  if(status===401||status===403)
+    return {state:"not_evaluated",status:status,
+      text:"Not evaluated — operator authentication failed. No attempt was made and no record was written."};
+  if(status>=500)
+    return {state:"not_evaluated",status:status,
+      text:"Not evaluated — the decision path errored (HTTP "+status+"). The kernel produced no verdict and no record exists."};
+  return {state:"not_evaluated",status:status,
+    text:"Not evaluated — the path answered HTTP "+status+". No verdict was produced and no record exists."};
+}
+function setAskFailure(f){ askFailureState=f;
+  $("proposalText").textContent=f.text+(f.status?" (transport: HTTP "+f.status+(f.allow?", allow: "+f.allow:"")+")":"");
+  try{acHide();renderControl(null);}catch(e){}}
 $("intentGo").onclick=async()=>{const q=($("intentInput").value||"").trim();if(!q){$("proposalText").textContent="Type what your AI should do first.";return}
   $("proposalText").textContent="Asking the model to propose… (the kernel will decide)";acHide();renderControl(null);
   try{const r=await fetch("/api/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({q:q})});
     const data=await r.json().catch(()=>({}));
-    if(!r.ok){$("proposalText").textContent=(data.error||("The proposal path answered HTTP "+r.status))+" — nothing was authorized.";return}
+    if(!r.ok){setAskFailure(askFailure(r,data));return}
+    askFailureState=null;
     const answer=data.answer||"",ai=data.ai||{};
     const aiState=ai.model_called?(ai.model_completed?"AI ANSWER":"AI CALL FAILED"):"NO AI CALL";
     const tokenText=ai.token_status==="not_applicable"?"0 tokens — no model call":ai.token_status==="reported"?fmt(ai.total_tokens)+" tokens":"token usage not reported";
@@ -334,7 +367,7 @@ $("intentGo").onclick=async()=>{const q=($("intentInput").value||"").trim();if(!
     $("modelNote").textContent=ai.model_called?(ai.model_completed?"Run-scoped evidence · model proposed only · kernel remains the authority":"Provider call started but did not complete"):"No model invocation occurred for this run";
     if(data.action_id){try{const lt=await get("/api/live-trace?action_id="+encodeURIComponent(data.action_id));if(lt.trace){renderActionCard(lt.trace)}else{acHide();renderControl(null)}}catch(err){acHide();renderControl(null);$("proposalText").textContent+=" The action record could not be re-read, so no decision is shown."}}
     else{$("proposalText").textContent+=" No action was produced for this intent.";acHide();renderControl(null)}
-  }catch(err){$("proposalText").textContent="The proposal path failed: "+err.message+" — nothing was authorized."}}
+  }catch(err){setAskFailure(askFailure(null,{},err))}}
 $("whoGo").onclick=async()=>{const agent=$("whoActs").value;$("proposalText").textContent="Asking the kernel to decide for "+agent+" …";acHide();renderControl(null);
   /* On the real control plane /api/demo/run is guarded by the operator token (app.py:691,
      _require_admin) and needs a live upstream configured; the agent token is read server-side, so
@@ -343,8 +376,8 @@ $("whoGo").onclick=async()=>{const agent=$("whoActs").value;$("proposalText").te
   try{const headers={"content-type":"application/json"};if(token){headers["x-warrnt-admin"]=token}
     const r=await fetch("/api/demo/run",{method:"POST",headers:headers,body:JSON.stringify({agent:agent})});
     const data=await r.json().catch(()=>({}));
-    if(r.status===401){$("proposalText").textContent="This path needs the authenticated operator console"+(token?" (the stored operator token was rejected)":"")+" — no attempt was made, and nothing was authorized.";return}
-    if(!r.ok){$("proposalText").textContent=(data.error||("The demo path answered HTTP "+r.status))+" — nothing was authorized.";return}
+    if(r.status===401){setAskFailure(Object.assign(askFailure(r,{}),{text:"Not evaluated — this path needs the authenticated operator console"+(token?" (the stored operator token was rejected)":"")+". No attempt was made and no record was written."}));return}
+    if(!r.ok){setAskFailure(askFailure(r,data));return}
     $("proposalText").textContent="The kernel decided "+String(data.decision||"recorded").toUpperCase()+" for "+agent+" on "+String(data.tool||"the resource")+".";
     renderActionCard(verdictTrace(data,agent,data.tool))}catch(err){$("proposalText").textContent="The decision path failed: "+err.message}}
 /* The operator declares their own name here; the page never invents one. A control action that
