@@ -86,6 +86,12 @@ global.yn = v => v === true ? 'reached' : 'not reached';
 global.toolSentence = t => 'tool ' + t;
 global.renderControl = () => {};
 global.acHide = () => {};
+/* NEW-AC5: the card prints the resolution clock with the page's own ``clockOf`` - slice the REAL one
+ * rather than stub it, so a card that showed a made-up time could not pass here. */
+const cstart = src.indexOf('function clockOf(');
+const cend = src.indexOf('\nfunction ', cstart + 1);
+if (cstart < 0 || cend < 0) { console.error('clockOf not found'); process.exit(1); }
+eval(src.slice(cstart, cend));
 eval(fn);
 renderActionCard(JSON.parse(fs.readFileSync(process.argv[3], 'utf8')));
 process.stdout.write(cardEl.innerHTML);

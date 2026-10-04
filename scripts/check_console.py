@@ -47,6 +47,12 @@ global.yn = v => v === true ? 'reached' : 'not reached';
 global.toolSentence = t => 'tool ' + t;
 global.renderControl = () => {};
 global.acHide = () => {};
+/* NEW-AC5: the card prints the resolution clock with the page's own ``clockOf`` - slice the REAL one
+ * rather than stub it, so a card that showed a made-up time could not pass here. */
+const cstart = src.indexOf('function clockOf(');
+const cend = src.indexOf('\nfunction ', cstart + 1);
+if (cstart < 0 || cend < 0) { console.error('clockOf not found'); process.exit(1); }
+eval(src.slice(cstart, cend));
 eval(fn);
 const cases = {
   approved: {decision: 'human', state: 'approved', executed: true, receipt_id: 'r', action_id: 'A-1',
@@ -54,6 +60,12 @@ const cases = {
     upstream: {contacted: true, http_status: 200, value: 1.1225}},
   denied: {decision: 'human', state: 'denied', executed: false, receipt_id: 'r', action_id: 'A-2',
     action: {tool: 'fx.read_rate', class: 'observe', args: {}},
+    upstream: {contacted: false}},
+  /* NEW-AC5 - the fourth state: a hold the brake expired. The card must say so, name the clock the
+   * kernel recorded (decided_ts), and never print the 'waiting for you' line. */
+  expired: {decision: 'human', state: 'expired', decided_ts: 1759420002, executed: false,
+    receipt_id: 'r', action_id: 'A-4',
+    action: {tool: 'infra.deploy', class: 'irreversible', args: {}},
     upstream: {contacted: false}}
 };
 const out = {};
@@ -89,6 +101,7 @@ def _check_action_card() -> tuple[int, str]:
         return 1, "the action-card harness produced no readable render: " + done.stdout[:200]
     approved = html.unescape(rendered.get("approved", ""))
     denied = html.unescape(rendered.get("denied", ""))
+    expired = html.unescape(rendered.get("expired", ""))
     failures = []
     # 1) the approved card proves the crossing from evidence: "Data leaves TENET" and NOT waiting.
     if "Data leaves TENET" not in approved:
@@ -104,8 +117,27 @@ def _check_action_card() -> tuple[int, str]:
         failures.append("denied card: shows a crossing the record never proved")
     if "waiting for you" in denied:
         failures.append("denied card: shows the waiting line for a resolved denial")
+    # 3) NEW-AC5 - the FOURTH state: a hold the brake expired says expired, with the clock the
+    # kernel recorded, and never the waiting line (a dead hold is not waiting for anyone).
+    if "expired" not in expired.lower():
+        failures.append("expired card: the fourth state is not named (no 'expired')")
+    if not _hhmm(expired):
+        failures.append("expired card: the fourth state is rendered without a clock")
+    if "waiting for you" in expired:
+        failures.append("expired card: shows the waiting line for a hold that already died")
+    if "Data leaves TENET" in expired:
+        failures.append("expired card: shows a crossing an expired hold never made")
     return (1 if failures else 0), ("; ".join(failures) if failures
-                                    else "approved shows the crossing, denied shows none")
+                                    else "approved shows the crossing, denied none, expired its clock")
+
+
+_HHMM = re.compile(r"\b([01]\d|2[0-3]):[0-5]\d\b")
+
+
+def _hhmm(text: str) -> str:
+    """The HH:MM clock inside a rendered card, or '' - the surface must carry a real time."""
+    m = _HHMM.search(text)
+    return m.group(0) if m else ""
 
 
 def main() -> int:

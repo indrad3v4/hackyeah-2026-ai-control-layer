@@ -851,6 +851,16 @@ class Kernel:
         if state is None:
             incomplete.append("state")
 
+        # ---- WHEN the state was reached: the row's own resolution timestamp. The resolve path stamps
+        # `decided_ts` when a person decides (proxy.resolve_hold, approve and deny alike) and the brake
+        # stamps it when the kernel expires a hold of a halted agent, so one clock covers all four
+        # states. A row that carries none reports null, and for a RESOLVED hold (approved / denied /
+        # expired) that absence is missing evidence, so it is NAMED. It is never back-filled with the
+        # interception time: that is when the action was ASKED, not when it was resolved.
+        decided_ts = action.get("decided_ts") or None
+        if decided_ts is None and state in ("approved", "denied", "expired"):
+            incomplete.append("decided_ts")
+
         # ---- execution: the SAME evidence the crossing is proven from, plus the negative proof.
         #   True  - the row carries an execution result with a real http_status (the call ran);
         #   False - the row proves it did NOT run: it carries an execution result (even empty, as a
@@ -900,6 +910,7 @@ class Kernel:
             "reason": reason,
             "decided_by": decided_by,
             "state": state,
+            "decided_ts": decided_ts,
             "executed": executed,
             "upstream": upstream_obj,
             "receipt_id": receipt_id,

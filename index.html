@@ -66,6 +66,13 @@ h1{font-size:21px;margin:0;letter-spacing:-.03em}
 .resourceStrip .sep{color:#39485a}
 .resourceStrip .mono{font-size:11px;color:#aebbc8}
 .resourceStrip .side{font-size:11px;margin-left:auto}
+/* ACT NEW-AC5 — the four states control.counts counts, next to the feed they summarise. One cell per
+ * state; the clock is the newest row the kernel recorded in that state (decided_ts when the row
+ * carries one, otherwise the time the action was recorded). */
+.states{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.states .stateCell b{color:var(--text);font-weight:800}
+.states .stateCell .t{font-size:11px;color:#718196}
+.states .stateCell[data-state="expired"] b{color:var(--amber)}
 .content{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(330px,.65fr);gap:14px;margin-top:14px}
 .head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line)}
 h3{margin:0;font-size:13px;letter-spacing:.04em}
@@ -137,7 +144,7 @@ footer{display:flex;justify-content:space-between;gap:15px;color:#647284;font-si
 <section class="hero"><!-- Security decision: retained as a machine-readable layout contract; visible copy is human-first. --><!-- Model resources: retained as a machine-readable layout contract; visible copy is human-first. --><article class="card pad" id="traceCard"><div class="eyebrow">01 · The action under control</div><div class="titleRow"><div><h2 class="actionTitle" id="actionTitle">Waiting for a real agent action</h2><p class="actionLead" id="actionLead">The last action TENET intercepted, in the order the questions are asked.</p></div><span class="modeBadge unk" id="modeBadge">mode —</span></div><div class="path" id="traceBody"></div><div id="outcome"></div><div id="proof"></div><details class="tech" id="techDetails"><summary>Technical details</summary><div class="techBody" id="techBody"></div></details><div class="empty" id="emptyState" style="display:none"><h2>TENET has enforced nothing yet</h2><p>TENET sits between an AI agent and the tools it wants to use. Before any tool runs it checks identity, entitlement, warrant and policy, reaches a verdict, and writes a receipt. Nothing executes until that verdict allows it, and a denied action never reaches the far side of the boundary.</p><p>To put the first real action on this screen:</p><ol><li>Point TENET at a live tool server (the <span class="mono">WARRNT_UPSTREAM</span> environment variable) so a real crossing is possible.</li><li>Press <b>Run the journey</b> below: one control plane, four real requests, four verdicts — an allow that crosses, a redaction, a denial that never reaches the far side, and a hold that waits for a person.</li><li>Or let a real agent call the control plane and watch its own action appear here.</li></ol><button class="btn" id="selfCheck">Run the journey: allow · redact · deny · hold</button><div class="mono" id="selfCheckMsg" style="margin-top:9px;color:#718196"></div></div></article>
 <aside class="card pad"><div class="eyebrow">02 · Who decides</div><div style="font-size:21px;font-weight:850;margin:7px 0 2px" id="authoritySource">tenet-kernel</div><div class="note" id="authorityNote" style="color:var(--muted);font-size:11px">The kernel decides, before execution. The model proposes and holds no authority (llm_authority: false).</div><div class="mono" id="modeLine" style="margin-top:13px;color:#718196">mode —</div><div class="mono" id="modeNote" style="margin-top:8px;color:#718196;font-size:11px"></div><div class="killmid"><label for="operatorName" class="whoLabel">Operator name (who decides)</label><input id="operatorName" class="intentInput" type="text" placeholder="e.g. indradev" autocomplete="off" style="max-width:220px"><button class="btn red" id="revoke" disabled>Stop agent</button></div><div class="mono" id="operatorNotice" data-testid="operator-notice" style="margin-top:8px;color:#c9b98a;font-size:11px"></div></aside></section>
 <div class="resourceStrip" id="resourceStrip"><span class="eyebrow" style="color:#93a5b8">03 · Models &amp; resources</span><span class="sep">·</span><span><b id="calls">—</b> calls</span><span class="sep">·</span><span><b id="tokens">—</b> tokens</span><span class="sep">·</span><span><b id="io">—</b> in/out</span><span class="sep">·</span><span><b id="latency">—</b> ms max</span><span class="mono" id="trace" title="Full provider trace identifier">No DeepSeek trace yet</span><span class="side" id="modelNote">Reasoning is evidence. The TENET kernel remains the authority.</span></div>
-<section class="content"><!-- 03 · Live agent activity: retained as a machine-readable layout contract; visible copy is human-first. --><!-- 04 · Why this happened: retained as a machine-readable layout contract; visible copy is human-first. --><article class="card"><div class="head"><h3>04 · Actions on the record</h3><span class="sub" id="count">0 events</span></div><div class="feed" id="feed"><div class="pad" style="color:#718196">Reading the kernel…</div></div></article>
+<section class="content"><!-- 03 · Live agent activity: retained as a machine-readable layout contract; visible copy is human-first. --><!-- 04 · Why this happened: retained as a machine-readable layout contract; visible copy is human-first. --><article class="card"><div class="head"><h3>04 · Actions on the record</h3><span class="sub" id="count">0 events</span></div><div class="states" id="states" data-source="control.counts"><span class="stateCell" data-state="approved"><b>allowed</b> <span class="n">—</span></span><span class="stateCell" data-state="denied"><b>not allowed</b> <span class="n">—</span></span><span class="stateCell" data-state="pending"><b>waiting for you</b> <span class="n">—</span></span><span class="stateCell" data-state="expired"><b>expired</b> <span class="n">—</span></span></div><div class="feed" id="feed"><div class="pad" style="color:#718196">Reading the kernel…</div></div></article>
 <aside class="card"><div class="head"><h3>05 · Inspect this action</h3><span class="sub" id="eventState">—</span></div><div class="rows" id="details"><div class="pad" style="color:#718196">Select an action.</div></div><div class="timeline" id="timeline"></div><div class="actions"><button class="btn" id="refresh">Refresh evidence</button></div></aside></section>
 <footer><span>TENET · Control Plane → Enforcement Kernel → upstream</span><span id="footer">Evidence only · no credentials exposed</span></footer></div>
 <script src="voice.js"></script>
@@ -185,6 +192,9 @@ principal:"t.principal",onBehalfOf:"t.on_behalf_of"};
 function dash(v){v=jsonSafe(v);return (v===null||v===undefined||v==="")?null:String(v)}
 function dashHtml(v,fallback){const s=dash(v);return s==null?`<span class='unk'>${esc(fallback||"—")}</span>`:esc(s)}
 function isoTimestamp(ts){if(ts==null||ts==="")return null;const d=new Date(Number(ts)*1000);if(isNaN(d.getTime()))return null;return d.toISOString().replace(".000Z","Z")+" · "+d.toLocaleString()}
+/* ACT NEW-AC5 — the clock the surfaces share. The row's own recorded time, HH:MM, or null when the
+ * record carries none: a state with no recorded time shows no time rather than a made-up 00:00. */
+function clockOf(ts){const n=Number(ts);if(!n||isNaN(n))return null;const d=new Date(n*1000);if(isNaN(d.getTime()))return null;return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
 function ynRoot(t){const v=(typeof llm_authority!=="undefined"&&llm_authority!=null)?llm_authority:(t.model&&t.model.llm_authority!=null?t.model.llm_authority:null);return yn(v)}
 /* ---- 01 · THE ACTION UNDER CONTROL : an action-first card, in the order the questions are asked.
  * The first layer answers: what the AI wants to do -> what data is involved -> who is acting ->
@@ -269,9 +279,29 @@ function selectEvent(id){const e=events.find(x=>x.event_id===id);if(!e)return;se
 async function renderCardFor(id){try{const lt=await get("/api/live-trace?action_id="+encodeURIComponent(id));cardTrace=lt.trace||null}catch(err){cardTrace=null}renderTrace();renderAuthority()}
 function cell(v){const s=dash(v);return s==null?"<span class='unk'>not recorded</span>":`<span title="${esc(s)}">${esc(s)}</span>`}
 function renderSelected(e){$("eventState").textContent=e.state||"recorded";$("details").innerHTML=[["What",e.intent||e.tool],["Agent",e.agent],["Actor",e.actor],["Authority / warrant",e.warrant],["Warrant state",e.warrant_state],["Policy",e.policy],["Decision",e.decision],["Why",e.reason],["Data boundary",e.upstream_contacted===true?"crossed":e.upstream_contacted===false?"not crossed":"not proven"],["Model",e.model_served||e.model_requested],["Model trace",e.model_trace_id],["Receipt",e.receipt_id],["Action",e.event_id],["Upstream call",e.upstream_call_id]].map(r=>`<div class="row"><div class="label">${esc(r[0])}</div><div class="value mono">${cell(r[1])}</div></div>`).join("");$("timeline").innerHTML=[["Agent proposed",e.intent||e.tool||"request"],["TENET checked",e.policy||"policy"],["Decision",e.decision||"recorded"],[e.upstream_contacted===true?"Upstream contacted":"Boundary result",e.upstream_contacted===true?(e.execution_result?.http_status?"HTTP "+e.execution_result.http_status:"contact recorded"):"No contact proven"],["Receipt",e.receipt_id||"not present"]].map(x=>`<div class="tl"><div class="bullet"></div><div><b>${esc(x[0])}</b><span>${cell(x[1])}</span></div></div>`).join("");$("revoke").disabled=!e.agent||e.state==="halted"||e.decision==="deny"||e.decision==="revoked";document.body.dataset.revokeOverTarget=$("revoke").disabled?"no":"yes"}
+/* ACT NEW-AC5 — the four states the kernel counts (control.counts: approved · denied · pending ·
+ * expired), on the console, each with its clock. The counts are read from control.counts as published
+ * by GET /api/stream, so the console and the observer cannot disagree about them; the clock is the
+ * newest row the kernel recorded in that state, stamped with the row's own resolution time when the
+ * kernel recorded one (decided_ts) and otherwise with the time the action was recorded (ts). A state
+ * with no row on this page shows no time, and a payload with no counts says so rather than showing
+ * zeros the kernel did not report. */
+function renderStates(b){const el=$("states");if(!el)return;
+  const c=(b&&b.counts)||null;
+  const cell=(label,state,n,t)=>`<span class="stateCell" data-state="${state}"><b>${esc(label)}</b> <span class="n">${fmt(n)}</span>${t?` <span class="t">last ${esc(t)}</span>`:""}</span>`;
+  if(!c||c.approved==null){el.dataset.read="no";el.innerHTML='<span class="stateCell" data-state="unknown"><b>The kernel did not report control.counts.</b> Nothing is shown as decided here.</span>';return}
+  el.dataset.read="yes";
+  const rows=((b&&b.stream)||[]).concat((b&&b.pending)||[]);
+  const lastOf=s=>{const m=rows.filter(r=>String(r.state||"").toLowerCase()===s)
+    .map(r=>({t:Number(r.decided_ts)||Number(r.ts)||0})).filter(x=>x.t>0).sort((x,y)=>y.t-x.t)[0];
+    return m?clockOf(m.t):null};
+  el.innerHTML=cell("allowed","approved",c.approved,lastOf("approved"))
+    +cell("not allowed","denied",c.denied,lastOf("denied"))
+    +cell("waiting for you","pending",c.pending,lastOf("pending"))
+    +cell("expired","expired",c.expired,lastOf("expired"))}
 async function get(url,opts){const r=await fetch(url,opts);if(!r.ok){const err=new Error(url+" → HTTP "+r.status);err.status=r.status;err.body=await r.json().catch(()=>({}));throw err}return r.json()}
 let ready=false;
-async function refresh(){try{const [sec,res,lt,ov]=await Promise.all([get("/api/security-events?limit=20"),get("/api/model-usage"),get("/api/live-trace"),get("/api/overview")]);events=sec.events||[];usage=res;trace=lt.trace||null;llm_authority=lt.llm_authority;authority_source=lt.authority_source;upstream_configured=(typeof ov.upstream_configured==="boolean")?ov.upstream_configured:null;live_mode=ov.mode||null;ready=true;$("live").textContent="Live control plane · kernel evidence";$("footer").textContent="Evidence source: TENET kernel · mode: "+(live_mode||"—")+(upstream_configured===true?" · upstream configured":upstream_configured===false?" · no upstream configured":"");setMode(upstream_configured);renderResource();renderFeed();if(!selected||!events.some(e=>e.event_id===selected)){selected=events[0]?.event_id||null;cardPinned=false}if(selected){const e=events.find(x=>x.event_id===selected);if(e)renderSelected(e)}/* The card follows the SELECTED record; with no pin it follows the latest action. On load cardPinned is false, so the default is the newest action. */if(cardPinned&&selected){renderCardFor(selected)}else{cardTrace=null;renderTrace();renderAuthority()}document.body.dataset.ok="true"}catch(err){$("live").textContent="Control plane unavailable";$("footer").textContent=err.message;setMode(null);if(err.body&&err.body.retry_after_s)$("selfCheckMsg").textContent=rateLimited(err.body.retry_after_s);document.body.dataset.ok="false"}}
+async function refresh(){try{const [sec,res,lt,ov,sm]=await Promise.all([get("/api/security-events?limit=20"),get("/api/model-usage"),get("/api/live-trace"),get("/api/overview"),get("/api/stream?limit=20").catch(()=>({}))]);events=sec.events||[];usage=res;trace=lt.trace||null;llm_authority=lt.llm_authority;authority_source=lt.authority_source;upstream_configured=(typeof ov.upstream_configured==="boolean")?ov.upstream_configured:null;live_mode=ov.mode||null;ready=true;$("live").textContent="Live control plane · kernel evidence";$("footer").textContent="Evidence source: TENET kernel · mode: "+(live_mode||"—")+(upstream_configured===true?" · upstream configured":upstream_configured===false?" · no upstream configured":"");setMode(upstream_configured);renderResource();renderFeed();renderStates(sm);if(!selected||!events.some(e=>e.event_id===selected)){selected=events[0]?.event_id||null;cardPinned=false}if(selected){const e=events.find(x=>x.event_id===selected);if(e)renderSelected(e)}/* The card follows the SELECTED record; with no pin it follows the latest action. On load cardPinned is false, so the default is the newest action. */if(cardPinned&&selected){renderCardFor(selected)}else{cardTrace=null;renderTrace();renderAuthority()}document.body.dataset.ok="true"}catch(err){$("live").textContent="Control plane unavailable";$("footer").textContent=err.message;setMode(null);if(err.body&&err.body.retry_after_s)$("selfCheckMsg").textContent=rateLimited(err.body.retry_after_s);document.body.dataset.ok="false"}}
 /* The rate-limited state reads as waiting for a slot, never as a TENET failure. */
 function rateLimited(n){return "Rate limited · retrying in "+n+"s — the kernel is still enforcing; this is a wait, not a failure."}
 $("refresh").onclick=refresh;
@@ -289,6 +319,21 @@ function toolSentence(tool){return TOOL_SENTENCE[tool]||("Use "+esc(tool||"a too
 function acRow(label,value){return `<div class="acRow"><div class="acLabel">${esc(label)}</div><div class="acVal">${value}</div></div>`}
 function acHide(){const c=$("actionCard");c.style.display="none";c.innerHTML=""}
 function renderControl(t){const box=$("controlBlock");if(!t||String(t.decision).toLowerCase()!=="human"){box.innerHTML="";box.style.display="none";return}
+  /* ACT NEW-AC5 — a hold that is no longer OPEN has no control to offer. The row's own state says
+   * approved, denied or expired, and the kernel refuses a decision on anything but a pending hold
+   * (proxy.resolve_hold returns an expired hold as expired with executed:false; an approved or denied
+   * hold is refused outright). Offering the buttons anyway is the console claiming a decision is
+   * still open when the record says it is not, so the block states the state instead - with the clock
+   * the kernel recorded for it (decided_ts), and with no name where no person decided. */
+  const st=String(t.state||"").toLowerCase();
+  if(st&&st!=="pending"){
+    const at=clockOf(t.decided_ts);
+    box.style.display="";box.innerHTML=`<div class="pendingLine" id="controlMsg">${
+      st==="expired"?`This hold expired${at?` at ${esc(at)}`:""} — there is nothing left to decide, and an approve of an expired hold does not run.`
+      :st==="approved"?`A person approved this hold${t.decided_by?` (${esc(t.decided_by)})`:""}. It is closed.`
+      :st==="denied"?`A person denied this hold${t.decided_by?` (${esc(t.decided_by)})`:""}. Nothing was sent.`
+      :`This hold is ${esc(st)} — there is nothing left to decide.`}</div>`;
+    return}
   box.style.display="";box.innerHTML=`<div class="pendingLine">The request has NOT been sent yet. This action is waiting for you.</div><div class="controlBtns"><button class="btn" id="approveBtn">Approve</button><button class="btn red" id="denyBtn">Deny</button></div><div class="mono" id="controlMsg" style="margin-top:8px;color:#c9b98a"></div>`;
   $("approveBtn").onclick=()=>resolve("approve");$("denyBtn").onclick=()=>resolve("deny")}
 function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();return}
@@ -299,12 +344,16 @@ function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();r
    * «export=false»). Both are read verbatim from the trace, never paraphrased, so a refusal that
    * lives at the scope gate is never laid at the person's door. */
   const entitlements=Array.isArray(t.entitlements)?t.entitlements:[],scope=Array.isArray(t.scope)?t.scope:[];
-  /* Every line below follows the EVIDENCE, never the decision label: a crossing is proven by
-   * upstream.contacted (a real http_status), and an execution by the composer's `executed` fact.
-   * `state` is the action row's own resolved lifecycle word, so "still waiting for a person" is
-   * distinct from "a person approved" / "a person denied". */
+  /* ACT NEW-AC5 — the FOURTH state, verbatim from the row. `state` is the action row's own resolved
+   * lifecycle word, so "still waiting for a person" (pending), "a person approved" (approved) and
+   * "a person denied" (denied) are three different facts, and a hold that died under the brake
+   * (expired) is a fourth. The clock is the row's own resolution time (decided_ts) where the kernel
+   * recorded one. */
+  const stateAt=clockOf(t.decided_ts);
   const consequence=contacted===true?`Data leaves TENET: the request was sent upstream.${up.value!=null?` The far side answered ${esc(jsonSafe(up.value))}.`:""}`
+    :state==="expired"?`Nothing was sent. This hold expired${stateAt?` at ${esc(stateAt)}`:""} — no decision was reached.`
     :state==="denied"?`Nothing left TENET. The upstream was not contacted.`
+    :state==="approved"?`A person approved this hold. The record proves no upstream contact, so nothing reached the far side.`
     :state==="pending"?`Nothing has been sent yet. This action is waiting for you.`
     :dec==="deny"?`Nothing left TENET. The upstream was not contacted.`
     :dec==="human"?`Nothing has been sent yet. This action is waiting for you.`
@@ -331,8 +380,11 @@ function renderActionCard(t){acTrace=t;const c=$("actionCard");if(!t){acHide();r
       techRow("Response sha256",esc(up.response_sha256??"not recorded"))+
       techRow("Latency",up.latency_ms!=null?esc(String(up.latency_ms))+" ms":"not recorded")+
     `</div></details>`;
-  /* The voice renders the state the record proves — never a verdict the card did not receive. */
-  if(typeof V!=="undefined"&&V){const st=contacted===true?"crossed":(t.executed===true?"crossed":(state==="pending"||dec==="human")?"wait":(dec==="deny")?"denyAfter":(dec==="allow")?"allow":(dec==="redact")?"canCross":null);if(st)V.say(st)}
+  /* The voice renders the state the record proves — never a verdict the card did not receive. ACT
+   * NEW-AC5 — "waiting for you" is only said while the row IS pending: a hold that a person already
+   * closed (approved / denied / expired) must not be spoken as still waiting, so a closed hold the
+   * voice has no true line for stays silent rather than lying. */
+  if(typeof V!=="undefined"&&V){const st=contacted===true?"crossed":(t.executed===true?"crossed":(state==="pending"||(dec==="human"&&!state))?"wait":(dec==="deny")?"denyAfter":(dec==="allow")?"allow":(dec==="redact")?"canCross":null);if(st)V.say(st)}
   renderControl(t)}
 /* The class comes from the SAME evaluated evidence the why-line renders (the verdict's `reason`,
  * whose "class <name>" phrase the kernel's evaluation wrote), never from a second source that is
