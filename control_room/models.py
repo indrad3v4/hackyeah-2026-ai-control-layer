@@ -18,6 +18,7 @@ class AgentAnswer(BaseModel):
     evidence: list[Evidence] = Field(default_factory=list)
     confidence: str = "grounded"
     next_action: str | None = None
+    ai: dict = Field(default_factory=dict)
 
 class Action(BaseModel):
     action_id: str
