@@ -11,6 +11,7 @@ touches the kernel's decision path.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import uuid
@@ -31,6 +32,24 @@ except Exception:  # noqa: BLE001
 # in the app the tools run in-process against the same kernel; in the proof script the app is
 # already serving on this URL. Either way the facts come from the kernel, not from the model.
 CONTROL_PLANE_URL = os.environ.get("TENET_CONTROL_PLANE_URL", "http://127.0.0.1:8080").rstrip("/")
+
+# The HTTP fallback read is a network wait, so it must never run on the event loop. This is
+# the explicit timeout the old blocking client carried (same 3.0 s - no behaviour change),
+# and the bounded fan-out that keeps a slow upstream from exhausting this process's sockets.
+_HTTP_TIMEOUT = 3.0
+_HTTP_MAX_CONCURRENCY = 8
+# One gate per running event loop: a Semaphore is bound to the loop that first awaits it, so a
+# fresh loop (a test, a fresh worker) must get a fresh gate rather than a stale, loop-bound one.
+_read_gate: "tuple[Any, asyncio.Semaphore] | None" = None
+
+
+def _read_semaphore() -> asyncio.Semaphore:
+    """The concurrency gate for HTTP reads, created per event loop (see above)."""
+    global _read_gate
+    loop = asyncio.get_running_loop()
+    if _read_gate is None or _read_gate[0] is not loop:
+        _read_gate = (loop, asyncio.Semaphore(_HTTP_MAX_CONCURRENCY))
+    return _read_gate[1]
 
 SPECIALISTS = ["governance_agent", "kernel_agent", "control_plane_agent"]
 
@@ -63,11 +82,16 @@ def bind_kernel(kernel: Any) -> None:
     _KERNEL = kernel
 
 
-def _read(path: str) -> Any:
+async def _read(path: str) -> Any:
     """Read the kernel-backed state behind ``path``; honestly report a failure, never invent it.
 
     In-process first (the app binds its own kernel), HTTP second (a detached caller such as the
     live-proof script). Both routes read the SAME mirrored kernel - the reads are not decisions.
+
+    The HTTP route is ``await``-ed through an ``httpx.AsyncClient`` under a bounded semaphore, so
+    a slow upstream suspends THIS read instead of blocking the event loop every other request is
+    served on. The error string, the 3.0 s timeout and the empty-on-failure contract are
+    unchanged.
     """
     if _KERNEL is not None:
         try:
@@ -75,10 +99,11 @@ def _read(path: str) -> Any:
         except Exception as exc:  # noqa: BLE001
             return {"error": f"{type(exc).__name__}: {exc}", "path": path, "via": "kernel"}
     try:
-        with httpx.Client(timeout=3.0) as client:
-            resp = client.get(f"{CONTROL_PLANE_URL}{path}")
-            resp.raise_for_status()
-            return resp.json()
+        async with _read_semaphore():
+            async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+                resp = await client.get(f"{CONTROL_PLANE_URL}{path}")
+                resp.raise_for_status()
+                return resp.json()
     except Exception as exc:  # noqa: BLE001 - an empty result is the honest answer
         return {"error": f"{type(exc).__name__}: {exc}", "path": path, "via": "http"}
 
@@ -96,27 +121,27 @@ def _tool(fn):
     return function_tool(fn) if function_tool else None
 
 
-def _governance_inspect(system: str = "overview") -> str:
+async def _governance_inspect(system: str = "overview") -> str:
     """Governance: the authority picture - warrants, agents, action classes, chain."""
-    data = _read("/api/overview")
+    data = await _read("/api/overview")
     return json.dumps({"system": system, "authority": data.get("authority", {}),
                        "counts": data.get("counts", {}), "chain": data.get("chain", {})},
                       default=str)
 
 
-def _kernel_inspect(action_id: str = "") -> str:
+async def _kernel_inspect(action_id: str = "") -> str:
     """Kernel: the decision record itself - one action, or the newest decisions."""
     if action_id:
-        data = _read(f"/api/actions/{action_id}")
+        data = await _read(f"/api/actions/{action_id}")
     else:
-        data = _read("/api/actions?limit=5")
+        data = await _read("/api/actions?limit=5")
     return json.dumps({"action_id": action_id, "record": data}, default=str)
 
 
-def _control_plane_inspect(question: str = "") -> str:
+async def _control_plane_inspect(question: str = "") -> str:
     """Control-Plane: what is happening now - pending holds, activity, agents."""
-    return json.dumps({"question": question, "pending": _read("/api/actions/pending"),
-                       "activity": _read("/api/activity?limit=10")}, default=str)
+    return json.dumps({"question": question, "pending": await _read("/api/actions/pending"),
+                       "activity": await _read("/api/activity?limit=10")}, default=str)
 
 
 def _propose_action(tool: str, base: str = "EUR", symbols: str = "USD",
@@ -316,7 +341,7 @@ def _ai_usage(result: Any = None, run_id: str = "") -> dict[str, Any]:
         "trace_id": trace_id,
     }
 
-def _evidence_from_records() -> list[Evidence]:
+async def _evidence_from_records() -> list[Evidence]:
     """Kernel facts with real ids, read straight from the control plane's own kernel reads.
 
     This is the evidence floor for every answer: even if the orchestrator phrases nothing,
@@ -324,10 +349,10 @@ def _evidence_from_records() -> list[Evidence]:
     ids, or an explicit admission that the record is empty.
     """
     evidence: list[Evidence] = []
-    overview = _read("/api/overview")
+    overview = await _read("/api/overview")
     if isinstance(overview, dict) and "error" not in overview:
         evidence.append(_ev("/api/overview", "counts", overview.get("counts", {})))
-    actions = _read("/api/actions?limit=5")
+    actions = await _read("/api/actions?limit=5")
     rows = actions.get("actions", []) if isinstance(actions, dict) else []
     if not rows:
         evidence.append(Evidence(source="/api/actions", claim="record",
@@ -353,7 +378,7 @@ async def answer(user_text: str, *, run_id: str | None = None) -> ControlAnswer:
     # Stamp the run BEFORE the client is built: the client's transport is wired to the run id
     # at construction, and every event it journals must carry this answer's run.
     set_run_id(run_id)
-    evidence = _evidence_from_records()
+    evidence = await _evidence_from_records()
     provider = build_provider()
     model = bind_sdk(provider) if provider else None
     specialists = build_specialists(model)

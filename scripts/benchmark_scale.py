@@ -5,7 +5,7 @@ This is the script behind `docs/complexity-and-scale.md`. It drives a real node 
 HTTP surface - no mocks, no instrumentation inside the kernel - and prints four tables:
 
   1. call latency as the receipt chain grows      (is the write path flat in history?)
-  2. the four read endpoints as the chain grows   (which reads are linear in R?)
+  2. the three read endpoints as the chain grows  (which reads are linear in R?)
   3. payload sensitivity                          (what does a big argument cost?)
   4. write throughput and bytes per receipt       (capacity and space)
 
@@ -13,8 +13,13 @@ HTTP surface - no mocks, no instrumentation inside the kernel - and prints four 
     python3 scripts/benchmark_scale.py --max 5000 --repeat 7
 
 Numbers depend on the machine; the SHAPE of each row is what the design depends on. The write path
-is expected to be flat, `/verify` and `/api/state` are expected to be linear in R, and
-`/api/security-events` to be flat because its page size is bounded.
+is expected to be flat, and `/verify` and `/api/state` are expected to be linear in R.
+
+Issue #33: this script used to also time `/api/security-events?limit=200` against the node. That
+route does not exist on the node - it returned HTTP 404 `Not Found`, and the "0.66-0.90 ms flat"
+row in `docs/complexity-and-scale.md` was the speed of that 404 body, not a measurement. The row
+was dropped here and in the doc. `_probe` now refuses to start if any measured endpoint is not a
+200, so a missing route can never again be recorded as a fast one.
 """
 from __future__ import annotations
 
@@ -66,6 +71,26 @@ def median_us(fn, repeat: int) -> float:
     return statistics.median(samples)
 
 
+# Paths the read table measures. `/api/security-events` is NOT here: the node does not serve it
+# (issue #33), so timing it measured a 404 body. The row lives on the CONTROL PLANE's own HTTP
+# surface, not the node's, and is measured there.
+READ_PATHS = ("/verify", "/api/state", "/receipts")
+
+
+def _probe(client) -> None:
+    """Fail fast if a measured endpoint is not a 200.
+
+    A non-200 body is not a measurement - timing it would print an error page's speed as the
+    endpoint's. Issue #33 exists precisely because this check was missing.
+    """
+    for path in READ_PATHS:
+        resp = client.get(path)
+        if resp.status_code != 200:
+            raise SystemExit(
+                f"refusing to benchmark {path}: HTTP {resp.status_code} "
+                f"{resp.text[:60]!r} - a non-200 is not a measurement")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=2000, help="largest chain to build")
@@ -79,6 +104,7 @@ def main(argv=None) -> int:
         tmp = pathlib.Path(tmpdir)
         client, headers = build(tmp)
         body = call_body()
+        _probe(client)  # a non-200 endpoint must fail loud, never be timed as if it were fast
 
         # One pass: grow the chain to each target and measure there. Growing first and measuring
         # afterwards would leave every row at the same length - and a slope fitted through
@@ -92,8 +118,7 @@ def main(argv=None) -> int:
                          median_us(lambda: client.post("/mcp", json=body, headers=headers), args.repeat),
                          median_us(lambda: client.get("/verify"), args.repeat),
                          median_us(lambda: client.get("/api/state"), args.repeat),
-                         median_us(lambda: client.get("/receipts"), args.repeat),
-                         median_us(lambda: client.get("/api/security-events?limit=200"), args.repeat)))
+                         median_us(lambda: client.get("/receipts"), args.repeat)))
             print(f"   measured at {receipts} receipts")
 
         print("\n1. call latency (median) against chain length    [expected: flat in R]")
@@ -102,10 +127,10 @@ def main(argv=None) -> int:
             print(f"   {receipts:8d}      {call_us:9.0f} us")
 
         print("\n2. the read endpoints against chain length")
-        print("   receipts      /verify   /api/state    /receipts   /security-events")
-        for receipts, _, verify_us, state_us, receipts_us, events_us in rows:
+        print("   receipts      /verify   /api/state    /receipts")
+        for receipts, _, verify_us, state_us, receipts_us in rows:
             print(f"   {receipts:8d}   {verify_us:9.0f}us {state_us:9.0f}us "
-                  f"{receipts_us:9.0f}us {events_us:9.0f}us")
+                  f"{receipts_us:9.0f}us")
 
         if len(rows) >= 2:
             first, last = rows[0], rows[-1]

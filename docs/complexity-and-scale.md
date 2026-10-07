@@ -59,11 +59,11 @@ original brief already names (Aho–Corasick, `O(P + matches)`).
 ## 2. Reads — where the linear terms live
 
 ```
-  R      /verify    /api/state   /receipts   /api/security-events?limit=200
- 250      5 021 us     5 862 us    2 083 us      841 us
- 500      7 314 us     7 881 us    3 192 us      659 us
-1000     12 459 us    12 988 us    5 663 us      685 us
-2000     22 649 us    23 274 us   10 716 us      903 us
+  R      /verify    /api/state   /receipts
+ 250      5 021 us     5 862 us    2 083 us
+ 500      7 314 us     7 881 us    3 192 us
+1000     12 459 us    12 988 us    5 663 us
+2000     22 649 us    23 274 us   10 716 us
 ```
 
 | Endpoint | Complexity | Evidence |
@@ -71,8 +71,16 @@ original brief already names (Aho–Corasick, `O(P + matches)`).
 | `/verify` (recompute the chain) | **O(R)** | 5.0 → 22.6 ms as R goes 250 → 2000: ≈ **10.0 µs per receipt** |
 | `/api/state` | **O(R)** — it carries the chain verdict | ≈ **9.95 µs per receipt** |
 | `/receipts` | **O(R)** — serialises the whole registry | ≈ 5.0 µs per receipt |
-| `/api/security-events?limit=k` | **O(k)**, `k ≤ 200` → O(1) in R | flat, 0.66–0.90 ms |
 | `/api/actions`, `/api/agents`, `/api/warrants` | O(A), O(W) over their own stores | linear in their own size, not R |
+
+> **Removed row (issue #33).** Earlier versions of this table carried a fourth endpoint,
+> `/api/security-events?limit=k`, with evidence "flat, 0.66–0.90 ms". That number measured an
+> HTTP **404** body (`{"detail":"Not Found"}`): the benchmark drives the *node*, and the node does
+> not serve that route. A 404's speed is not a measurement of the endpoint, so the row was
+> dropped rather than re-labelled. The real endpoint lives on the **control plane**
+> (`control_plane/app.py`, `GET /api/security-events`), which the scale script does not drive.
+> `scripts/benchmark_scale.py` now probes every measured path for a 200 and aborts on anything
+> else, so a missing route cannot be recorded as a fast one again.
 
 ### The threshold that matters
 
@@ -148,6 +156,6 @@ python scripts/benchmark_scale.py        # prints the tables in §1–§3
 ```
 
 The script drives a real node through its HTTP surface, grows the chain, and prints the same
-columns: call latency at increasing `R`, the four read endpoints, payload sensitivity, write
+columns: call latency at increasing `R`, the three read endpoints, payload sensitivity, write
 throughput, and the on-disk bytes per receipt. Numbers in this document come from that script on
 one machine; the *shape* of each row — flat, linear, or bounded — is what the design depends on.

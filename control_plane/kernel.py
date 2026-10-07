@@ -232,6 +232,58 @@ class Kernel:
         row["acting_on_behalf_of"] = getattr(agent, "on_behalf_of", "") or ""
         return row
 
+    # --------------------------------------- a run's actions, from the PERSISTENT store (T9/§9)
+    # The in-memory action ledger is bounded (MAX_ACTIONS=200): reading it for a run returns an
+    # empty proof once the run is older than the window, even though every action is appended to
+    # the ledger on disk. That silent empty is the data loss issue #38 names. These two reads let
+    # a caller resolve a run from the durable store, and say WHICH store answered, so "no proof
+    # exists" (an unknown run) is never confused with "not in the last 200" (an old run).
+    def actions_for_run(self, run_id: str, *, window: int = 200) -> "tuple[list[dict[str, Any]], str]":
+        """Resolve one ``run_id``'s actions, preferring the in-memory window then the ledger.
+
+        Returns ``(rows, source)`` where ``source`` is:
+
+        * ``"window"`` - the run's actions are in the in-memory window (the fast path, unchanged);
+        * ``"store"``  - the run is older than the window; its rows were read from the persistent
+          actions ledger on disk (nothing is cached, so memory stays bounded);
+        * ``"none"``   - no action for this run exists in the window OR the ledger: an absent run,
+          distinct from an old one that lives only beyond the window.
+        """
+        rid = str(run_id or "")
+        rows = [a for a in self.actions(limit=window) if str(a.get("run_id") or "") == rid]
+        if rows:
+            return rows, "window"
+        older = self._actions_from_ledger(rid)
+        if older:
+            return older, "store"
+        return [], "none"
+
+    def _actions_from_ledger(self, run_id: str) -> list[dict[str, Any]]:
+        """Read the persistent actions ledger for one run's rows.
+
+        The ledger is the same ``actions.jsonl`` the mirror appends every action to; reading it
+        here is what makes an older run's proof resolvable instead of silently empty. A missing
+        or unreadable ledger is an empty list - an absent row is never invented (AGENTS.md D12).
+        """
+        path = getattr(self.proxy, "_actions_path", None) or str(
+            self._state_dir() / "actions.jsonl")
+        rows: list[dict[str, Any]] = []
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except ValueError:
+                        continue  # a half-written last line is skipped, never raised
+                    if str(row.get("run_id") or "") == str(run_id or ""):
+                        rows.append(row)
+        except OSError:
+            return []
+        return rows
+
     def registry_recent(self, limit: int = 60) -> list[dict[str, Any]]:
         return self.proxy.registry.recent(limit)
 

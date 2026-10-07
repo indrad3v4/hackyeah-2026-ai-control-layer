@@ -10,6 +10,7 @@ decisions - a fixture that answered "allow" would prove nothing.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
 
@@ -510,7 +511,7 @@ def test_specialist_tool_no_longer_reports_unreadable(tmp_path, monkeypatch):
     k.proxy.issue_all(reset_registry=False)
     assist.bind_kernel(k)
     try:
-        out = assist._control_plane_inspect("are we live?")
+        out = asyncio.run(assist._control_plane_inspect("are we live?"))
     finally:
         assist.bind_kernel(None)
     assert "KeyError" not in out, out
