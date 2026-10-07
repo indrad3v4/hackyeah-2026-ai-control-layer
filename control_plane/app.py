@@ -550,7 +550,11 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
         assert k is not None  # _kernel_or_503 guarantees a kernel past its 503 branch
         from control_room import provider as provider_module  # local: not on any decision path
 
-        rows = [a for a in k.actions(limit=200) if str(a.get("run_id") or "") == run_id]
+        # Issue #38: resolve the run's actions from the PERSISTENT ledger, not just the last-200
+        # in-memory window. ``evidence_source`` says which store answered, so "no proof exists"
+        # ("none") is distinguishable from "older than the window" ("store") - the silent empty
+        # that used to read as 'the record holds none' is gone.
+        rows, evidence_source = k.actions_for_run(run_id)
         events = provider_module.read_events(run_id=run_id)
         started = [e for e in events if e.get("event") == "deepseek.request.started"]
         completed = [e for e in events if e.get("event") == "deepseek.request.completed"]
@@ -562,12 +566,14 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             action_id = str(row.get("action_id") or "")
             record = k.action(action_id) if action_id else None
             record = record if isinstance(record, dict) else {}
-            crossing = record.get("execution_result") or {}
+            crossing = record.get("execution_result") or row.get("execution_result") or {}
             receipt = row.get("receipt") or (record.get("receipt") or {}).get("id")
             decision = str(row.get("decision") or "")
             attempts = record.get("boundary_attempts")
             if attempts is None:
                 attempts = (record.get("receipt") or {}).get("boundary_attempts")
+            if attempts is None:
+                attempts = row.get("boundary_attempts")
             actions.append({
                 "action_id": action_id,
                 "agent": row.get("agent"),
@@ -608,6 +614,8 @@ def create_app(*, kernel: Optional[Kernel] = None, seed: bool = True) -> FastAPI
             "run_id": run_id,
             "status": status,
             "missing": sorted(set(missing)),
+            "evidence_source": evidence_source,
+            "evidence_window": 200,
             "llm_authority": False,
             "authority_source": "tenet-kernel",
             "orchestration": {
