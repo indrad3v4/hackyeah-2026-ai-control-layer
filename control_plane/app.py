@@ -19,7 +19,9 @@ import hmac
 import os
 import re
 import secrets
+import sys
 import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
@@ -86,6 +88,19 @@ def _kernel_or_503(app: FastAPI) -> tuple[Optional[Kernel], Optional[JSONRespons
     return kernel, None
 
 
+def _run_suffix() -> str:
+    """Return the volatile tail of a run id.
+
+    Python 3.14+ ships ``uuid.uuid7()`` (RFC 9562): 48-bit millisecond timestamp in
+    the front, so lexical order equals creation order and a journal sorted by run id
+    is a timeline for free. On older interpreters we keep 4 random bytes - unique
+    enough, but unordered, which is why the two branches are not interchangeable.
+    """
+    if sys.version_info >= (3, 14):
+        return uuid.uuid7().hex[:16]
+    return secrets.token_hex(4)
+
+
 def _run_fixed_scenario(kernel: Kernel, *, origin: str, run_prefix: str) -> Optional[str]:
     """Run the ONE fixed scenario through the kernel and return its ``action_id``.
 
@@ -101,7 +116,7 @@ def _run_fixed_scenario(kernel: Kernel, *, origin: str, run_prefix: str) -> Opti
     agent_token = tokens.get(SELF_CHECK_AGENT, "")
     if not agent_token:
         return None
-    run_id = run_prefix + secrets.token_hex(4)
+    run_id = run_prefix + _run_suffix()
     _decision, _reason, detail, _receipt, _executed = kernel.intercept(
         SELF_CHECK_AGENT, agent_token, SELF_CHECK_TOOL, dict(SELF_CHECK_ARGS), run_id=run_id)
     action_id = str((detail or {}).get("action_id")
