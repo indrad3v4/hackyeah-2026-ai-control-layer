@@ -1,4 +1,5 @@
-from __future__ import annotations
+# PEP 649 (Python 3.14) defers annotations natively: keeping the PEP 563
+# `from __future__ import annotations` here would only re-stringify them.
 from typing import Literal
 from pydantic import BaseModel, Field
 
